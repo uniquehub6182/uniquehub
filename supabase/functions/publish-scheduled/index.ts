@@ -23,14 +23,12 @@ async function waitReady(id: string, token: string, isVideo = false) {
 }
 
 async function proxyToR2IfNeeded(fileUrl: string, sb: any): Promise<string> {
-  /* If already on R2, return as-is */
   if (fileUrl.includes("r2.dev") || fileUrl.includes("r2.cloudflarestorage")) return fileUrl;
-  /* If on Supabase Storage, proxy through R2 for better CDN performance */
   if (fileUrl.includes("supabase.co/storage")) {
     try {
       const filename = fileUrl.split("/").pop() || `file_${Date.now()}`;
       const ext = filename.split(".").pop()?.toLowerCase() || "bin";
-      const ct = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "png" ? "image/png" : "application/octet-stream";
+      const ct = ext === "mp4" ? "video/mp4" : ext === "mov" ? "video/quicktime" : ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "application/octet-stream";
       const r2Res = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/r2-upload`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`, "Content-Type": "application/json" },
@@ -42,13 +40,12 @@ async function proxyToR2IfNeeded(fileUrl: string, sb: any): Promise<string> {
         return r2Data.publicUrl;
       }
       console.warn("[R2 Proxy] Failed, using original URL:", r2Data.error);
-    } catch (e) { console.warn("[R2 Proxy] Error:", e.message); }
+    } catch (e) { console.warn("[R2 Proxy] Error:", (e as Error).message); }
   }
   return fileUrl;
 }
 
 async function publishInstagram(sb: any, clientId: string, urls: string[], caption: string, mediaType: string) {
-  /* Try ig_token first, then fallback to social_tokens table */
   let uid = "", at = "";
   const { data: s } = await sb.from("app_settings").select("value").eq("key", `ig_token_${clientId}`).single();
   if (s?.value) {
@@ -62,7 +59,6 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
       if (pData.access_token && pData.instagram_business_account?.id) {
         uid = pData.instagram_business_account.id; at = pData.access_token;
         await sb.from("app_settings").upsert({ key: `ig_token_${clientId}`, value: JSON.stringify({ ig_user_id: uid, access_token: at, page_id: st.page_id }) }, { onConflict: "key" });
-        console.log(`[IG] Updated ig_token cache for ${clientId} from social_tokens`);
       }
     }
   }
@@ -70,23 +66,24 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
   const type = (mediaType || "FEED").toUpperCase();
   const carousel = urls.length > 1 && type !== "STORIES" && type !== "REELS";
 
+  /* ── FIX: Proxy ALL URLs through R2 (not just for REELS) ── */
+  const proxiedUrls = await Promise.all(urls.map(u => proxyToR2IfNeeded(u, sb)));
+  console.log(`[IG] Proxied ${proxiedUrls.length} URLs for ${type}`);
+
   let cid: string;
   if (type === "REELS") {
-    /* ── REELS: video upload via Instagram Content Publishing API ── */
-    /* Proxy video and cover through R2 CDN for reliable Instagram processing */
-    const videoUrl = await proxyToR2IfNeeded(urls[0], sb);
-    const coverUrl = urls.length > 1 && urls[1] ? await proxyToR2IfNeeded(urls[1], sb) : null;
+    const videoUrl = proxiedUrls[0];
+    const coverUrl = proxiedUrls.length > 1 && proxiedUrls[1] ? proxiedUrls[1] : null;
     const p = new URLSearchParams({ access_token: at, video_url: videoUrl, media_type: "REELS" });
     if (caption) p.append("caption", caption);
     if (coverUrl) p.append("cover_url", coverUrl);
-    console.log(`[IG Reels] Creating container with video: ${videoUrl.substring(0, 80)}${coverUrl ? " + cover: " + coverUrl.substring(0, 60) : ""}`);
+    console.log(`[IG Reels] Creating container with video: ${videoUrl.substring(0, 80)}`);
     const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
-    console.log(`[IG Reels] Container response:`, JSON.stringify(d).substring(0, 200));
     if (d.error) throw new Error(d.error.message);
     cid = d.id;
   } else if (carousel) {
-    const kids = await Promise.all(urls.map(async (url: string) => {
+    const kids = await Promise.all(proxiedUrls.map(async (url: string) => {
       const p = new URLSearchParams({ access_token: at, image_url: url, is_carousel_item: "true" });
       const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
       const d = await r.json();
@@ -101,15 +98,16 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
     if (d.error) throw new Error(d.error.message);
     cid = d.id;
   } else {
-    const p = new URLSearchParams({ access_token: at, image_url: urls[0] });
+    /* FEED or STORIES — use proxied URL */
+    const p = new URLSearchParams({ access_token: at, image_url: proxiedUrls[0] });
     if (type === "STORIES") p.append("media_type", "STORIES");
     if (caption && type !== "STORIES") p.append("caption", caption);
     const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
+    console.log(`[IG ${type}] Container response:`, JSON.stringify(d).substring(0, 200));
     if (d.error) throw new Error(d.error.message);
     cid = d.id;
   }
-
   await waitReady(cid, at, type === "REELS");
   const pp = new URLSearchParams({ access_token: at, creation_id: cid });
   const pr = await fetch(`https://graph.facebook.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
@@ -119,83 +117,47 @@ async function publishInstagram(sb: any, clientId: string, urls: string[], capti
 }
 
 async function publishFacebook(sb: any, clientId: string, imageUrls: string[], caption: string, mediaType?: string) {
-  /* Try client_socials first, then fall back to meta_token */
   let pageToken: string | null = null;
   let pageId: string | null = null;
-
   const { data: s1 } = await sb.from("app_settings").select("value").eq("key", `client_socials_${clientId}`).single();
   if (s1?.value) {
-    try {
-      const socials = JSON.parse(s1.value);
-      const fb = socials.facebook;
-      if (fb?.oauth?.page_token && fb?.oauth?.page_id) {
-        pageToken = fb.oauth.page_token;
-        pageId = fb.oauth.page_id;
-      }
-    } catch { /* ignore parse errors */ }
+    try { const socials = JSON.parse(s1.value); const fb = socials.facebook; if (fb?.oauth?.page_token && fb?.oauth?.page_id) { pageToken = fb.oauth.page_token; pageId = fb.oauth.page_id; } } catch {}
   }
-
-  /* Fallback: try meta_token_${clientId} */
   if (!pageToken || !pageId) {
     const { data: s2 } = await sb.from("app_settings").select("value").eq("key", `meta_token_${clientId}`).single();
-    if (s2?.value) {
-      try {
-        const tk = JSON.parse(s2.value);
-        if (tk.page_token && tk.page_id) {
-          pageToken = tk.page_token;
-          pageId = tk.page_id;
-        }
-      } catch { /* ignore */ }
-    }
+    if (s2?.value) { try { const tk = JSON.parse(s2.value); if (tk.page_token && tk.page_id) { pageToken = tk.page_token; pageId = tk.page_id; } } catch {} }
   }
-
   if (!pageToken || !pageId) throw new Error("Token Facebook não encontrado");
-
   const type = (mediaType || "FEED").toUpperCase();
-  console.log(`[publishFacebook v3] type=${type} urls=${imageUrls.length} url0=${(imageUrls[0]||"").substring(0,60)}`);
+
+  /* Proxy ALL URLs through R2 for reliable access */
+  const proxiedUrls = await Promise.all(imageUrls.map(u => proxyToR2IfNeeded(u, sb)));
 
   if (type === "REELS") {
-    /* ── REELS: 3-step upload with STREAMING (no memory buffering) ── */
-    const videoUrl = imageUrls[0];
+    const videoUrl = proxiedUrls[0];
     if (!videoUrl) throw new Error("No video URL for Reels");
-
-    /* Step 1: Init */
     const initParams = new URLSearchParams({ upload_phase: "start", access_token: pageToken });
     const initRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: initParams });
     const initData = await initRes.json();
     if (initData.error) throw new Error(initData.error.message);
     const videoId = initData.video_id;
     const uploadUrl = initData.upload_url;
-
-    /* Step 2: Stream video directly (pipe download→upload, zero buffering) */
     console.log(`[FB Reels Sched] Streaming video...`);
     const videoRes = await fetch(videoUrl);
     if (!videoRes.ok) throw new Error(`Download failed: ${videoRes.status}`);
     const fileSize = videoRes.headers.get("content-length") || "0";
-    await fetch(uploadUrl, {
-      method: "POST",
-      headers: { "Authorization": `OAuth ${pageToken}`, "offset": "0", "file_size": fileSize, "Content-Type": "application/octet-stream" },
-      body: videoRes.body, /* Stream — no memory buffering */
-    });
-
-    /* Step 3: Finish */
+    await fetch(uploadUrl, { method: "POST", headers: { "Authorization": `OAuth ${pageToken}`, "offset": "0", "file_size": fileSize, "Content-Type": "application/octet-stream" }, body: videoRes.body });
     const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId });
     if (caption) finishParams.append("description", caption);
-    if (imageUrls.length > 1 && imageUrls[1]) finishParams.append("thumb", imageUrls[1]);
+    if (proxiedUrls.length > 1 && proxiedUrls[1]) finishParams.append("thumb", proxiedUrls[1]);
     const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });
     const finishData = await finishRes.json();
     if (finishData.error) throw new Error(finishData.error.message);
-
-    /* Explicitly publish — video_state in finish step is unreliable */
-    await fetch(`https://graph.facebook.com/v21.0/${videoId}`, {
-      method: "POST", body: new URLSearchParams({ access_token: pageToken, published: "true" })
-    });
-
+    await fetch(`https://graph.facebook.com/v21.0/${videoId}`, { method: "POST", body: new URLSearchParams({ access_token: pageToken, published: "true" }) });
     return { success: true, media_id: videoId };
   }
-
-  /* ── FEED/default: photo post ── */
-  const params = new URLSearchParams({ access_token: pageToken, message: caption || "", url: imageUrls[0] || "" });
+  /* FEED photo */
+  const params = new URLSearchParams({ access_token: pageToken, message: caption || "", url: proxiedUrls[0] || "" });
   const r = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photos`, { method: "POST", body: params });
   const d = await r.json();
   if (d.error) throw new Error(d.error.message);
@@ -206,116 +168,88 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: H });
   try {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    
-    // Find posts that are due (scheduled_at <= now AND status = pending)
-    const now = new Date().toISOString();
+    const now = new Date();
+    const nowISO = now.toISOString();
+
+    /* ── FIX 1: Recover stuck "publishing" posts (>5 min) ── */
+    const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
+    const { data: stuck } = await sb.from("scheduled_posts").select("id").eq("status", "publishing").lte("created_at", fiveMinAgo);
+    if (stuck && stuck.length > 0) {
+      console.log(`[Scheduler] Recovering ${stuck.length} stuck "publishing" posts`);
+      for (const s of stuck) {
+        await sb.from("scheduled_posts").update({ status: "pending", error: "Auto-recovered from stuck publishing state" }).eq("id", s.id);
+      }
+    }
+
+    /* Find posts that are due */
     const { data: posts, error } = await sb
-      .from("scheduled_posts")
-      .select("*")
-      .eq("status", "pending")
-      .lte("scheduled_at", now)
-      .order("scheduled_at", { ascending: true })
-      .limit(10);
+      .from("scheduled_posts").select("*").eq("status", "pending")
+      .lte("scheduled_at", nowISO).order("scheduled_at", { ascending: true }).limit(10);
 
     if (error) throw new Error(`DB error: ${error.message}`);
-    if (!posts || posts.length === 0) return json({ message: "No posts due", count: 0 });
+    if (!posts || posts.length === 0) return json({ message: "No posts due", count: 0, recovered: stuck?.length || 0 });
 
     console.log(`[Scheduler] Found ${posts.length} posts to publish`);
     const results = [];
 
     for (const post of posts) {
-      // Atomically mark as publishing — only if still pending (prevents duplicates from concurrent calls)
       const { data: updated, error: upErr } = await sb
-        .from("scheduled_posts")
-        .update({ status: "publishing" })
-        .eq("id", post.id)
-        .eq("status", "pending")
-        .select("id")
-        .single();
-      
-      if (upErr || !updated) {
-        console.log(`[Scheduler] Post ${post.id} already picked up by another call, skipping`);
-        continue;
-      }
-      
+        .from("scheduled_posts").update({ status: "publishing" })
+        .eq("id", post.id).eq("status", "pending").select("id").single();
+      if (upErr || !updated) { console.log(`[Scheduler] Post ${post.id} already picked up, skipping`); continue; }
+
       try {
         const urls = (post.image_urls || []) as string[];
         let result;
-
         if (post.platform === "instagram") {
           result = await publishInstagram(sb, post.client_id, urls, post.caption || "", post.media_type);
         } else {
           result = await publishFacebook(sb, post.client_id, urls, post.caption || "", post.media_type);
         }
-
-        // Mark as published
-        await sb.from("scheduled_posts").update({
-          status: "published",
-          result: result,
-          published_at: new Date().toISOString(),
-        }).eq("id", post.id);
-
-        // Move demand from "scheduled" to "published" if demand_id exists
-        if (post.demand_id) {
-          await sb.from("demands").update({ stage: "published" }).eq("id", post.demand_id);
-          console.log(`[Scheduler] Moved demand ${post.demand_id} to published`);
-        }
-
+        await sb.from("scheduled_posts").update({ status: "published", result, published_at: new Date().toISOString() }).eq("id", post.id);
         console.log(`[Scheduler] Published post ${post.id} on ${post.platform}`);
-        results.push({ id: post.id, status: "published" });
+        results.push({ id: post.id, demand_id: post.demand_id, status: "published" });
+
+        /* ── FIX 2: Only mark demand "published" when ALL posts for this demand are done ── */
+        if (post.demand_id) {
+          const { data: siblings } = await sb.from("scheduled_posts").select("id,status")
+            .eq("demand_id", post.demand_id);
+          const allDone = (siblings || []).every(s => s.status === "published");
+          if (allDone) {
+            await sb.from("demands").update({ stage: "published" }).eq("id", post.demand_id);
+            console.log(`[Scheduler] ALL posts for demand ${post.demand_id} published → demand marked published`);
+          } else {
+            console.log(`[Scheduler] Demand ${post.demand_id} has pending siblings, NOT marking published yet`);
+          }
+        }
       } catch (e: any) {
         console.error(`[Scheduler] Failed post ${post.id}:`, e.message);
         const retryCount = (post.retry_count || 0) + 1;
         const isTransient = e.message?.includes("processing error") || e.message?.includes("timeout") || e.message?.includes("transient");
         if (isTransient && retryCount <= 3) {
-          /* Auto-retry: reschedule for 2 minutes later */
           const retryAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-          await sb.from("scheduled_posts").update({
-            status: "pending",
-            error: `Retry ${retryCount}/3: ${e.message}`,
-            scheduled_at: retryAt,
-            retry_count: retryCount,
-          }).eq("id", post.id);
-          console.log(`[Scheduler] Auto-retry ${retryCount}/3 for post ${post.id} at ${retryAt}`);
+          await sb.from("scheduled_posts").update({ status: "pending", error: `Retry ${retryCount}/3: ${e.message}`, scheduled_at: retryAt, retry_count: retryCount }).eq("id", post.id);
+          console.log(`[Scheduler] Auto-retry ${retryCount}/3 for post ${post.id}`);
           results.push({ id: post.id, status: "retry", attempt: retryCount });
         } else {
-          await sb.from("scheduled_posts").update({
-            status: "failed",
-            error: e.message,
-          }).eq("id", post.id);
+          await sb.from("scheduled_posts").update({ status: "failed", error: e.message }).eq("id", post.id);
           results.push({ id: post.id, status: "failed", error: e.message });
-
-          /* ── Notify admins about the failure ── */
-        try {
-          let clientName = post.client_id;
-          let demandTitle = post.caption?.substring(0, 40) || "Post agendado";
-          /* Fetch client name */
-          const { data: cl } = await sb.from("clients").select("name").eq("id", post.client_id).single();
-          if (cl?.name) clientName = cl.name;
-          /* Fetch demand title if available */
-          if (post.demand_id) {
-            const { data: dm } = await sb.from("demands").select("title").eq("id", post.demand_id).single();
-            if (dm?.title) demandTitle = dm.title;
-          }
-          const platform = post.platform === "instagram" ? "Instagram" : "Facebook";
-          const errorMsg = (e.message || "Erro desconhecido").substring(0, 120);
-          const { data: teamUsers } = await sb.from("profiles").select("id, role").in("role", ["admin", "owner", "manager"]);
-          for (const u of (teamUsers || [])) {
-            await sb.from("notifications").insert({
-              user_id: u.id,
-              type: "publish_failed",
-              title: `❌ Falha na publicação — ${clientName}`,
-              body: `Post "${demandTitle}" falhou no ${platform}. Erro: ${errorMsg}`,
-              read: false,
-            });
-          }
-          console.log(`[Scheduler] Sent failure notifications to ${(teamUsers||[]).length} admins`);
-        } catch (notifErr) { console.error("[Scheduler] Failed to send failure notification:", notifErr); }
+          /* Notify admins */
+          try {
+            let clientName = post.client_id;
+            const { data: cl } = await sb.from("clients").select("name").eq("id", post.client_id).single();
+            if (cl?.name) clientName = cl.name;
+            const platform = post.platform === "instagram" ? "Instagram" : "Facebook";
+            const errorMsg = (e.message || "Erro desconhecido").substring(0, 120);
+            const { data: teamUsers } = await sb.from("profiles").select("id, role").in("role", ["admin", "owner", "manager"]);
+            for (const u of (teamUsers || [])) {
+              await sb.from("notifications").insert({ user_id: u.id, type: "publish_failed", title: `❌ Falha — ${clientName} (${platform})`, body: `Erro: ${errorMsg}`, read: false });
+            }
+          } catch (notifErr) { console.error("[Scheduler] Notification error:", notifErr); }
         }
       }
     }
-
-    return json({ message: `Processed ${results.length} posts`, results });
+    return json({ message: `Processed ${results.length} posts`, results, recovered: stuck?.length || 0 });
   } catch (e: any) {
     console.error("[Scheduler] Error:", e.message);
     return json({ error: e.message }, 500);
