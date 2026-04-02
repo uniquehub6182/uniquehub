@@ -27332,6 +27332,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                             <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0,padding:"4px 10px",borderRadius:8,background:stColor+"12"}}>
                               <div style={{width:7,height:7,borderRadius:4,background:stColor}}/>
                               <span style={{fontSize:11,fontWeight:700,color:stColor}}>{stLabel}</span>
+                              <button onClick={(e)=>{e.stopPropagation();goTab("chat");setTimeout(()=>{try{const inp=document.querySelector('input[placeholder*="Mensagem"],textarea[placeholder*="Mensagem"]');if(inp){inp.focus();inp.value="Sobre o post: "+d.title+" — ";inp.dispatchEvent(new Event("input",{bubbles:true}));}}catch{}},800);}} style={{marginLeft:8,padding:"3px 8px",borderRadius:6,border:"1px solid "+(B.border||"#ddd"),background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:9,fontWeight:600,color:B.muted,display:"inline-flex",alignItems:"center",gap:3}}><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Comentar</button>
                             </div>
                           </div>
                           {/* Networks + Format + Schedule */}
