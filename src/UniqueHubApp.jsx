@@ -22744,30 +22744,38 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
     const isCta = slide.type === "cta";
     const isCover = slide.type === "cover" || idx === 0;
     const isHighlight = slide.type === "highlight";
-    const isStrategy = slide.type === "strategy";
-    const fs = fullscreen; // fullscreen mode
-    const sz = (d, m, s) => fs ? Math.round(d * 1.15) : (isPDesktop ? d : s || m); // font size helper
+    const fs = fullscreen;
+    const d = isPDesktop;
+    // Font sizes: [fullscreen, desktop, mobile]
+    const F = { tag:[16,12,10], tagTitle:[40,28,20], title:[50,36,24], subtitle:[22,16,13], body:[22,18,14], ctaTitle:[44,32,22], label:[18,14,11] };
+    const f = (arr) => fs ? arr[0] : (d ? arr[1] : arr[2]);
+    // Parse body: split by \n and render as lines
+    const renderBody = (text, style) => {
+      const lines = (text||"").split("\\n").filter(l=>l.trim());
+      return <div style={style}>{lines.map((line,i)=><div key={i} style={{marginBottom:lines.length>1?6:0}}>{line}</div>)}</div>;
+    };
     return (
-      <div style={{ width:"100%", aspectRatio:fs?"auto":(isPDesktop?"16/9":"4/3"), height:fs?"100%":"auto", maxHeight:fs?"100%":"none", background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 50%, #0D0D0D 100%)", borderRadius:fs?0:20, display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"center", padding:fs?"60px 10vw":(isPDesktop?"60px 80px":"40px 30px"), position:"relative", overflow:"hidden", boxSizing:"border-box" }}>
-        <div style={{ position:"absolute", top:-100, right:-100, width:fs?500:300, height:fs?500:300, borderRadius:"50%", background:`${LIME}08`, filter:"blur(80px)" }} />
-        <div style={{ position:"absolute", bottom:-50, left:-50, width:fs?400:200, height:fs?400:200, borderRadius:"50%", background:`${LIME}05`, filter:"blur(60px)" }} />
-        <div style={{ position:"absolute", top:fs?32:isPDesktop?24:16, right:fs?40:isPDesktop?32:20, fontSize:fs?16:12, color:"rgba(255,255,255,0.3)", fontWeight:600 }}>{idx+1}/{total}</div>
-        <div style={{ position:"absolute", bottom:fs?32:isPDesktop?24:16, left:fs?40:isPDesktop?32:20, fontSize:fs?14:10, color:"rgba(255,255,255,0.15)", fontWeight:700, letterSpacing:1, textTransform:"uppercase" }}>UniqueHub</div>
-        {isCover ? (<>
-          <div style={{ fontSize:sz(14,11), fontWeight:700, color:LIME, letterSpacing:2, textTransform:"uppercase", marginBottom:fs?24:16 }}>{selClient?.name || currentPres?.title?.split("·")[1]?.trim() || "Cliente"}</div>
-          <div style={{ fontSize:sz(36,24), fontWeight:900, color:"#fff", textAlign:"center", lineHeight:1.2, marginBottom:fs?20:12 }}>{slide.title}</div>
-          <div style={{ fontSize:sz(18,13), color:"rgba(255,255,255,0.6)", textAlign:"center", lineHeight:1.5, maxWidth:fs?700:600, whiteSpace:"pre-line" }}>{slide.body}</div>
-        </>) : isCta ? (<>
-          <div style={{ fontSize:sz(32,22), fontWeight:900, color:LIME, textAlign:"center", lineHeight:1.2, marginBottom:fs?24:16 }}>{slide.title}</div>
-          <div style={{ fontSize:sz(18,13), color:"rgba(255,255,255,0.7)", textAlign:"center", lineHeight:1.6, maxWidth:fs?700:600, whiteSpace:"pre-line" }}>{slide.body}</div>
-        </>) : (<>
-          <div style={{ alignSelf:"flex-start", marginBottom:fs?40:isPDesktop?32:20, width:"100%" }}>
-            <div style={{ display:"inline-block", background:`${LIME}15`, borderRadius:8, padding:fs?"8px 18px":"6px 14px", marginBottom:fs?16:12 }}>
-              <span style={{ fontSize:fs?14:11, fontWeight:700, color:LIME, letterSpacing:1, textTransform:"uppercase" }}>{isMetric ? "📊 Dados" : isHighlight ? "🏆 Destaque" : "💡 Estratégia"}</span>
-            </div>
-            <div style={{ fontSize:sz(28,20), fontWeight:800, color:"#fff", lineHeight:1.2 }}>{slide.title}</div>
+      <div style={{ width:"100%", height:fs?"100%":"auto", aspectRatio:fs?"unset":(d?"16/9":"4/3"), background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 50%, #0D0D0D 100%)", borderRadius:fs?0:16, display:"flex", flexDirection:"column", justifyContent:"center", padding:fs?"5vh 8vw":(d?"48px 64px":"32px 24px"), position:fs?"absolute":"relative", inset:fs?0:"auto", overflow:"hidden", boxSizing:"border-box" }}>
+        {/* Decorative glows */}
+        <div style={{ position:"absolute", top:"-10%", right:"-5%", width:"35%", height:"50%", borderRadius:"50%", background:`${LIME}06`, filter:"blur(80px)", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", bottom:"-10%", left:"-5%", width:"25%", height:"40%", borderRadius:"50%", background:`${LIME}04`, filter:"blur(60px)", pointerEvents:"none" }} />
+        {/* Slide counter */}
+        <div style={{ position:"absolute", top:d?20:12, right:d?28:16, fontSize:f([14,11,10]), color:"rgba(255,255,255,0.25)", fontWeight:600 }}>{idx+1}/{total}</div>
+        <div style={{ position:"absolute", bottom:d?20:12, left:d?28:16, fontSize:f([12,9,8]), color:"rgba(255,255,255,0.12)", fontWeight:700, letterSpacing:1.5, textTransform:"uppercase" }}>Unique Marketing</div>
+
+        {isCover ? (<div style={{ textAlign:"center", maxWidth:fs?"70vw":"100%" }}>
+          <div style={{ fontSize:f(F.label), fontWeight:700, color:LIME, letterSpacing:3, textTransform:"uppercase", marginBottom:16 }}>{selClient?.name || currentPres?.title?.split("·")[1]?.trim() || ""}</div>
+          <div style={{ fontSize:f(F.title), fontWeight:900, color:"#fff", lineHeight:1.15, marginBottom:16 }}>{slide.title}</div>
+          {renderBody(slide.body, { fontSize:f(F.subtitle), color:"rgba(255,255,255,0.5)", lineHeight:1.6 })}
+        </div>) : isCta ? (<div style={{ textAlign:"center", maxWidth:fs?"70vw":"100%" }}>
+          <div style={{ fontSize:f(F.ctaTitle), fontWeight:900, color:LIME, lineHeight:1.15, marginBottom:20 }}>{slide.title}</div>
+          {renderBody(slide.body, { fontSize:f(F.subtitle), color:"rgba(255,255,255,0.6)", lineHeight:1.6 })}
+        </div>) : (<>
+          <div style={{ marginBottom:d?28:16 }}>
+            <span style={{ display:"inline-block", background:`${LIME}12`, border:`1px solid ${LIME}25`, borderRadius:6, padding:"4px 12px", marginBottom:10, fontSize:f([13,10,9]), fontWeight:700, color:LIME, letterSpacing:1, textTransform:"uppercase" }}>{isMetric?"📊 Dados":isHighlight?"🏆 Destaque":"💡 Estratégia"}</span>
+            <div style={{ fontSize:f(F.tagTitle), fontWeight:800, color:"#fff", lineHeight:1.2 }}>{slide.title}</div>
           </div>
-          <div style={{ alignSelf:"flex-start", fontSize:sz(18,13), color:"rgba(255,255,255,0.8)", lineHeight:1.8, whiteSpace:"pre-line", width:"100%" }}>{slide.body}</div>
+          {renderBody(slide.body, { fontSize:f(F.body), color:"rgba(255,255,255,0.75)", lineHeight:1.7 })}
         </>)}
       </div>
     );
@@ -22778,13 +22786,16 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
     const slides = currentPres.slides || [];
     const slide = slides[slideIdx] || {};
     return (
-      <div style={{ position:"fixed", inset:0, zIndex:999999, background:"#000", display:"flex", flexDirection:"column" }}>
-        <div style={{ flex:1, display:"flex", alignItems:"stretch", justifyContent:"stretch" }}>{renderSlide(slide, slideIdx, slides.length)}</div>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:16, padding:"16px 0", background:"rgba(0,0,0,0.9)" }}>
-          <button disabled={slideIdx<=0} onClick={()=>setSlideIdx(i=>i-1)} style={{ width:44, height:44, borderRadius:12, border:"none", background:slideIdx>0?LIME:"rgba(255,255,255,0.1)", color:slideIdx>0?"#000":"rgba(255,255,255,0.3)", cursor:slideIdx>0?"pointer":"default", fontFamily:"inherit", fontSize:18, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
-          <span style={{ color:"rgba(255,255,255,0.5)", fontSize:13, fontWeight:600, minWidth:60, textAlign:"center" }}>{slideIdx+1} / {slides.length}</span>
-          <button disabled={slideIdx>=slides.length-1} onClick={()=>setSlideIdx(i=>i+1)} style={{ width:44, height:44, borderRadius:12, border:"none", background:slideIdx<slides.length-1?LIME:"rgba(255,255,255,0.1)", color:slideIdx<slides.length-1?"#000":"rgba(255,255,255,0.3)", cursor:slideIdx<slides.length-1?"pointer":"default", fontFamily:"inherit", fontSize:18, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>›</button>
-          <button onClick={()=>setFullscreen(false)} style={{ marginLeft:24, padding:"10px 20px", borderRadius:12, border:"1px solid rgba(255,255,255,0.2)", background:"transparent", color:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600 }}>Sair</button>
+      <div style={{ position:"fixed", inset:0, zIndex:999999, background:"#000", display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
+        <div style={{ flex:1, position:"relative" }}>
+          {renderSlide(slide, slideIdx, slides.length)}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:20, padding:"14px 0", background:"#000", borderTop:"1px solid rgba(255,255,255,0.08)", flexShrink:0 }}>
+          <button disabled={slideIdx<=0} onClick={()=>setSlideIdx(i=>i-1)} style={{ width:48, height:48, borderRadius:14, border:"none", background:slideIdx>0?LIME:"rgba(255,255,255,0.08)", color:slideIdx>0?"#000":"rgba(255,255,255,0.2)", cursor:slideIdx>0?"pointer":"default", fontFamily:"inherit", fontSize:20, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
+          <span style={{ color:"rgba(255,255,255,0.4)", fontSize:14, fontWeight:600, minWidth:70, textAlign:"center" }}>{slideIdx+1} / {slides.length}</span>
+          <button disabled={slideIdx>=slides.length-1} onClick={()=>setSlideIdx(i=>i+1)} style={{ width:48, height:48, borderRadius:14, border:"none", background:slideIdx<slides.length-1?LIME:"rgba(255,255,255,0.08)", color:slideIdx<slides.length-1?"#000":"rgba(255,255,255,0.2)", cursor:slideIdx<slides.length-1?"pointer":"default", fontFamily:"inherit", fontSize:20, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center" }}>›</button>
+          <div style={{ width:1, height:28, background:"rgba(255,255,255,0.1)", margin:"0 8px" }} />
+          <button onClick={()=>setFullscreen(false)} style={{ padding:"12px 24px", borderRadius:12, border:"1px solid rgba(255,255,255,0.15)", background:"transparent", color:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600 }}>Sair do Fullscreen</button>
         </div>
       </div>
     );
@@ -22816,7 +22827,7 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
             </div>
             {/* Main: slide + controls */}
             <div style={{ flex:1, display:"flex", flexDirection:"column", gap:12 }}>
-              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"#0a0a0a", borderRadius:16, overflow:"hidden", position:"relative" }}>
                 {renderSlide(slide, slideIdx, slides.length)}
               </div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
