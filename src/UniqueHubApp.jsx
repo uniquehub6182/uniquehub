@@ -22536,6 +22536,8 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
 function PresentationsPage({ onBack, clients, user, demands }) {
   const isPDesktop = useIsDesktop();
   const { showToast, ToastEl } = useToast();
+  const TOP = isPDesktop ? 70 : `calc(env(safe-area-inset-top, 0px) + 60px)`;
+  const dCard = isPDesktop ? { background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, padding:24 } : {};
   const [presentations, setPresentations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("list"); // list | create | viewer
@@ -22818,15 +22820,31 @@ Estrutura sugerida: Abertura → Visão estratégica do mês → Campanha 1 (det
     }
 
     return (
-      <div className="pg" style={{ paddingBottom:120 }}>
+      <div className={isPDesktop ? "content-wide" : "pg"} style={isPDesktop ? { paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { paddingBottom:120 }}>
         {ToastEl}
-        <CollapseHeader icon={IC.presentations} label="Slides" title={currentPres.title || "Apresentação"} onBack={() => { setView("list"); setCurrentPres(null); }} collapsed={false} />
-        <div style={{ padding:"0 16px" }}>
-          {/* Toolbar */}
-          <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
+        {isPDesktop ? (
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:24, padding:"0 4px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <button onClick={() => { setView("list"); setCurrentPres(null); }} style={{ width:36, height:36, borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.back()}</button>
+              <div>
+                <div style={{ fontSize:20, fontWeight:800, color:B.text }}>{currentPres.title || "Apresentação"}</div>
+                <div style={{ fontSize:12, color:B.muted }}>{slides.length} slides</div>
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={() => { setEditSlide(slideIdx); setEditTitle(slide.title || ""); setEditBody(slide.body || ""); }} style={{ padding:"10px 18px", borderRadius:12, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.text, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar slide</button>
+              <button onClick={() => setFullscreen(true)} style={{ padding:"10px 18px", borderRadius:12, border:"none", background:B.accent, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.dark, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg> Apresentar</button>
+            </div>
+          </div>
+        ) : (
+          <CollapseHeader icon={IC.presentations} label="Slides" title={currentPres.title || "Apresentação"} onBack={() => { setView("list"); setCurrentPres(null); }} collapsed={false} />
+        )}
+        <div style={{ padding: isPDesktop ? "0 4px" : "0 16px" }}>
+          {/* Toolbar - mobile only */}
+          {!isPDesktop && <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
             <button onClick={() => setFullscreen(true)} style={{ padding:"8px 16px", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg> Fullscreen</button>
             <button onClick={() => { setEditSlide(slideIdx); setEditTitle(slide.title || ""); setEditBody(slide.body || ""); }} style={{ padding:"8px 16px", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text, display:"flex", alignItems:"center", gap:6 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Editar slide</button>
-          </div>
+          </div>}
 
           {/* Slide */}
           {renderSlide(slide, slideIdx, slides.length)}
@@ -22853,7 +22871,7 @@ Estrutura sugerida: Abertura → Visão estratégica do mês → Campanha 1 (det
         {editSlide !== null && (
           <>
             <div onClick={() => setEditSlide(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:9000 }} />
-            <div style={{ position:"fixed", bottom:0, left:0, right:0, zIndex:9001, background:B.bg, borderRadius:"20px 20px 0 0", padding:24, maxHeight:"70vh", overflow:"auto" }}>
+            <div style={{ position:"fixed", zIndex:9001, background:B.bg, padding:24, maxHeight:"70vh", overflow:"auto", ...(isPDesktop ? { top:"50%", left:"50%", transform:"translate(-50%,-50%)", width:560, borderRadius:20, boxShadow:"0 20px 60px rgba(0,0,0,0.3)" } : { bottom:0, left:0, right:0, borderRadius:"20px 20px 0 0" }) }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                 <span style={{ fontWeight:800, fontSize:16, color:B.text }}>Editar Slide {editSlide + 1}</span>
                 <button onClick={() => setEditSlide(null)} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, fontSize:20 }}>✕</button>
@@ -22873,10 +22891,17 @@ Estrutura sugerida: Abertura → Visão estratégica do mês → Campanha 1 (det
   // ── CREATE ──
   if (view === "create") {
     return (
-      <div className="pg" style={{ paddingBottom:120 }}>
+      <div className={isPDesktop ? "content-wide" : "pg"} style={isPDesktop ? { paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { paddingBottom:120 }}>
         {ToastEl}
-        <CollapseHeader icon={IC.presentations} label="Nova" title="Nova Apresentação" onBack={() => setView("list")} collapsed={false} />
-        <div style={{ padding:"0 16px" }}>
+        {isPDesktop ? (
+          <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:28, padding:"0 4px" }}>
+            <button onClick={() => setView("list")} style={{ width:36, height:36, borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>{IC.back()}</button>
+            <div style={{ fontSize:22, fontWeight:900, color:B.text }}>Nova Apresentação</div>
+          </div>
+        ) : (
+          <CollapseHeader icon={IC.presentations} label="Nova" title="Nova Apresentação" onBack={() => setView("list")} collapsed={false} />
+        )}
+        <div style={{ padding: isPDesktop ? "0 4px" : "0 16px", ...(isPDesktop ? { maxWidth:800 } : {}) }}>
           {/* Client */}
           <label style={{ fontSize:12, fontWeight:700, color:B.muted, letterSpacing:0.5, textTransform:"uppercase", marginBottom:6, display:"block" }}>Cliente</label>
           <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:20 }}>
@@ -22931,26 +22956,41 @@ Estrutura sugerida: Abertura → Visão estratégica do mês → Campanha 1 (det
   // ── LIST ──
   const clientPresentations = presentations;
   return (
-    <div className="pg" style={{ paddingBottom:120 }}>
+    <div className={isPDesktop ? "content-wide" : "pg"} style={isPDesktop ? { paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { paddingBottom:120 }}>
       {ToastEl}
-      <CollapseHeader icon={IC.presentations} label="Agência" title="Apresentações" onBack={onBack} collapsed={false} />
-      <div style={{ padding:"0 16px" }}>
-        {/* New button */}
-        <button onClick={() => setView("create")} style={{ width:"100%", padding:16, borderRadius:16, border:`2px dashed ${B.accent}40`, background:`${B.accent}06`, cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginBottom:20, transition:"all .15s" }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nova Apresentação
-        </button>
-
+      {isPDesktop ? (
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:28, padding:"0 4px" }}>
+          <div>
+            <div style={{ fontSize:24, fontWeight:900, color:B.text, letterSpacing:"-0.5px" }}>Apresentações</div>
+            <div style={{ fontSize:13, color:B.muted, marginTop:2 }}>Crie apresentações com IA para encantar seus clientes</div>
+          </div>
+          <button onClick={() => setView("create")} style={{ padding:"12px 24px", borderRadius:14, border:"none", background:B.accent, cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.dark, display:"flex", alignItems:"center", gap:8, transition:"all .15s" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.dark} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova Apresentação
+          </button>
+        </div>
+      ) : (
+        <>
+          <CollapseHeader icon={IC.presentations} label="Agência" title="Apresentações" onBack={onBack} collapsed={false} />
+          <div style={{ padding:"0 16px", marginBottom:12 }}>
+            <button onClick={() => setView("create")} style={{ width:"100%", padding:16, borderRadius:16, border:`2px dashed ${B.accent}40`, background:`${B.accent}06`, cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:B.accent, display:"flex", alignItems:"center", justifyContent:"center", gap:8, transition:"all .15s" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova Apresentação
+            </button>
+          </div>
+        </>
+      )}
+      <div style={{ padding: isPDesktop ? "0 4px" : "0 16px" }}>
         {loading ? (
           <div style={{ textAlign:"center", padding:40, color:B.muted }}>Carregando...</div>
         ) : clientPresentations.length === 0 ? (
-          <div style={{ textAlign:"center", padding:40 }}>
-            <div style={{ fontSize:40, marginBottom:12 }}>📊</div>
-            <div style={{ fontSize:15, fontWeight:700, color:B.text, marginBottom:4 }}>Nenhuma apresentação ainda</div>
+          <div style={{ textAlign:"center", padding: isPDesktop ? 80 : 40, ...(isPDesktop ? dCard : {}) }}>
+            <div style={{ fontSize:48, marginBottom:16 }}>📊</div>
+            <div style={{ fontSize: isPDesktop ? 18 : 15, fontWeight:700, color:B.text, marginBottom:6 }}>Nenhuma apresentação ainda</div>
             <div style={{ fontSize:13, color:B.muted }}>Crie sua primeira apresentação com IA para encantar seus clientes!</div>
           </div>
         ) : (
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ display:"grid", gridTemplateColumns: isPDesktop ? "1fr 1fr" : "1fr", gap: isPDesktop ? 16 : 10 }}>
             {clientPresentations.map(p => {
               const cl = (clients || []).find(c => c.id === p.client_id);
               return (
