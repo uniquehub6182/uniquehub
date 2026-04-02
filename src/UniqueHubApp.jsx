@@ -25700,7 +25700,7 @@ function ClientOnboarding({ onComplete, onBack }) {
   return (
     <div ref={containerRef} style={{ position:"fixed", top:0, left:0, width:"100%", height:"100%", display:"flex", flexDirection:"column", overflow:"hidden", background:"#F5F5F5", color:"#1A1D23", zIndex:9999 }}>
       {/* Header */}
-      <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 14px) 16px 14px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(0,0,0,0.06)", background:"#fff" }}>
+      <div style={{ padding:"14px 16px", display:"flex", alignItems:"center", gap:10, borderBottom:"1px solid rgba(0,0,0,0.06)", background:"#fff" }}>
         <button onClick={onBack} className="ib" style={{ border:`1.5px solid ${B.border}` }}>{IC.back()}</button>
         <div style={{ width:32, height:32, borderRadius:10, background:`${B.accent}20`, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2a3 3 0 00-3 3v4a3 3 0 006 0V5a3 3 0 00-3-3z"/><path d="M19 10v1a7 7 0 01-14 0v-1"/><circle cx="12" cy="21" r="1"/></svg>
@@ -27780,7 +27780,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           {tab !== "home" && <div style={isDesktop?{maxWidth:1440,margin:"0 auto"}:{}}>
             {tab !== "chat" && tab !== "calendar" && <><div style={isDesktop?{}:{margin:"0 -16px"}}><CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} /></div><div style={{height:isDesktop?0:14}}/></>}
             {tab === "content" && (isDesktop ? <div style={{background:B.bgCard||"#fff",borderRadius:20,padding:"20px 20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`,marginTop:16}}>{renderContent()}</div> : renderContent())}
-            {tab === "calendar" && <div style={{ margin:isDesktop?0:"14px -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
+            {tab === "calendar" && <div style={{ margin:isDesktop?0:"0 -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
             {tab === "chat" && <div style={{ margin:isDesktop?0:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           {tab === "more" && (() => {
             const moreItems = [
