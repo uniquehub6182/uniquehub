@@ -22575,19 +22575,37 @@ function PresentationsPage({ onBack, clients, user, demands }) {
     const file = e.target.files?.[0];
     if (!file) return;
     setPdfFile(file);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const arr = new Uint8Array(ev.target.result);
-      let text = "";
-      try {
-        const str = new TextDecoder("utf-8", { fatal: false }).decode(arr);
+    // Use pdf.js for proper text extraction
+    try {
+      if (!window.pdfjsLib) {
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+        await new Promise((res, rej) => { s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
+      const arrayBuf = await file.arrayBuffer();
+      const pdf = await window.pdfjsLib.getDocument({ data: arrayBuf }).promise;
+      let allText = "";
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const tc = await page.getTextContent();
+        allText += tc.items.map(it => it.str).join(" ") + "\n";
+      }
+      setPdfText(allText.trim().slice(0, 8000));
+      if (!allText.trim()) showToast("PDF sem texto extraível", "error");
+    } catch (err) {
+      console.error("PDF parse error:", err);
+      // Fallback: basic extraction
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const str = new TextDecoder("utf-8", { fatal: false }).decode(new Uint8Array(ev.target.result));
         const matches = str.match(/\(([^)]{2,})\)/g) || [];
-        text = matches.map(m => m.slice(1,-1)).filter(t => t.length > 3 && !/^[\x00-\x1f]+$/.test(t)).join(" ");
+        let text = matches.map(m => m.slice(1,-1)).filter(t => t.length > 3 && !/^[\x00-\x1f]+$/.test(t)).join(" ");
         if (text.length < 50) text = str.replace(/[^\x20-\x7E\xC0-\xFF\n]/g, " ").replace(/\s{3,}/g, " ").trim().slice(0, 8000);
-      } catch { text = "Não foi possível extrair texto do PDF"; }
-      setPdfText(text.slice(0, 8000));
-    };
-    reader.readAsArrayBuffer(file);
+        setPdfText(text.slice(0, 8000) || "Falha na extração - tente outro PDF");
+      };
+      reader.readAsArrayBuffer(file);
+    }
   };
 
   const gatherMetrics = () => {
@@ -22609,7 +22627,7 @@ function PresentationsPage({ onBack, clients, user, demands }) {
     if (mode === "campaigns" && !pdfText) { showToast("Faça upload do PDF", "error"); return; }
     setGenerating(true);
     try {
-      const aiKey = await supaGetSetting("anthropic_key");
+      const aiKey = await supaGetSetting("claude_key");
       if (!aiKey) { showToast("Configure a chave da API Claude nas configurações", "error"); setGenerating(false); return; }
       const metrics = mode === "metrics" ? gatherMetrics() : null;
       const systemPrompt = `Você é um estrategista sênior de marketing digital e especialista em apresentações para clientes.\nSua função é transformar dados e planejamentos em apresentações claras, visuais, estratégicas e envolventes.\n\nRegras obrigatórias:\n- Max 6 linhas por slide, frases curtas, números em destaque\n- Linguagem simples, direta, tom positivo\n- Narrativa de aprendizado mesmo em cenários negativos\n- Títulos estratégicos e não genéricos\n- Responda APENAS com JSON array: [{ "title": "...", "body": "...", "type": "text|metrics|highlight|cta" }]\n- Use "\\n" para quebras. Sem markdown. Gere 8-14 slides. NADA além do JSON.`;
