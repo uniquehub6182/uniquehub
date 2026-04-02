@@ -5504,7 +5504,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <Card style={{ textAlign:"center", padding:8 }}><p style={{ fontSize:14, fontWeight:800, color:B.purple }}>{files.length}</p><p style={{ fontSize:8, color:B.muted }}>Arquivos</p></Card>
       </div>
       <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
-        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"ideas",l:"Ideias"},{k:"access",l:"Acessos",admin:true},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
+        {[{k:"info",l:"Dados"},{k:"socials",l:"Redes"},{k:"library",l:"Biblioteca"},{k:"ideas",l:"Ideias"},{k:"access",l:"Acessos",admin:true},{k:"contract",l:"Contrato",admin:true},{k:"financial",l:"Financeiro",admin:true},{k:"nps",l:"Satisfação"},{k:"actions",l:"Ações"}].filter(t => !t.admin || isAdmin).map(t=>(
           <button key={t.k} onClick={()=>{setProfileTab(t.k);setViewClientFile(null);}} className={`htab${profileTab===t.k?" a":""}`} style={{ fontSize:11, whiteSpace:"nowrap", flexShrink:0 }}>{t.l}</button>
         ))}
       </div>
@@ -6071,6 +6071,39 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         </>)}
       </>}
 
+      {profileTab === "nps" && (() => {
+        const cid = sel?.supaId || sel?.id;
+        const [npsData, setNpsData] = React.useState([]);
+        const [npsLoading, setNpsLoading] = React.useState(true);
+        React.useEffect(() => {
+          if (!cid || !supabase) return;
+          supabase.from("app_settings").select("*").like("key", "nps_"+cid+"_%").order("key",{ascending:false}).then(({data}) => {
+            const parsed = (data||[]).map(d => { try { return {...JSON.parse(d.value), key:d.key}; } catch { return null; } }).filter(Boolean);
+            setNpsData(parsed); setNpsLoading(false);
+          });
+        }, [cid]);
+        const avg = npsData.length > 0 ? (npsData.reduce((a,d)=>a+d.score,0)/npsData.length).toFixed(1) : "—";
+        const cat = n => n >= 9 ? "Promotor" : n >= 7 ? "Neutro" : "Detrator";
+        const col = n => n >= 9 ? B.green : n >= 7 ? "#F59E0B" : B.red || "#EF4444";
+        return <>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            <Card style={{textAlign:"center",padding:14}}><p style={{fontSize:28,fontWeight:900,color:B.accent}}>{avg}</p><p style={{fontSize:10,color:B.muted}}>NPS Médio</p></Card>
+            <Card style={{textAlign:"center",padding:14}}><p style={{fontSize:28,fontWeight:900,color:B.green}}>{npsData.filter(d=>d.score>=9).length}</p><p style={{fontSize:10,color:B.muted}}>Promotores</p></Card>
+            <Card style={{textAlign:"center",padding:14}}><p style={{fontSize:28,fontWeight:900,color:B.red||"#EF4444"}}>{npsData.filter(d=>d.score<=6).length}</p><p style={{fontSize:10,color:B.muted}}>Detratores</p></Card>
+          </div>
+          {npsLoading ? <p style={{fontSize:12,color:B.muted,textAlign:"center",padding:20}}>Carregando...</p> :
+          npsData.length === 0 ? <Card style={{textAlign:"center",padding:30}}><p style={{fontSize:32,marginBottom:8}}>📋</p><p style={{fontSize:13,fontWeight:700}}>Nenhuma avaliação ainda</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>O cliente receberá a pesquisa de satisfação mensalmente no portal</p></Card> :
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {npsData.map((d,i) => <Card key={i} style={{padding:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:36,height:36,borderRadius:10,background:col(d.score)+"15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:col(d.score)}}>{d.score}</div>
+                <div style={{flex:1}}><p style={{fontSize:12,fontWeight:700}}>{cat(d.score)}</p><p style={{fontSize:10,color:B.muted}}>{d.date ? new Date(d.date).toLocaleDateString("pt-BR",{month:"long",year:"numeric"}) : ""}</p></div>
+              </div>
+              {d.feedback && <p style={{fontSize:12,color:B.text,marginTop:8,padding:"10px 12px",borderRadius:10,background:B.bg,border:"1px solid "+B.border,lineHeight:1.5,fontStyle:"italic"}}>"{d.feedback}"</p>}
+            </Card>)}
+          </div>}
+        </>;
+      })()}
       {profileTab === "actions" && <>
         {[
           { l:"Ver conteúdos", ic:IC.content, c:B.accent, desc:"Demandas e posts do cliente", act:()=>onNavigate?.("content") },
