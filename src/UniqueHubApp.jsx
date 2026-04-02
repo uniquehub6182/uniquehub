@@ -22000,7 +22000,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
             <div style={{ padding:`14px 28px ${isClientView?"80px":"18px"}`, flexShrink:0, borderTop:`1px solid ${B.border}` }}>
               <div style={{ maxWidth:780, margin:"0 auto" }}>
                 <div style={{ display:"flex", alignItems:"flex-end", gap:10, background:B.bg||"#F5F5F5", borderRadius:16, padding:"6px 6px 6px 18px", border:`1.5px solid ${B.border}`, transition:"border-color .2s" }} onFocusCapture={()=>document.activeElement?.closest?.('[style]')&&(document.activeElement.closest('[style*=border]')||{}).style} >
-                  <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}}} placeholder={`Pergunte ao ${curModel.l}...`} rows={1} style={{ flex:1, minHeight:42, maxHeight:140, resize:"none", padding:"10px 0", fontFamily:"inherit", fontSize:15, lineHeight:1.5, border:"none", background:"transparent", outline:"none", color:B.text }}/>
+                  <textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}}} placeholder={`Pergunte ao ${curModel.l}...`} rows={1} autoComplete="off" autoCorrect="off" spellCheck={false} data-form-type="other" style={{ flex:1, minHeight:42, maxHeight:140, resize:"none", padding:"10px 0", fontFamily:"inherit", fontSize:15, lineHeight:1.5, border:"none", background:"transparent", outline:"none", color:B.text }}/>
                   <button onClick={()=>{if(!hasChat)startNewChat();setTimeout(()=>sendMessage(input),100);}} disabled={loading||!input.trim()} style={{ width:42, height:42, borderRadius:12, background:input.trim()?curModel.c:`${curModel.c}25`, border:"none", cursor:input.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#fff":"rgba(255,255,255,0.5)"} strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                   </button>
@@ -22191,6 +22191,7 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
         <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
           placeholder="Pergunte qualquer coisa..."
+          autoComplete="off" autoCorrect="off" spellCheck={false} data-form-type="other"
           className="tinput" style={{ flex:1, minHeight:44, maxHeight:100, resize:"none", paddingTop:12, fontSize:14 }}
         />
         <button onClick={() => sendMessage(input)} disabled={!input.trim()} className="send-btn" style={{ opacity:input.trim()?1:0.4 }}>
