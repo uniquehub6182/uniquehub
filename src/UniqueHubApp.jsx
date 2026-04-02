@@ -17636,6 +17636,10 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                       {ev.participants.slice(0,3).map((name,j) => <div key={j} style={{ marginLeft:j?-6:0, zIndex:3-j }}><Av name={name} sz={26} fs={9} /></div>)}
                     </div>}
                     {isDem && ev.priority && <div style={{ width:6, height:6, borderRadius:3, background: ev.priority==="alta"?"#EF4444":ev.priority==="média"?"#F59E0B":"#10B981", flexShrink:0 }} title={ev.priority} />}
+                    {isDem && isClientView && ev.stage==="client" && <div style={{display:"flex",gap:4,flexShrink:0}}>
+                      <button onClick={(e)=>{e.stopPropagation();const d=(propDemands||[]).find(dd=>dd.id===ev.demandId);if(d&&supabase){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const merged={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"approved",date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:merged,stage:"scheduled"}).eq("id",d.id).then(()=>showToast("✅ Aprovado!"));});}}} style={{padding:"6px 12px",borderRadius:8,background:B.green||"#22C55E",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:"#fff"}}>Aprovar</button>
+                      <button onClick={(e)=>{e.stopPropagation();const fb=prompt("Feedback:");if(fb!==null){const d=(propDemands||[]).find(dd=>dd.id===ev.demandId);if(d&&supabase){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const merged={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"revision",feedback:fb,date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:merged}).eq("id",d.id).then(()=>showToast("Pedido de edição enviado"));});}}}} style={{padding:"6px 10px",borderRadius:8,background:"transparent",border:"1px solid "+(B.orange||"#F59E0B"),cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,color:B.orange||"#F59E0B"}}>Editar</button>
+                    </div>}
                   </div>
                 );
               })}
