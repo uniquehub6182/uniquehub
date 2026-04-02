@@ -29,17 +29,7 @@ async function getIGToken(sb: any, clientId: string) {
   return { uid, at };
 }
 
-/* ── Wait for IG container to be ready (images only) ── */
-async function waitReady(id: string, token: string) {
-  for (let i = 0; i < 20; i++) {
-    const r = await fetch(`https://graph.facebook.com/v21.0/${id}?fields=status_code&access_token=${token}`);
-    const d = await r.json();
-    if (d.status_code === "FINISHED") return "FINISHED";
-    if (d.status_code === "ERROR") throw new Error("IG processing error: " + (d.status || "unknown"));
-    await new Promise(r => setTimeout(r, 1000));
-  }
-  throw new Error("Image processing timeout");
-}
+/* waitReady removed — ALL IG posts now use 2-phase (no in-function waiting) */
 
 /* ── Check IG container status (single call, for 2-phase REELS) ── */
 async function checkContainerStatus(containerId: string, token: string): Promise<string> {
@@ -69,60 +59,37 @@ async function proxyToR2(fileUrl: string, sb: any): Promise<string> {
    INSTAGRAM PUBLISHING
    ══════════════════════════════════════════════════════════ */
 
-/* ── Phase 1 for REELS: Create container only (fast, ~3s) ── */
-async function createIGReelsContainer(sb: any, clientId: string, urls: string[], caption: string) {
-  const { uid, at } = await getIGToken(sb, clientId);
-  const proxied = await Promise.all(urls.map(u => proxyToR2(u, sb)));
-  const videoUrl = proxied[0];
-  const coverUrl = proxied.length > 1 ? proxied[1] : null;
-  const p = new URLSearchParams({ access_token: at, video_url: videoUrl, media_type: "REELS" });
-  if (caption) p.append("caption", caption);
-  if (coverUrl) p.append("cover_url", coverUrl);
-  console.log(`[IG Reels Phase1] Creating container: ${videoUrl.substring(0, 60)}`);
-  const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
-  const d = await r.json();
-  if (d.error) throw new Error(d.error.message);
-  return { container_id: d.id, ig_user_id: uid };
-}
-
-/* ── Phase 2 for REELS: Check status & publish if ready (~2s) ── */
-async function checkAndPublishIGReels(sb: any, clientId: string, containerId: string, igUserId: string) {
-  const { at } = await getIGToken(sb, clientId);
-  const status = await checkContainerStatus(containerId, at);
-  console.log(`[IG Reels Phase2] Container ${containerId} status: ${status}`);
-  if (status === "IN_PROGRESS" || status === "UNKNOWN") return { ready: false, status };
-  if (status === "ERROR") throw new Error("Instagram rejeitou o vídeo durante processamento");
-  /* FINISHED → publish */
-  const pp = new URLSearchParams({ access_token: at, creation_id: containerId });
-  const pr = await fetch(`https://graph.facebook.com/v21.0/${igUserId}/media_publish`, { method: "POST", body: pp });
-  const pd = await pr.json();
-  if (pd.error) throw new Error(pd.error.message);
-  return { ready: true, success: true, media_id: pd.id, media_type: "REELS" };
-}
-
-/* ── Instagram FEED/CAROUSEL/STORIES (single-phase, fast for images) ── */
-async function publishInstagramImages(sb: any, clientId: string, urls: string[], caption: string, mediaType: string) {
+/* ── Phase 1 for ALL IG types: Create container only (fast) ── */
+async function createIGContainer(sb: any, clientId: string, urls: string[], caption: string, mediaType: string) {
   const { uid, at } = await getIGToken(sb, clientId);
   const type = (mediaType || "FEED").toUpperCase();
   const proxied = await Promise.all(urls.map(u => proxyToR2(u, sb)));
-  const carousel = proxied.length > 1 && type !== "STORIES";
+  
   let cid: string;
-  if (carousel) {
-    const kids = await Promise.all(proxied.map(async (url: string) => {
-      const p = new URLSearchParams({ access_token: at, image_url: url, is_carousel_item: "true" });
-      const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error.message);
-      return d.id as string;
-    }));
-    await Promise.all(kids.map(id => waitReady(id, at)));
-    const p = new URLSearchParams({ access_token: at, media_type: "CAROUSEL", children: kids.join(",") });
+  if (type === "REELS") {
+    const videoUrl = proxied[0];
+    const coverUrl = proxied.length > 1 ? proxied[1] : null;
+    const p = new URLSearchParams({ access_token: at, video_url: videoUrl, media_type: "REELS" });
     if (caption) p.append("caption", caption);
+    if (coverUrl) p.append("cover_url", coverUrl);
     const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
     if (d.error) throw new Error(d.error.message);
     cid = d.id;
+  } else if (proxied.length > 1 && type !== "STORIES") {
+    /* CAROUSEL: create children (no wait needed at creation) + main container */
+    const kids: string[] = [];
+    for (const imgUrl of proxied) {
+      const p = new URLSearchParams({ access_token: at, image_url: imgUrl, is_carousel_item: "true" });
+      const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error.message);
+      kids.push(d.id);
+    }
+    /* Save kids + main will be created in Phase 2 after kids are ready */
+    return { container_id: null, ig_user_id: uid, type: "CAROUSEL", children: kids, caption };
   } else {
+    /* FEED or STORIES */
     const p = new URLSearchParams({ access_token: at, image_url: proxied[0] });
     if (type === "STORIES") p.append("media_type", "STORIES");
     if (caption && type !== "STORIES") p.append("caption", caption);
@@ -131,13 +98,47 @@ async function publishInstagramImages(sb: any, clientId: string, urls: string[],
     if (d.error) throw new Error(d.error.message);
     cid = d.id;
   }
-  await waitReady(cid, at);
-  const pp = new URLSearchParams({ access_token: at, creation_id: cid });
+  console.log(`[IG Phase1] Container created: ${cid} (${type})`);
+  return { container_id: cid, ig_user_id: uid, type };
+}
+
+/* ── Phase 2 for ALL IG types: Check ready & publish ── */
+async function checkAndPublishIG(sb: any, clientId: string, meta: any) {
+  const { at } = await getIGToken(sb, clientId);
+  const uid = meta.ig_user_id;
+  
+  if (meta.type === "CAROUSEL" && meta.children && !meta.container_id) {
+    /* CAROUSEL Phase 2a: check kids ready, then create main container */
+    for (const kidId of meta.children) {
+      const status = await checkContainerStatus(kidId, at);
+      if (status === "IN_PROGRESS" || status === "UNKNOWN") return { ready: false, status: "children_processing" };
+      if (status === "ERROR") throw new Error("Carousel child processing error");
+    }
+    /* All kids ready → create main carousel container */
+    const p = new URLSearchParams({ access_token: at, media_type: "CAROUSEL", children: meta.children.join(",") });
+    if (meta.caption) p.append("caption", meta.caption);
+    const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message);
+    /* Update meta with main container_id for next check */
+    return { ready: false, status: "carousel_created", updated_meta: { ...meta, container_id: d.id } };
+  }
+  
+  /* Check container status */
+  const status = await checkContainerStatus(meta.container_id, at);
+  console.log(`[IG Phase2] Container ${meta.container_id} (${meta.type}): ${status}`);
+  if (status === "IN_PROGRESS" || status === "UNKNOWN") return { ready: false, status };
+  if (status === "ERROR") throw new Error("Instagram rejeitou a mídia durante processamento");
+  
+  /* FINISHED → publish! */
+  const pp = new URLSearchParams({ access_token: at, creation_id: meta.container_id });
   const pr = await fetch(`https://graph.facebook.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
   const pd = await pr.json();
   if (pd.error) throw new Error(pd.error.message);
-  return { success: true, media_id: pd.id, media_type: carousel ? "CAROUSEL" : type };
+  return { ready: true, success: true, media_id: pd.id, media_type: meta.type };
 }
+
+/* (publishInstagramImages removed — ALL IG posts now use 2-phase via createIGContainer + checkAndPublishIG) */
 
 /* ══════════════════════════════════════════════════════════
    FACEBOOK PUBLISHING (single-phase, streaming upload)
@@ -250,12 +251,17 @@ serve(async (req) => {
           await sb.from("scheduled_posts").update({ status: "failed", error: "Missing container_id from Phase 1" }).eq("id", post.id);
           continue; 
         }
-        const res = await checkAndPublishIGReels(sb, post.client_id, meta.container_id, meta.ig_user_id);
+        const res = await checkAndPublishIG(sb, post.client_id, meta);
         if (res.ready) {
           await sb.from("scheduled_posts").update({ status: "published", result: res, published_at: new Date().toISOString() }).eq("id", post.id);
-          console.log(`[Phase2] ✅ REELS ${post.id} published on Instagram!`);
+          console.log(`[Phase2] ✅ ${post.id} published on Instagram!`);
           results.push({ id: post.id, status: "published", phase: 2 });
           await tryMarkDemandPublished(sb, post.demand_id);
+        } else if (res.updated_meta) {
+          /* Carousel: main container created, save and check next cycle */
+          await sb.from("scheduled_posts").update({ result: res.updated_meta }).eq("id", post.id);
+          console.log(`[Phase2] Carousel main container created, will publish next cycle`);
+          results.push({ id: post.id, status: "processing", phase: 2, note: "carousel_main_created" });
         } else {
           /* Not ready yet — check how long it's been processing */
           const created = new Date(post.created_at).getTime();
@@ -301,28 +307,22 @@ serve(async (req) => {
 
       try {
         const urls = (post.image_urls || []) as string[];
-        const isIGReels = post.platform === "instagram" && (post.media_type || "").toUpperCase() === "REELS";
 
-        if (isIGReels) {
-          /* ── 2-PHASE: Create container only, don't wait for processing ── */
-          const container = await createIGReelsContainer(sb, post.client_id, urls, post.caption || "");
+        if (post.platform === "instagram") {
+          /* ── ALL Instagram: 2-PHASE — create container now, publish in Phase 2 ── */
+          const container = await createIGContainer(sb, post.client_id, urls, post.caption || "", post.media_type);
           await sb.from("scheduled_posts").update({
             status: "processing",
-            result: { container_id: container.container_id, ig_user_id: container.ig_user_id },
+            result: container,
             error: null
           }).eq("id", post.id);
-          console.log(`[Phase1] IG REELS container created: ${container.container_id} → status "processing"`);
-          results.push({ id: post.id, status: "processing", phase: 1 });
+          console.log(`[Phase1] IG container created (${container.type}) → "processing"`);
+          results.push({ id: post.id, status: "processing", phase: 1, type: container.type });
         } else {
-          /* ── Single-phase: publish directly (images/FB) ── */
-          let result;
-          if (post.platform === "instagram") {
-            result = await publishInstagramImages(sb, post.client_id, urls, post.caption || "", post.media_type);
-          } else {
-            result = await publishFacebook(sb, post.client_id, urls, post.caption || "", post.media_type);
-          }
+          /* ── Facebook: single-phase publish ── */
+          const result = await publishFacebook(sb, post.client_id, urls, post.caption || "", post.media_type);
           await sb.from("scheduled_posts").update({ status: "published", result, published_at: new Date().toISOString() }).eq("id", post.id);
-          console.log(`[Phase1] ✅ Published ${post.id} on ${post.platform}`);
+          console.log(`[Phase1] ✅ Published ${post.id} on Facebook`);
           results.push({ id: post.id, status: "published", phase: 1 });
           await tryMarkDemandPublished(sb, post.demand_id);
         }
