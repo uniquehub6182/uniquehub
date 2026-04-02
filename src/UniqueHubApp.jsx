@@ -26105,6 +26105,16 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [exprUrg, setExprUrg] = useState("normal");
   const [exprDate, setExprDate] = useState("");
   const [exprRef, setExprRef] = useState("");
+  const [showNPS, setShowNPS] = useState(false);
+  const [npsScore, setNpsScore] = useState(null);
+  const [npsFeedback, setNpsFeedback] = useState("");
+  const [npsSent, setNpsSent] = useState(false);
+  useEffect(() => {
+    const lastNPS = localStorage.getItem("uh_nps_last");
+    const now = new Date();
+    const monthKey = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
+    if (lastNPS !== monthKey && now.getDate() >= 15) { setTimeout(() => setShowNPS(true), 10000); }
+  }, []);
   const approved = demands.filter(d => d.steps?.client?.status === "approved");
 
   /* ── Client ID for gamification (match by email first, then name) ── */
@@ -27533,6 +27543,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         {clientPills.map((pk,i) => { const p = CLIENT_PILLS_MAP[pk]; if(!p) return null; const nav = () => { if(p.k==="content") goTab("content"); else if(p.k==="calendar") setSub("calendar"); else if(p.k==="chat") goTab("chat"); else setSub(p.k==="reports"?"reports":p.k==="help"?"help":p.k==="gamify"?"gamify":p.k==="match4biz"?"match4biz":p.k==="library"?"library":p.k==="news"?"news":p.k==="ideas"?"ideas":p.k==="ai"?"ai":p.k==="settings"?"settings":p.k); }; return <div key={pk} onClick={nav} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill||C.card,border:`1px solid ${C.brd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{IC[pk==="conteudo"?"content":pk==="relatorios"?"reports":pk==="suporte"?"help":pk==="ia"?"ai":pk==="config"?"settings":pk==="calendario"?"calendar":pk==="biblioteca"?"library":pk==="noticias"?"news":pk==="ideias"?"ideas":pk]?.(LIME)||IC.home(LIME)}</div>{p.l}</div>; })}
       </div>
     </div>
+
+    {/* NPS SURVEY */}
+    {showNPS && !npsSent && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowNPS(false)}>
+      <div onClick={e=>e.stopPropagation()} style={{width:440,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"28px 28px 24px",color:"#fff",textAlign:"center"}}>
+          <span style={{fontSize:36,display:"block",marginBottom:8}}>💬</span>
+          <p style={{fontSize:18,fontWeight:800}}>Como está sua experiência?</p>
+          <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Sua opinião nos ajuda a melhorar</p>
+        </div>
+        <div style={{padding:"24px 28px"}}>
+          <p style={{fontSize:12,fontWeight:700,color:B.muted,textAlign:"center",marginBottom:12}}>De 0 a 10, o quanto você recomendaria nosso trabalho?</p>
+          <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:20}}>
+            {[0,1,2,3,4,5,6,7,8,9,10].map(n=><button key={n} onClick={()=>setNpsScore(n)} style={{width:36,height:36,borderRadius:10,border:npsScore===n?"2px solid "+B.accent:"1.5px solid "+(B.border||"#ddd"),background:npsScore===n?B.accent+"15":"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:npsScore===n?800:500,color:npsScore===n?B.accent:B.text}}>{n}</button>)}
+          </div>
+          {npsScore!==null&&<div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:B.muted,marginTop:-12,marginBottom:16,padding:"0 4px"}}><span>Nada provável</span><span>Muito provável</span></div>}
+          {npsScore!==null&&<div style={{marginBottom:16}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>{npsScore>=9?"O que você mais gosta?":npsScore>=7?"O que podemos melhorar?":"O que te decepcionou?"}</label><textarea value={npsFeedback} onChange={e=>setNpsFeedback(e.target.value)} className="tinput" placeholder="Seu feedback é muito valioso..." style={{width:"100%",fontSize:13,minHeight:60,resize:"vertical"}}/></div>}
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>{setShowNPS(false);localStorage.setItem("uh_nps_last",new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));}} style={{flex:1,padding:"12px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.muted}}>Agora não</button>
+            {npsScore!==null&&<button onClick={async()=>{try{const cid=resolvedClient?.supaId||resolvedClient?.id;await supabase.from("app_settings").upsert({key:"nps_"+cid+"_"+new Date().toISOString().slice(0,7),value:JSON.stringify({score:npsScore,feedback:npsFeedback,client:resolvedClient?.name,date:new Date().toISOString()})},{onConflict:"key"});localStorage.setItem("uh_nps_last",new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));setNpsSent(true);showToast("Obrigado pelo feedback! ❤️");setTimeout(()=>setShowNPS(false),2000);supaCreateNotificationForAll("system","⭐ NPS: "+npsScore+"/10 — "+(resolvedClient?.name||"Cliente"),(npsFeedback||"Sem comentário").substring(0,100),"💬");}catch(e){showToast("Erro: "+e.message);}}} style={{flex:1,padding:"12px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:800,color:B.textOnAccent||"#0D0D0D"}}>Enviar avaliação</button>}
+          </div>
+        </div>
+      </div>
+    </div>}
 
     {/* EXPRESS CONTENT REQUEST */}
     {showExpressReq && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowExpressReq(false)}>
