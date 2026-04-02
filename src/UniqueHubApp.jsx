@@ -18790,11 +18790,10 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     ].sort((a,b)=>new Date(b._date||0)-new Date(a._date||0)) : [];
     const ranked = [...clientMetrics].filter(c=>c.hasData).sort((a,b)=>b.totalReach-a.totalReach);
     return (
-      <div className="" style={{ background:B.bg, color:B.text, minHeight:"100vh", paddingBottom:80 }}>
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px"}}>
         <CollapseHeader icon={IC.reports} label="Métricas reais" title="Relatórios" onBack={onBack} collapsed={false} stats={[]} />
-        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 200px)" }}>
+        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
           {/* LEFT SIDEBAR */}
           <div style={{ width:260, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
             <div style={{ background:B.dark, borderRadius:16, padding:"14px 16px" }}>
@@ -18977,7 +18976,6 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
               </div>
             </> : null}
           </div>
-        </div>
         </div>
       </div>
     );
@@ -22507,7 +22505,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
   const TOP = forceMobile ? "env(safe-area-inset-top, 16px)" : 70;
 
   return (
-    <div className="" style={isInboxDesktop ? { background:B.bg, color:B.text, minHeight:"100vh", paddingBottom:80 } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30, overflow:"hidden" }}>
+    <div className={isInboxDesktop ? "content-wide" : ""} style={isInboxDesktop ? { paddingTop: 70, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30, overflow:"hidden" }}>
     <div style={isInboxDesktop?{maxWidth:1440,margin:"0 auto",padding:"0 32px",display:"flex",flexDirection:"column",minHeight:"calc(100vh - 80px)"}:{}}>
     <div style={{ flexShrink:0 }}><CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} /></div>
     {ToastEl}
@@ -22864,7 +22862,7 @@ function NotesPage({ onBack, user }) {
   );
 
   return (
-    <div className="" style={isNotesDesktop ? { background:B.bg, color:B.text, minHeight:"100vh", paddingBottom:80 } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
+    <div className={isNotesDesktop ? "content-wide" : ""} style={isNotesDesktop ? { paddingTop: 70, minHeight:"100%" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
       <div style={isNotesDesktop?{maxWidth:1440,margin:"0 auto",padding:"0 32px"}:{}}>
       <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>} label="Produtividade" title="Notas" onBack={onBack} />
       {ToastEl}
