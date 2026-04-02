@@ -27892,19 +27892,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       const isRev = st === "revision" || st === "rejected";
       const stC = isAppr ? B.green : isRev ? (B.orange||"#F59E0B") : isPend ? (B.orange||"#F59E0B") : B.muted;
       const stL = isAppr ? "Aprovado" : isRev ? "Edição solicitada" : isPend ? "Aguardando aprovação" : "Em produção";
-              const isPublished = d.stage === "published" || d.stage === "completed";
-              const postMetrics = isPublished ? {
-                reach: d.steps?.published?.reach || Math.floor(Math.random()*2000+500),
-                likes: d.steps?.published?.likes || Math.floor(Math.random()*100+10),
-                comments: d.steps?.published?.comments || Math.floor(Math.random()*20),
-                saves: d.steps?.published?.saves || Math.floor(Math.random()*30),
-              } : null;
+
       const isExp = isDesktop && expandedDemandId === d.id;
 
       if (isExp) return <div key={d.id} style={{ borderRadius:18, overflow:"hidden", background:C.card||"#fff", border:"1px solid "+(C.brd||"#F0F0F3"), boxShadow:"0 8px 30px rgba(0,0,0,0.1)" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px 0" }}>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}><div style={{ width:6, height:6, borderRadius:3, background:stC }} /><span style={{ fontSize:11, fontWeight:700, color:stC }}>{stL}</span></div>
-          {postMetrics && <div style={{display:"flex",gap:8,marginTop:4}}>{[{l:"👁",v:postMetrics.reach},{l:"❤️",v:postMetrics.likes},{l:"💬",v:postMetrics.comments},{l:"🔖",v:postMetrics.saves}].map((m,mi)=><span key={mi} style={{fontSize:9,color:B.muted}}>{m.l} {m.v>=1000?(m.v/1000).toFixed(1)+"k":m.v}</span>)}</div>}
           <button onClick={()=>setExpandedDemandId(null)} style={{ width:28, height:28, borderRadius:8, border:"1px solid "+(C.brd||"#F0F0F3"), background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut||"#888"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div style={{ margin:"8px 10px 0", borderRadius:12, overflow:"hidden", background:"#000", position:"relative" }}>
