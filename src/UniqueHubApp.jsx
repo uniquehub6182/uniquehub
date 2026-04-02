@@ -24760,13 +24760,16 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   ) : null;
 
   /* ═══ MAIN VIEW ═══ */
+  const _m4dk = typeof window !== "undefined" && window.innerWidth > 900;
+
   return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+    <div className={_m4dk?"":"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text, ...(_m4dk?{minHeight:"100vh",paddingBottom:80}:{}) }}>
       <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
       {ToastEl}
       {BuyOverlay}
+      <div style={_m4dk?{maxWidth:1440,margin:"0 auto",padding:"0 32px"}:{}}>
       <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ padding:"12px 16px 120px" }}>
+      <div className={_m4dk?"":"content"} style={_m4dk?{padding:"12px 0 80px"}:{ padding:"12px 16px 120px" }}>
         {/* Tabs + actions row */}
         <div style={{ display:"flex", gap:6, marginBottom:14, alignItems:"center" }}>
           <div style={{ flex:1, display:"flex", gap:0, background:B.bgCard, borderRadius:14, padding:3, border:"1px solid "+B.border }}>
@@ -24940,6 +24943,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
           </>)}
         </>)}
         <div style={{ height:30 }} />
+      </div>
       </div>
     </div>
   );
