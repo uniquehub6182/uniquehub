@@ -26113,7 +26113,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     const lastNPS = localStorage.getItem("uh_nps_last");
     const now = new Date();
     const monthKey = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
-    if (lastNPS !== monthKey && now.getDate() >= 15) { setTimeout(() => setShowNPS(true), 10000); }
+    if (lastNPS !== monthKey) { setTimeout(() => setShowNPS(true), 10000); }
   }, []);
   const approved = demands.filter(d => d.steps?.client?.status === "approved");
 
@@ -27544,50 +27544,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     </div>
 
-    {/* NPS SURVEY */}
-    {showNPS && !npsSent && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowNPS(false)}>
-      <div onClick={e=>e.stopPropagation()} style={{width:440,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
-        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"28px 28px 24px",color:"#fff",textAlign:"center"}}>
-          <span style={{fontSize:36,display:"block",marginBottom:8}}>💬</span>
-          <p style={{fontSize:18,fontWeight:800}}>Como está sua experiência?</p>
-          <p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Sua opinião nos ajuda a melhorar</p>
-        </div>
-        <div style={{padding:"24px 28px"}}>
-          <p style={{fontSize:12,fontWeight:700,color:B.muted,textAlign:"center",marginBottom:12}}>De 0 a 10, o quanto você recomendaria nosso trabalho?</p>
-          <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:20}}>
-            {[0,1,2,3,4,5,6,7,8,9,10].map(n=><button key={n} onClick={()=>setNpsScore(n)} style={{width:36,height:36,borderRadius:10,border:npsScore===n?"2px solid "+B.accent:"1.5px solid "+(B.border||"#ddd"),background:npsScore===n?B.accent+"15":"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:npsScore===n?800:500,color:npsScore===n?B.accent:B.text}}>{n}</button>)}
-          </div>
-          {npsScore!==null&&<div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:B.muted,marginTop:-12,marginBottom:16,padding:"0 4px"}}><span>Nada provável</span><span>Muito provável</span></div>}
-          {npsScore!==null&&<div style={{marginBottom:16}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>{npsScore>=9?"O que você mais gosta?":npsScore>=7?"O que podemos melhorar?":"O que te decepcionou?"}</label><textarea value={npsFeedback} onChange={e=>setNpsFeedback(e.target.value)} className="tinput" placeholder="Seu feedback é muito valioso..." style={{width:"100%",fontSize:13,minHeight:60,resize:"vertical"}}/></div>}
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>{setShowNPS(false);localStorage.setItem("uh_nps_last",new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));}} style={{flex:1,padding:"12px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.muted}}>Agora não</button>
-            {npsScore!==null&&<button onClick={async()=>{try{const cid=resolvedClient?.supaId||resolvedClient?.id;await supabase.from("app_settings").upsert({key:"nps_"+cid+"_"+new Date().toISOString().slice(0,7),value:JSON.stringify({score:npsScore,feedback:npsFeedback,client:resolvedClient?.name,date:new Date().toISOString()})},{onConflict:"key"});localStorage.setItem("uh_nps_last",new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));setNpsSent(true);showToast("Obrigado pelo feedback! ❤️");setTimeout(()=>setShowNPS(false),2000);supaCreateNotificationForAll("system","⭐ NPS: "+npsScore+"/10 — "+(resolvedClient?.name||"Cliente"),(npsFeedback||"Sem comentário").substring(0,100),"💬");}catch(e){showToast("Erro: "+e.message);}}} style={{flex:1,padding:"12px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:800,color:B.textOnAccent||"#0D0D0D"}}>Enviar avaliação</button>}
-          </div>
-        </div>
-      </div>
-    </div>}
-
-    {/* EXPRESS CONTENT REQUEST */}
-    {showExpressReq && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowExpressReq(false)}>
-      <div onClick={e=>e.stopPropagation()} style={{width:480,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
-        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"24px 28px",color:"#fff"}}>
-          <p style={{fontSize:11,fontWeight:600,letterSpacing:2,color:"rgba(255,255,255,0.35)",textTransform:"uppercase"}}>Solicitação express</p>
-          <p style={{fontSize:20,fontWeight:800,marginTop:4}}>Preciso de um conteúdo</p>
-        </div>
-        <div style={{padding:"24px 28px"}}>
-          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>O que você precisa?</label><select value={exprType} onChange={e=>setExprType(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}><option value="feed">Post para Feed</option><option value="reels">Reels / Vídeo</option><option value="stories">Stories</option><option value="carrossel">Carrossel</option><option value="campanha">Campanha</option><option value="outro">Outro</option></select></div>
-          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Descreva brevemente</label><textarea value={exprDesc} onChange={e=>setExprDesc(e.target.value)} className="tinput" placeholder="Ex: Preciso de um post sobre promoção de Páscoa..." style={{width:"100%",fontSize:13,minHeight:80,resize:"vertical"}}/></div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}><div><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Urgência</label><select value={exprUrg} onChange={e=>setExprUrg(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}><option value="normal">Normal</option><option value="urgente">Urgente (24h)</option><option value="super">Super urgente (hoje)</option></select></div><div><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Data ideal</label><input type="date" value={exprDate} onChange={e=>setExprDate(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div></div>
-          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Referência (opcional)</label><input value={exprRef} onChange={e=>setExprRef(e.target.value)} className="tinput" placeholder="Link de um post, imagem ou perfil..." style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div>
-          <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>setShowExpressReq(false)} style={{flex:1,padding:"13px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:B.muted}}>Cancelar</button>
-            <button onClick={async()=>{if(!exprDesc.trim()){showToast("Descreva o que precisa");return;}const fm={feed:"Feed",reels:"Reels",stories:"Stories",carrossel:"Carrossel",campanha:"Campanha",outro:"Feed"};const um={normal:"normal",urgente:"alta",super:"alta"};const cid=resolvedClient?.supaId||resolvedClient?.id;if(!cid){showToast("Cliente não vinculado");return;}const desc="[SOLICITAÇÃO EXPRESS - "+exprUrg.toUpperCase()+"]\n\n"+exprDesc.trim()+(exprRef?"\n\nReferência: "+exprRef:"")+(exprDate?"\n\nData ideal: "+exprDate:"");const nd={type:"social",client:resolvedClient?.name,client_id:cid,title:exprDesc.trim().substring(0,50),description:desc,format:fm[exprType]||"Feed",stage:"idea",priority:um[exprUrg]||"normal",networks:["Instagram"],scheduling:exprDate?{date:exprDate,time:"18:00"}:null,steps:{idea:{by:user?.name||"Cliente",date:new Date().toLocaleDateString("pt-BR"),source:"express_request"}}};try{const{error}=await supabase.from("demands").insert(nd);if(error)throw error;showToast("✅ Solicitação enviada!");setShowExpressReq(false);setExprDesc("");setExprRef("");setExprDate("");setExprType("feed");setExprUrg("normal");supaCreateNotificationForAll("demand_created","📋 Solicitação express: "+nd.title,(resolvedClient?.name||"")+" solicitou conteúdo "+(exprUrg==="super"?"SUPER URGENTE":exprUrg==="urgente"?"URGENTE":""),"🚀");}catch(e){showToast("Erro: "+e.message);}}} style={{flex:1,padding:"13px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:800,color:B.textOnAccent||"#0D0D0D"}}>Enviar solicitação</button>
-          </div>
-        </div>
-      </div>
-    </div>}
-    <div onClick={()=>setShowExpressReq(true)} style={{position:"fixed",bottom:100,right:32,width:56,height:56,borderRadius:"50%",background:B.accent,boxShadow:"0 4px 20px "+B.accent+"40",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",zIndex:90}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-
     {/* APPROVAL TIMELINE — Stories strip */}
     {pendingApproval.length > 0 && <div style={{marginTop:16}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
@@ -27947,6 +27903,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     </div>
     </div>
     {showClientNavEdit && <NavEditSheet picks={clientNavPicks} setPicks={setClientNavPicksAndSave} onClose={() => setShowClientNavEdit(false)} />}
+
+    {/* FAB - Express Content Request (component level) */}
+    {tab === "home" && isDesktop && <div onClick={()=>setShowExpressReq(true)} style={{position:"fixed",bottom:100,right:32,width:56,height:56,borderRadius:"50%",background:B.accent,boxShadow:"0 4px 20px rgba(200,255,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",zIndex:900,transition:"transform .2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.1)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>}
+
+    {/* NPS + Express modals (component level so they render above everything) */}
+    {showNPS && !npsSent && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowNPS(false)}>
+      <div onClick={e=>e.stopPropagation()} style={{width:440,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"28px 28px 24px",color:"#fff",textAlign:"center"}}><span style={{fontSize:36,display:"block",marginBottom:8}}>💬</span><p style={{fontSize:18,fontWeight:800}}>Como está sua experiência?</p><p style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:4}}>Sua opinião nos ajuda a melhorar</p></div>
+        <div style={{padding:"24px 28px"}}>
+          <p style={{fontSize:12,fontWeight:700,color:B.muted,textAlign:"center",marginBottom:12}}>De 0 a 10, o quanto você recomendaria nosso trabalho?</p>
+          <div style={{display:"flex",gap:6,justifyContent:"center",marginBottom:20}}>{[0,1,2,3,4,5,6,7,8,9,10].map(n=><button key={n} onClick={()=>setNpsScore(n)} style={{width:36,height:36,borderRadius:10,border:npsScore===n?"2px solid "+B.accent:"1.5px solid "+(B.border||"#ddd"),background:npsScore===n?B.accent+"15":"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:npsScore===n?800:500,color:npsScore===n?B.accent:B.text}}>{n}</button>)}</div>
+          {npsScore!==null&&<div style={{marginBottom:16}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>{npsScore>=9?"O que você mais gosta?":npsScore>=7?"O que podemos melhorar?":"O que te decepcionou?"}</label><textarea value={npsFeedback} onChange={e=>setNpsFeedback(e.target.value)} className="tinput" placeholder="Seu feedback é muito valioso..." style={{width:"100%",fontSize:13,minHeight:60,resize:"vertical"}}/></div>}
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>{setShowNPS(false);localStorage.setItem("uh_nps_last",new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));}} style={{flex:1,padding:"12px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:B.muted}}>Agora não</button>
+            {npsScore!==null&&<button onClick={async()=>{try{const cid=resolvedClient?.supaId||resolvedClient?.id;await supabase.from("app_settings").upsert({key:"nps_"+cid+"_"+new Date().toISOString().slice(0,7),value:JSON.stringify({score:npsScore,feedback:npsFeedback,client:resolvedClient?.name,date:new Date().toISOString()})},{onConflict:"key"});localStorage.setItem("uh_nps_last",new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));setNpsSent(true);showToast("Obrigado pelo feedback! ❤️");setTimeout(()=>setShowNPS(false),2000);supaCreateNotificationForAll("system","⭐ NPS: "+npsScore+"/10 — "+(resolvedClient?.name||"Cliente"),(npsFeedback||"Sem comentário").substring(0,100),"💬");}catch(e){showToast("Erro: "+e.message);}}} style={{flex:1,padding:"12px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:800,color:B.textOnAccent||"#0D0D0D"}}>Enviar avaliação</button>}
+          </div>
+        </div>
+      </div>
+    </div>}
+
+    {showExpressReq && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowExpressReq(false)}>
+      <div onClick={e=>e.stopPropagation()} style={{width:480,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"24px 28px",color:"#fff"}}><p style={{fontSize:11,fontWeight:600,letterSpacing:2,color:"rgba(255,255,255,0.35)",textTransform:"uppercase"}}>Solicitação express</p><p style={{fontSize:20,fontWeight:800,marginTop:4}}>Preciso de um conteúdo</p></div>
+        <div style={{padding:"24px 28px"}}>
+          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>O que você precisa?</label><select value={exprType} onChange={e=>setExprType(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}><option value="feed">Post para Feed</option><option value="reels">Reels / Vídeo</option><option value="stories">Stories</option><option value="carrossel">Carrossel</option><option value="campanha">Campanha</option><option value="outro">Outro</option></select></div>
+          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Descreva brevemente</label><textarea value={exprDesc} onChange={e=>setExprDesc(e.target.value)} className="tinput" placeholder="Ex: Preciso de um post sobre promoção de Páscoa..." style={{width:"100%",fontSize:13,minHeight:80,resize:"vertical"}}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}><div><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Urgência</label><select value={exprUrg} onChange={e=>setExprUrg(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}><option value="normal">Normal</option><option value="urgente">Urgente (24h)</option><option value="super">Super urgente (hoje)</option></select></div><div><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Data ideal</label><input type="date" value={exprDate} onChange={e=>setExprDate(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div></div>
+          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Referência (opcional)</label><input value={exprRef} onChange={e=>setExprRef(e.target.value)} className="tinput" placeholder="Link de um post, imagem ou perfil..." style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setShowExpressReq(false)} style={{flex:1,padding:"13px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:B.muted}}>Cancelar</button>
+            <button onClick={async()=>{if(!exprDesc.trim()){showToast("Descreva o que precisa");return;}const fm={feed:"Feed",reels:"Reels",stories:"Stories",carrossel:"Carrossel",campanha:"Campanha",outro:"Feed"};const um={normal:"normal",urgente:"alta",super:"alta"};const cid=resolvedClient?.supaId||resolvedClient?.id;if(!cid){showToast("Cliente não vinculado");return;}const desc="[SOLICITAÇÃO EXPRESS - "+exprUrg.toUpperCase()+"]\n\n"+exprDesc.trim()+(exprRef?"\n\nReferência: "+exprRef:"")+(exprDate?"\n\nData ideal: "+exprDate:"");const nd={type:"social",client:resolvedClient?.name,client_id:cid,title:exprDesc.trim().substring(0,50),description:desc,format:fm[exprType]||"Feed",stage:"idea",priority:um[exprUrg]||"normal",networks:["Instagram"],scheduling:exprDate?{date:exprDate,time:"18:00"}:null,steps:{idea:{by:user?.name||"Cliente",date:new Date().toLocaleDateString("pt-BR"),source:"express_request"}}};try{const{error}=await supabase.from("demands").insert(nd);if(error)throw error;showToast("✅ Solicitação enviada!");setShowExpressReq(false);setExprDesc("");setExprRef("");setExprDate("");setExprType("feed");setExprUrg("normal");supaCreateNotificationForAll("demand_created","📋 Solicitação express: "+nd.title,(resolvedClient?.name||"")+" solicitou conteúdo "+(exprUrg==="super"?"SUPER URGENTE":exprUrg==="urgente"?"URGENTE":""),"🚀");}catch(e){showToast("Erro: "+e.message);}}} style={{flex:1,padding:"13px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:800,color:B.textOnAccent||"#0D0D0D"}}>Enviar solicitação</button>
+          </div>
+        </div>
+      </div>
+    </div>}
+
     {/* Navbar - always visible on desktop, hidden on mobile when sub-page is active */}
     {(!hasSub || isDesktop) && <nav className="bnav" style={{ overflow:"visible" }}>
         {TABS.map(t => {
