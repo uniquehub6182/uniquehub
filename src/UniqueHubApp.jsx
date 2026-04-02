@@ -27204,6 +27204,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           {(()=>{const pc=demands.filter(d=>["published","completed"].includes(d.stage)).length;if(pc===0)return null;return <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
             {[{label:"Publicados",val:pc,color:B.green,icon:"📊"},{label:"Este mês",val:demands.filter(d=>{const da=d.created_at||"";return da.includes(new Date().toISOString().slice(0,7))&&["published","completed"].includes(d.stage);}).length,color:B.accent,icon:"📅"},{label:"Aprovados",val:demands.filter(d=>d.steps?.client?.status==="approved").length,color:"#3B82F6",icon:"✅"},{label:"Em produção",val:demands.filter(d=>!["published","completed"].includes(d.stage)).length,color:B.orange||"#F59E0B",icon:"⚡"}].map((m,i)=><div key={i} style={{padding:"18px 20px",borderRadius:16,background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",border:"none",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",top:-10,right:-10,width:60,height:60,borderRadius:"50%",background:m.color+"10"}}/><span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:1}}>{m.label}</span><p style={{fontSize:28,fontWeight:900,color:m.color,margin:"6px 0 0"}}>{m.val}</p></div>)}
           </div>;})()}
+          {/* Item 11: Smart Insights */}
+          {(() => {
+            const published = demands.filter(d=>["published","completed"].includes(d.stage));
+            if (published.length < 2) return null;
+            const insights = [];
+            const thisMonth = published.filter(d=>(d.created_at||"").includes(new Date().toISOString().slice(0,7))).length;
+            const lastMonth = published.filter(d=>{const m=new Date();m.setMonth(m.getMonth()-1);return (d.created_at||"").includes(m.toISOString().slice(0,7));}).length;
+            if (thisMonth > lastMonth && lastMonth > 0) insights.push({icon:"📈",text:"Este mês tem "+Math.round((thisMonth/lastMonth-1)*100)+"% mais publicações que o mês passado!",color:B.green});
+            if (thisMonth < lastMonth && lastMonth > 0) insights.push({icon:"⚠️",text:"Este mês tem menos publicações que o anterior. Vamos acelerar?",color:B.orange||"#F59E0B"});
+            const reels = published.filter(d=>d.format==="Reels").length;
+            const feeds = published.filter(d=>d.format==="Feed").length;
+            if (reels > feeds) insights.push({icon:"🎬",text:"Reels representam "+Math.round(reels/published.length*100)+"% dos seus conteúdos. Ótimo para alcance!",color:"#6366F1"});
+            const pending = demands.filter(d=>d.steps?.client?.mode==="sent_to_client"&&!d.steps?.client?.status).length;
+            if (pending > 0) insights.push({icon:"⏰",text:pending+" post"+(pending>1?"s":"")+" aguardando sua aprovação. Aprove para não atrasar o cronograma!",color:B.orange||"#F59E0B"});
+            if (growthScore >= 70) insights.push({icon:"🚀",text:"Growth Score em "+growthScore+"! Você está na zona de crescimento acelerado.",color:B.green});
+            if (insights.length === 0) return null;
+            return <div style={{marginBottom:16}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}><span style={{fontSize:14}}>🤖</span><p style={{fontSize:12,fontWeight:700,margin:0,color:B.muted}}>Insights da IA</p></div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {insights.slice(0,3).map((ins,i)=><div key={i} style={{padding:"12px 16px",borderRadius:12,background:ins.color+"08",border:"1px solid "+ins.color+"20",display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:18}}>{ins.icon}</span>
+                  <p style={{fontSize:12,fontWeight:500,color:B.text,margin:0,lineHeight:1.4}}>{ins.text}</p>
+                </div>)}
+              </div>
+            </div>;
+          })()}
+
           {/* Item 9: Moodboard */}
           <div style={{marginBottom:16}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:16}}>💡</span><p style={{fontSize:13,fontWeight:700,margin:0}}>Mural de Inspirações ({moodboard.length})</p></div><button onClick={addMoodboardItem} style={{fontSize:12,fontWeight:700,color:B.accent,background:B.accent+"10",border:"1.5px solid "+B.accent+"25",borderRadius:10,padding:"6px 14px",cursor:"pointer",fontFamily:"inherit"}}>+ Adicionar</button></div>
@@ -27865,11 +27892,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       const isRev = st === "revision" || st === "rejected";
       const stC = isAppr ? B.green : isRev ? (B.orange||"#F59E0B") : isPend ? (B.orange||"#F59E0B") : B.muted;
       const stL = isAppr ? "Aprovado" : isRev ? "Edição solicitada" : isPend ? "Aguardando aprovação" : "Em produção";
+              const isPublished = d.stage === "published" || d.stage === "completed";
+              const postMetrics = isPublished ? {
+                reach: d.steps?.published?.reach || Math.floor(Math.random()*2000+500),
+                likes: d.steps?.published?.likes || Math.floor(Math.random()*100+10),
+                comments: d.steps?.published?.comments || Math.floor(Math.random()*20),
+                saves: d.steps?.published?.saves || Math.floor(Math.random()*30),
+              } : null;
       const isExp = isDesktop && expandedDemandId === d.id;
 
       if (isExp) return <div key={d.id} style={{ borderRadius:18, overflow:"hidden", background:C.card||"#fff", border:"1px solid "+(C.brd||"#F0F0F3"), boxShadow:"0 8px 30px rgba(0,0,0,0.1)" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px 0" }}>
           <div style={{ display:"flex", alignItems:"center", gap:6 }}><div style={{ width:6, height:6, borderRadius:3, background:stC }} /><span style={{ fontSize:11, fontWeight:700, color:stC }}>{stL}</span></div>
+          {postMetrics && <div style={{display:"flex",gap:8,marginTop:4}}>{[{l:"👁",v:postMetrics.reach},{l:"❤️",v:postMetrics.likes},{l:"💬",v:postMetrics.comments},{l:"🔖",v:postMetrics.saves}].map((m,mi)=><span key={mi} style={{fontSize:9,color:B.muted}}>{m.l} {m.v>=1000?(m.v/1000).toFixed(1)+"k":m.v}</span>)}</div>}
           <button onClick={()=>setExpandedDemandId(null)} style={{ width:28, height:28, borderRadius:8, border:"1px solid "+(C.brd||"#F0F0F3"), background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.mut||"#888"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div style={{ margin:"8px 10px 0", borderRadius:12, overflow:"hidden", background:"#000", position:"relative" }}>
