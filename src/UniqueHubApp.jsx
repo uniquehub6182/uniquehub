@@ -18757,10 +18757,11 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
     ].sort((a,b)=>new Date(b._date||0)-new Date(a._date||0)) : [];
     const ranked = [...clientMetrics].filter(c=>c.hasData).sort((a,b)=>b.totalReach-a.totalReach);
     return (
-      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <div className="" style={{ background:B.bg, color:B.text, minHeight:"100vh", paddingBottom:80 }}>
         {ToastEl}
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px"}}>
         <CollapseHeader icon={IC.reports} label="Métricas reais" title="Relatórios" onBack={onBack} collapsed={false} stats={[]} />
-        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
+        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 200px)" }}>
           {/* LEFT SIDEBAR */}
           <div style={{ width:260, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
             <div style={{ background:B.dark, borderRadius:16, padding:"14px 16px" }}>
@@ -18943,6 +18944,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
               </div>
             </> : null}
           </div>
+        </div>
         </div>
       </div>
     );
