@@ -22827,7 +22827,7 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
             </div>
             {/* Main: slide + controls */}
             <div style={{ flex:1, display:"flex", flexDirection:"column", gap:12 }}>
-              <div style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"#0a0a0a", borderRadius:16, overflow:"hidden" }}>
+              <div style={{ flex:1, display:"flex", background:"#000", borderRadius:16, overflow:"hidden" }}>
                 {renderSlide(slide, slideIdx, slides.length)}
               </div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:12 }}>
