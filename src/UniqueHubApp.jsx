@@ -25242,8 +25242,8 @@ function ClientGamification({ onBack, user, clients, demands }) {
       {ToastEl}
       <div className={isGamDesktop?"":"content"} style={{ padding:isGamDesktop?"0 16px 60px":"0 16px 120px" }}>
         <div style={isGamDesktop?{maxWidth:1440,margin:"0 auto",padding:"0 16px"}:{}}>
-        <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
-        {isGamDesktop && <div style={{height:16}} />}
+        <div style={isGamDesktop?{}:{margin:"0 -16px"}}><CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} /></div>
+        <div style={{height:isGamDesktop?16:14}} />
         <div style={{ display:"flex", gap:isGamDesktop?10:6, overflowX:"auto", scrollbarWidth:"none", marginBottom:isGamDesktop?24:14 }}>
           {TABS_G.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{ padding:isGamDesktop?"10px 24px":"8px 16px", borderRadius:12, border:tab===t.k?"none":(isGamDesktop?`1px solid ${B.border||"rgba(0,0,0,0.06)"}`:`1.5px solid ${B.border}`), background:tab===t.k?B.accent:(isGamDesktop?(B.bgCard||"#fff"):"transparent"), color:tab===t.k?(B.textOnAccent||"#0D0D0D"):B.muted, fontSize:isGamDesktop?13:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0, boxShadow:isGamDesktop&&!tab===t.k?"0 1px 3px rgba(0,0,0,0.04)":"none", transition:"all 0.2s" }}>{t.l}</button>)}
         </div>
