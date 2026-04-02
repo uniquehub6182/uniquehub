@@ -27230,36 +27230,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           {(()=>{const pc=demands.filter(d=>["published","completed"].includes(d.stage)).length;if(pc===0)return null;return <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
             {[{label:"Publicados",val:pc,color:B.green,icon:"📊"},{label:"Este mês",val:demands.filter(d=>{const da=d.created_at||"";return da.includes(new Date().toISOString().slice(0,7))&&["published","completed"].includes(d.stage);}).length,color:B.accent,icon:"📅"},{label:"Aprovados",val:demands.filter(d=>d.steps?.client?.status==="approved").length,color:"#3B82F6",icon:"✅"},{label:"Em produção",val:demands.filter(d=>!["published","completed"].includes(d.stage)).length,color:B.orange||"#F59E0B",icon:"⚡"}].map((m,i)=><div key={i} style={{padding:"18px 20px",borderRadius:16,background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",border:"none",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",top:-10,right:-10,width:60,height:60,borderRadius:"50%",background:m.color+"10"}}/><span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:1}}>{m.label}</span><p style={{fontSize:28,fontWeight:900,color:m.color,margin:"6px 0 0"}}>{m.val}</p></div>)}
           </div>;})()}
-          {/* Item 18: ROI Overview */}
-          {(() => {
-            const plan = resolvedClient?.plan || "Growth 360";
-            const planPrices = {"Free":0,"Starter":1480,"Traction":2480,"Growth 360":3480,"Partner":4480,"Enterprise":9999};
-            const investment = planPrices[plan] || 2480;
-            const publishedCount = demands.filter(d=>["published","completed"].includes(d.stage)).length;
-            const costPerPost = publishedCount > 0 ? (investment / publishedCount).toFixed(0) : "—";
-            if (publishedCount < 1) return null;
-            return <div style={{padding:"18px 22px",borderRadius:16,background:B.bgCard,border:"1px solid "+(B.border||"#ddd"),marginBottom:16}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-                <p style={{fontSize:14,fontWeight:800,margin:0}}>Retorno do Investimento</p>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
-                <div style={{padding:"12px",borderRadius:12,background:B.accent+"08",textAlign:"center"}}>
-                  <p style={{fontSize:10,fontWeight:600,color:B.muted,marginBottom:4}}>Plano</p>
-                  <p style={{fontSize:16,fontWeight:800,color:B.accent}}>R$ {(investment/1000).toFixed(1)}k</p>
-                </div>
-                <div style={{padding:"12px",borderRadius:12,background:B.green+"08",textAlign:"center"}}>
-                  <p style={{fontSize:10,fontWeight:600,color:B.muted,marginBottom:4}}>Posts entregues</p>
-                  <p style={{fontSize:16,fontWeight:800,color:B.green}}>{publishedCount}</p>
-                </div>
-                <div style={{padding:"12px",borderRadius:12,background:"#6366F108",textAlign:"center"}}>
-                  <p style={{fontSize:10,fontWeight:600,color:B.muted,marginBottom:4}}>Custo/post</p>
-                  <p style={{fontSize:16,fontWeight:800,color:"#6366F1"}}>R$ {costPerPost}</p>
-                </div>
-              </div>
-            </div>;
-          })()}
-
           {/* Item 11: Smart Insights */}
           {(() => {
             const published = demands.filter(d=>["published","completed"].includes(d.stage));
