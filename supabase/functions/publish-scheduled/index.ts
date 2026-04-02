@@ -276,10 +276,18 @@ serve(async (req) => {
           }
         }
       } catch (e: any) {
-        console.error(`[Phase2] Error for ${post.id}:`, e.message);
-        await sb.from("scheduled_posts").update({ status: "failed", error: e.message }).eq("id", post.id);
-        await notifyFailure(sb, post, e.message);
-        results.push({ id: post.id, status: "failed", phase: 2, error: e.message });
+        const msg = e.message || "";
+        const isTransient = msg.includes("unexpected") || msg.includes("temporarily") || msg.includes("timeout") || msg.includes("ETIMEDOUT");
+        console.error(`[Phase2] ${isTransient?"Transient":"Fatal"} error for ${post.id}: ${msg}`);
+        if (isTransient) {
+          /* Auto-retry: reset to pending, cron will pick up again */
+          await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("id", post.id);
+          results.push({ id: post.id, status: "retry", phase: 2 });
+        } else {
+          await sb.from("scheduled_posts").update({ status: "failed", error: msg }).eq("id", post.id);
+          await notifyFailure(sb, post, msg);
+          results.push({ id: post.id, status: "failed", phase: 2, error: msg });
+        }
       }
     }
 
@@ -327,10 +335,17 @@ serve(async (req) => {
           await tryMarkDemandPublished(sb, post.demand_id);
         }
       } catch (e: any) {
-        console.error(`[Phase1] Failed ${post.id}:`, e.message);
-        await sb.from("scheduled_posts").update({ status: "failed", error: e.message }).eq("id", post.id);
-        await notifyFailure(sb, post, e.message);
-        results.push({ id: post.id, status: "failed", phase: 1, error: e.message });
+        const msg = e.message || "";
+        const isTransient = msg.includes("unexpected") || msg.includes("temporarily") || msg.includes("timeout") || msg.includes("ETIMEDOUT") || msg.includes("retry");
+        console.error(`[Phase1] ${isTransient?"Transient":"Fatal"} ${post.id}: ${msg}`);
+        if (isTransient) {
+          await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("id", post.id);
+          results.push({ id: post.id, status: "retry", phase: 1 });
+        } else {
+          await sb.from("scheduled_posts").update({ status: "failed", error: msg }).eq("id", post.id);
+          await notifyFailure(sb, post, msg);
+          results.push({ id: post.id, status: "failed", phase: 1, error: msg });
+        }
       }
     }
 
