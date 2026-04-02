@@ -17326,6 +17326,24 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               </div>}
             </div>;
           })()}
+          {/* ── Demand preview modal ── */}
+          {viewDemand && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setViewDemand(null)}>
+            <div onClick={e=>e.stopPropagation()} style={{width:500,maxHeight:"80vh",overflowY:"auto",background:B.bgCard||"#fff",borderRadius:24,boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+              {(()=>{const d=viewDemand;const files=[...(d.files||[]),...(d.steps?.design?.files||[]),...(d.steps?.production?.files||[])];const img=files.find(f=>f.url&&/\.(jpg|jpeg|png|webp)$/i.test(f.url))?.url;const caption=d.steps?.caption?.text||d.description||"";const isPend=d.steps?.client?.mode==="sent_to_client"&&!d.steps?.client?.status;const stL=d.steps?.client?.status==="approved"?"Aprovado":d.steps?.client?.status==="revision"?"Edição solicitada":isPend?"Aguardando aprovação":"Em produção";const stC=d.steps?.client?.status==="approved"?B.green:isPend?(B.orange||"#F59E0B"):B.muted;return <>
+                {img?<div style={{height:280,background:"url("+img+") center/cover",borderRadius:"24px 24px 0 0"}}/>:<div style={{height:100,background:"linear-gradient(135deg,"+B.accent+"15,"+B.accent+"05)",borderRadius:"24px 24px 0 0",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{color:B.muted,fontSize:11}}>Sem arte</span></div>}
+                <div style={{padding:"20px 24px"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}><h3 style={{fontSize:18,fontWeight:800,margin:0}}>{d.title||"Post"}</h3><span style={{fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:8,background:stC+"15",color:stC}}>{stL}</span></div>
+                  {d.format&&<div style={{display:"flex",gap:6,marginBottom:12}}><span style={{fontSize:10,padding:"3px 8px",borderRadius:6,background:B.accent+"10",color:B.accent,fontWeight:600}}>{d.format}</span>{(d.networks||[]).map((n,i)=><span key={i} style={{fontSize:10,padding:"3px 8px",borderRadius:6,background:B.border||"#eee",color:B.muted,fontWeight:600}}>{n}</span>)}</div>}
+                  {caption&&<div style={{padding:"12px 14px",borderRadius:12,background:B.bg,border:"1px solid "+(B.border||"#ddd"),marginBottom:16,maxHeight:120,overflowY:"auto"}}><p style={{fontSize:12,lineHeight:1.6,margin:0,whiteSpace:"pre-wrap"}}>{caption.slice(0,300)}</p></div>}
+                  {d.scheduling?.date&&<p style={{fontSize:11,color:B.muted,marginBottom:12}}>Agendado: {d.scheduling.date} {d.scheduling.time||""}</p>}
+                  <div style={{display:"flex",gap:10}}>
+                    <button onClick={()=>setViewDemand(null)} style={{flex:1,padding:"12px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:B.muted}}>Fechar</button>
+                    {isPend&&isClientView&&<><button onClick={()=>{if(supabase&&d.id){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const m={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"approved",date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:m,stage:"scheduled"}).eq("id",d.id).then(()=>{showToast("Aprovado!");setViewDemand(null);});});}}} style={{flex:1,padding:"12px 0",borderRadius:12,background:B.green||"#22C55E",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#fff"}}>Aprovar</button><button onClick={()=>{const fb=prompt("Feedback:");if(fb!==null&&supabase&&d.id){supabase.from("demands").select("steps").eq("id",d.id).single().then(({data:curr})=>{const m={...(curr?.steps||{}),...d.steps,client:{...(d.steps?.client||{}),status:"revision",feedback:fb,date:new Date().toLocaleDateString("pt-BR")}};supabase.from("demands").update({steps:m}).eq("id",d.id).then(()=>{showToast("Edição enviada");setViewDemand(null);});});}}} style={{flex:1,padding:"12px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.orange||"#F59E0B"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.orange||"#F59E0B"}}>Pedir edição</button></>}
+                  </div>
+                </div>
+              </>;})()}
+            </div>
+          </div>}
           {/* ── Event detail panel (expanded mode) ── */}
           {viewEvent && (() => {
             const ev = viewEvent; const et = etCfg(ev.type);
