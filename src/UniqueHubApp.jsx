@@ -26099,6 +26099,12 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   }, []);
 
   const pendingApproval = demands.filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status);
+  const [showExpressReq, setShowExpressReq] = useState(false);
+  const [exprType, setExprType] = useState("feed");
+  const [exprDesc, setExprDesc] = useState("");
+  const [exprUrg, setExprUrg] = useState("normal");
+  const [exprDate, setExprDate] = useState("");
+  const [exprRef, setExprRef] = useState("");
   const approved = demands.filter(d => d.steps?.client?.status === "approved");
 
   /* ── Client ID for gamification (match by email first, then name) ── */
@@ -27528,6 +27534,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     </div>
 
+    {/* EXPRESS CONTENT REQUEST */}
+    {showExpressReq && <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowExpressReq(false)}>
+      <div onClick={e=>e.stopPropagation()} style={{width:480,background:B.bgCard||"#fff",borderRadius:24,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
+        <div style={{background:"linear-gradient(135deg,#0D0D0D,#1A1D23)",padding:"24px 28px",color:"#fff"}}>
+          <p style={{fontSize:11,fontWeight:600,letterSpacing:2,color:"rgba(255,255,255,0.35)",textTransform:"uppercase"}}>Solicitação express</p>
+          <p style={{fontSize:20,fontWeight:800,marginTop:4}}>Preciso de um conteúdo</p>
+        </div>
+        <div style={{padding:"24px 28px"}}>
+          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>O que você precisa?</label><select value={exprType} onChange={e=>setExprType(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}><option value="feed">Post para Feed</option><option value="reels">Reels / Vídeo</option><option value="stories">Stories</option><option value="carrossel">Carrossel</option><option value="campanha">Campanha</option><option value="outro">Outro</option></select></div>
+          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Descreva brevemente</label><textarea value={exprDesc} onChange={e=>setExprDesc(e.target.value)} className="tinput" placeholder="Ex: Preciso de um post sobre promoção de Páscoa..." style={{width:"100%",fontSize:13,minHeight:80,resize:"vertical"}}/></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}><div><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Urgência</label><select value={exprUrg} onChange={e=>setExprUrg(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}><option value="normal">Normal</option><option value="urgente">Urgente (24h)</option><option value="super">Super urgente (hoje)</option></select></div><div><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Data ideal</label><input type="date" value={exprDate} onChange={e=>setExprDate(e.target.value)} className="tinput" style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div></div>
+          <div style={{marginBottom:14}}><label style={{fontSize:11,fontWeight:700,color:B.muted,display:"block",marginBottom:4}}>Referência (opcional)</label><input value={exprRef} onChange={e=>setExprRef(e.target.value)} className="tinput" placeholder="Link de um post, imagem ou perfil..." style={{width:"100%",fontSize:13,padding:"10px 12px"}}/></div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>setShowExpressReq(false)} style={{flex:1,padding:"13px 0",borderRadius:12,background:"transparent",border:"1.5px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:B.muted}}>Cancelar</button>
+            <button onClick={async()=>{if(!exprDesc.trim()){showToast("Descreva o que precisa");return;}const fm={feed:"Feed",reels:"Reels",stories:"Stories",carrossel:"Carrossel",campanha:"Campanha",outro:"Feed"};const um={normal:"normal",urgente:"alta",super:"alta"};const cid=resolvedClient?.supaId||resolvedClient?.id;if(!cid){showToast("Cliente não vinculado");return;}const desc="[SOLICITAÇÃO EXPRESS - "+exprUrg.toUpperCase()+"]\n\n"+exprDesc.trim()+(exprRef?"\n\nReferência: "+exprRef:"")+(exprDate?"\n\nData ideal: "+exprDate:"");const nd={type:"social",client:resolvedClient?.name,client_id:cid,title:exprDesc.trim().substring(0,50),description:desc,format:fm[exprType]||"Feed",stage:"idea",priority:um[exprUrg]||"normal",networks:["Instagram"],scheduling:exprDate?{date:exprDate,time:"18:00"}:null,steps:{idea:{by:user?.name||"Cliente",date:new Date().toLocaleDateString("pt-BR"),source:"express_request"}}};try{const{error}=await supabase.from("demands").insert(nd);if(error)throw error;showToast("✅ Solicitação enviada!");setShowExpressReq(false);setExprDesc("");setExprRef("");setExprDate("");setExprType("feed");setExprUrg("normal");supaCreateNotificationForAll("demand_created","📋 Solicitação express: "+nd.title,(resolvedClient?.name||"")+" solicitou conteúdo "+(exprUrg==="super"?"SUPER URGENTE":exprUrg==="urgente"?"URGENTE":""),"🚀");}catch(e){showToast("Erro: "+e.message);}}} style={{flex:1,padding:"13px 0",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:800,color:B.textOnAccent||"#0D0D0D"}}>Enviar solicitação</button>
+          </div>
+        </div>
+      </div>
+    </div>}
+    <div onClick={()=>setShowExpressReq(true)} style={{position:"fixed",bottom:100,right:32,width:56,height:56,borderRadius:"50%",background:B.accent,boxShadow:"0 4px 20px "+B.accent+"40",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",zIndex:90}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+
     {/* APPROVAL TIMELINE — Stories strip */}
     {pendingApproval.length > 0 && <div style={{marginTop:16}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
@@ -27564,6 +27591,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         })}
       </div>
     </div>}
+
+    {/* CLIENT BADGES */}
+    {(() => {
+      const badges = [];
+      const clientSince = resolvedClient?.created_at || resolvedClient?.since;
+      if (clientSince) {
+        const months = Math.floor((Date.now() - new Date(clientSince).getTime()) / (30*24*60*60*1000));
+        if (months >= 12) badges.push({icon:"🏆",label:"Cliente há "+Math.floor(months/12)+" ano"+(Math.floor(months/12)>1?"s":""),color:"#FFD700"});
+        else if (months >= 6) badges.push({icon:"⭐",label:"Cliente há "+months+" meses",color:"#F59E0B"});
+        else if (months >= 3) badges.push({icon:"🌱",label:"Cliente há "+months+" meses",color:"#10B981"});
+      }
+      const approvedCount = demands.filter(d=>d.steps?.client?.status==="approved").length;
+      if (approvedCount >= 50) badges.push({icon:"💎",label:approvedCount+" posts aprovados",color:"#8B5CF6"});
+      else if (approvedCount >= 20) badges.push({icon:"🔥",label:approvedCount+" posts aprovados",color:"#EF4444"});
+      else if (approvedCount >= 5) badges.push({icon:"✅",label:approvedCount+" posts aprovados",color:"#10B981"});
+      if (growthScore >= 80) badges.push({icon:"🚀",label:"Zona Escala",color:"#3B82F6"});
+      else if (growthScore >= 60) badges.push({icon:"📈",label:"Zona Crescimento",color:"#10B981"});
+      const pendingNow = pendingApproval.length;
+      if (pendingNow === 0 && approvedCount > 0) badges.push({icon:"⚡",label:"100% em dia",color:B.accent});
+      if (badges.length === 0) return null;
+      return <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
+        {badges.map((b,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:100,background:b.color+"10",border:"1px solid "+b.color+"25",fontSize:12,fontWeight:600}}><span>{b.icon}</span><span style={{color:b.color}}>{b.label}</span></div>)}
+      </div>;
+    })()}
 
     {/* SECTIONS */}
     <div style={{ display:"flex", flexDirection:"column", gap:8, marginTop:8 }}>
