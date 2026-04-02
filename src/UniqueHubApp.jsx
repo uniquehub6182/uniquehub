@@ -16724,6 +16724,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   const [curYear, setCurYear] = useState(today.getFullYear());
   const [selDay, setSelDay] = useState(today.getDate());
   const [viewEvent, setViewEvent] = useState(null);
+  const [viewDemand, setViewDemand] = useState(null);
   const [cancelFlow, setCancelFlow] = useState(null); /* null | {eventId, step:"ask"|"reschedule", newDate:"", newTime:""} */
   const [adding, setAdding] = useState(false);
   const [eventType, setEventType] = useState(null);
