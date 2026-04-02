@@ -6235,7 +6235,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               </div>
               {/* Tabs */}
               <div style={{ display:"flex", gap:4, padding:"12px 24px", borderBottom:`1px solid ${B.border}`, flexShrink:0 }}>
-                {[{k:"info",l:"Informações"},{k:"socials",l:`Redes (${dConnected})`},{k:"files",l:`Arquivos (${dFiles.length})`},{k:"access",l:"Acessos"},{k:"credentials",l:"🔒 Credenciais"},{k:"financial",l:"Financeiro"}].filter(t=>t.k!=="financial"||canFinancial).filter(t=>t.k!=="credentials"||isAdmin).filter(t=>t.k!=="access"||isAdmin).map(t=>(
+                {[{k:"info",l:"Informações"},{k:"socials",l:`Redes (${dConnected})`},{k:"files",l:`Arquivos (${dFiles.length})`},{k:"access",l:"Acessos"},{k:"credentials",l:"🔒 Credenciais"},{k:"financial",l:"Financeiro"},{k:"nps",l:"Satisfação"}].filter(t=>t.k!=="financial"||canFinancial).filter(t=>t.k!=="credentials"||isAdmin).filter(t=>t.k!=="access"||isAdmin).map(t=>(
                   <button key={t.k} onClick={()=>setProfileTab(t.k)} style={{ padding:"6px 14px", borderRadius:100, border:profileTab===t.k?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, background:profileTab===t.k?B.accent:"transparent", color:profileTab===t.k?"#0D0D0D":B.muted }}>{t.l}</button>
                 ))}
               </div>
@@ -29470,3 +29470,4 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
   );
 }
 // Thu Mar  5 16:39:54 UTC 2026
+// rebuild 1775098400
