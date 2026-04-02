@@ -21685,9 +21685,9 @@ function AIPage({ onBack, user, agencyIdentity, isClientView }) {
 
   const activeProvider = aiKeys.ai_provider || "openai";
 
-  /* Track chat for onboarding */ try{localStorage.setItem("uh_sent_chat","1");}catch{}
   const sendMessage = async (text) => {
     if (!text.trim() || loading) return;
+    try{localStorage.setItem("uh_sent_chat","1");}catch{}
     const openaiKey = aiKeys.openai_key;
     const geminiKey = aiKeys.gemini_key;
     const claudeKey = aiKeys.claude_key;
