@@ -234,12 +234,20 @@ serve(async (req) => {
     const nowISO = now.toISOString();
     const results: any[] = [];
 
-    /* ═══ RECOVERY: stuck "publishing" posts (>5 min) ═══ */
+    /* ═══ RECOVERY: stuck "publishing" posts (>5 min) — max 3 retries ═══ */
     const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
-    const { data: stuck } = await sb.from("scheduled_posts").select("id").eq("status", "publishing").lte("created_at", fiveMinAgo);
+    const { data: stuck } = await sb.from("scheduled_posts").select("id,retry_count").eq("status", "publishing").lte("created_at", fiveMinAgo);
     if (stuck?.length) {
-      for (const s of stuck) await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("id", s.id);
-      console.log(`[Recovery] Reset ${stuck.length} stuck publishing posts`);
+      for (const s of stuck) {
+        const retries = (s.retry_count || 0) + 1;
+        if (retries >= 3) {
+          await sb.from("scheduled_posts").update({ status: "failed", error: `Falhou após ${retries} tentativas — verifique o arquivo de mídia`, retry_count: retries }).eq("id", s.id);
+          console.log(`[Recovery] FAILED ${s.id} after ${retries} retries`);
+        } else {
+          await sb.from("scheduled_posts").update({ status: "pending", error: null, retry_count: retries }).eq("id", s.id);
+          console.log(`[Recovery] Reset ${s.id} (retry ${retries}/3)`);
+        }
+      }
     }
 
     /* ═══ PHASE 2: Check REELS containers being processed by Instagram ═══ */
@@ -280,9 +288,15 @@ serve(async (req) => {
         const isTransient = msg.includes("unexpected") || msg.includes("temporarily") || msg.includes("timeout") || msg.includes("ETIMEDOUT");
         console.error(`[Phase2] ${isTransient?"Transient":"Fatal"} error for ${post.id}: ${msg}`);
         if (isTransient) {
-          /* Auto-retry: reset to pending, cron will pick up again */
-          await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("id", post.id);
-          results.push({ id: post.id, status: "retry", phase: 2 });
+          const retries = (post.retry_count || 0) + 1;
+          if (retries >= 3) {
+            await sb.from("scheduled_posts").update({ status: "failed", error: `Transient error após ${retries} tentativas: ${msg}`, retry_count: retries }).eq("id", post.id);
+            await notifyFailure(sb, post, msg);
+            results.push({ id: post.id, status: "failed", phase: 2, retries });
+          } else {
+            await sb.from("scheduled_posts").update({ status: "pending", error: null, retry_count: retries }).eq("id", post.id);
+            results.push({ id: post.id, status: "retry", phase: 2, retries });
+          }
         } else {
           await sb.from("scheduled_posts").update({ status: "failed", error: msg }).eq("id", post.id);
           await notifyFailure(sb, post, msg);
@@ -339,8 +353,15 @@ serve(async (req) => {
         const isTransient = msg.includes("unexpected") || msg.includes("temporarily") || msg.includes("timeout") || msg.includes("ETIMEDOUT") || msg.includes("retry");
         console.error(`[Phase1] ${isTransient?"Transient":"Fatal"} ${post.id}: ${msg}`);
         if (isTransient) {
-          await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("id", post.id);
-          results.push({ id: post.id, status: "retry", phase: 1 });
+          const retries = (post.retry_count || 0) + 1;
+          if (retries >= 3) {
+            await sb.from("scheduled_posts").update({ status: "failed", error: `Falhou após ${retries} tentativas: ${msg}`, retry_count: retries }).eq("id", post.id);
+            await notifyFailure(sb, post, msg);
+            results.push({ id: post.id, status: "failed", phase: 1, retries });
+          } else {
+            await sb.from("scheduled_posts").update({ status: "pending", error: null, retry_count: retries }).eq("id", post.id);
+            results.push({ id: post.id, status: "retry", phase: 1, retries });
+          }
         } else {
           await sb.from("scheduled_posts").update({ status: "failed", error: msg }).eq("id", post.id);
           await notifyFailure(sb, post, msg);
