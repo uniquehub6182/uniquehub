@@ -177,7 +177,25 @@ serve(async (req) => {
     if (stuck && stuck.length > 0) {
       console.log(`[Scheduler] Recovering ${stuck.length} stuck "publishing" posts`);
       for (const s of stuck) {
-        await sb.from("scheduled_posts").update({ status: "pending", error: "Auto-recovered from stuck publishing state" }).eq("id", s.id);
+        await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("id", s.id);
+      }
+    }
+
+    /* ── FIX 2: Auto-recover "failed" posts with R2-fixable errors ── */
+    const { data: r2Fixable } = await sb.from("scheduled_posts").select("id,demand_id")
+      .eq("status", "failed").ilike("error", "%Only photo or video%");
+    if (r2Fixable && r2Fixable.length > 0) {
+      console.log(`[Scheduler] Recovering ${r2Fixable.length} failed posts (R2 proxy fix)`);
+      for (const f of r2Fixable) {
+        await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("id", f.id);
+        /* Reset demand back to scheduled if it was prematurely marked published */
+        if (f.demand_id) {
+          const { data: dem } = await sb.from("demands").select("stage").eq("id", f.demand_id).single();
+          if (dem?.stage === "published") {
+            await sb.from("demands").update({ stage: "scheduled" }).eq("id", f.demand_id);
+            console.log(`[Scheduler] Reset demand ${f.demand_id} from published → scheduled`);
+          }
+        }
       }
     }
 
