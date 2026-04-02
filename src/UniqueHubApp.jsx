@@ -12947,6 +12947,7 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
 
   const sendMsg = async () => {
     if (!input.trim() || !selConv) return;
+    try{localStorage.setItem("uh_sent_chat","1");}catch{}
     const text = input.trim();
     const _replyToMsg = replyTo;
     setInput("");
