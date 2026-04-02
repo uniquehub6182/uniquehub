@@ -6077,8 +6077,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         const [npsLoading, setNpsLoading] = React.useState(true);
         React.useEffect(() => {
           if (!cid || !supabase) return;
-          supabase.from("app_settings").select("*").like("key", "nps_"+cid+"_%").order("key",{ascending:false}).then(({data}) => {
-            const parsed = (data||[]).map(d => { try { return {...JSON.parse(d.value), key:d.key}; } catch { return null; } }).filter(Boolean);
+          supabase.from("app_settings").select("*").like("key", "nps_%").order("key",{ascending:false}).then(({data}) => {
+            const cname = sel?.name || ""; const parsed = (data||[]).map(d => { try { return {...JSON.parse(d.value), key:d.key}; } catch { return null; } }).filter(Boolean).filter(d => d.key?.includes(cid) || (cname && d.client?.toLowerCase()===cname.toLowerCase()));
             setNpsData(parsed); setNpsLoading(false);
           });
         }, [cid]);
