@@ -4661,6 +4661,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
   const [sel, setSel] = useState(null);
   const [profileTab, setProfileTab] = useState("info");
+  const [npsData, setNpsData] = useState([]);
+  const [npsLoading, setNpsLoading] = useState(false);
   const [clientIdeas, setClientIdeas] = useState([]);
   const [clientIdeasLoaded, setClientIdeasLoaded] = useState(null); /* client id that was loaded */
   const [clientUsers, setClientUsers] = useState([]);
@@ -4780,6 +4782,15 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   };
   /* Load ideas for selected client when ideas tab is opened */
   useEffect(() => {
+    if (profileTab === "nps" && sel && supabase) {
+      setNpsLoading(true);
+      const cid = sel.supaId || sel.id;
+      const cname = sel.name || "";
+      supabase.from("app_settings").select("*").like("key", "nps_%").order("key",{ascending:false}).then(({data}) => {
+        const parsed = (data||[]).map(d => { try { return {...JSON.parse(d.value), key:d.key}; } catch { return null; } }).filter(Boolean).filter(d => d.key?.includes(cid) || (cname && d.client?.toLowerCase()===cname.toLowerCase()));
+        setNpsData(parsed); setNpsLoading(false);
+      });
+    }
     if (profileTab !== "ideas" || !sel || !supabase) return;
     if (clientIdeasLoaded === sel.name) return;
     supaLoadIdeas().then(rows => {
@@ -6072,16 +6083,6 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       </>}
 
       {profileTab === "nps" && (() => {
-        const cid = sel?.supaId || sel?.id;
-        const [npsData, setNpsData] = React.useState([]);
-        const [npsLoading, setNpsLoading] = React.useState(true);
-        React.useEffect(() => {
-          if (!cid || !supabase) return;
-          supabase.from("app_settings").select("*").like("key", "nps_%").order("key",{ascending:false}).then(({data}) => {
-            const cname = sel?.name || ""; const parsed = (data||[]).map(d => { try { return {...JSON.parse(d.value), key:d.key}; } catch { return null; } }).filter(Boolean).filter(d => d.key?.includes(cid) || (cname && d.client?.toLowerCase()===cname.toLowerCase()));
-            setNpsData(parsed); setNpsLoading(false);
-          });
-        }, [cid]);
         const avg = npsData.length > 0 ? (npsData.reduce((a,d)=>a+d.score,0)/npsData.length).toFixed(1) : "—";
         const cat = n => n >= 9 ? "Promotor" : n >= 7 ? "Neutro" : "Detrator";
         const col = n => n >= 9 ? B.green : n >= 7 ? "#F59E0B" : B.red || "#EF4444";
