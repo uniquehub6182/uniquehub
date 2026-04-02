@@ -202,7 +202,7 @@ serve(async (req) => {
     /* Find posts that are due */
     const { data: posts, error } = await sb
       .from("scheduled_posts").select("*").eq("status", "pending")
-      .lte("scheduled_at", nowISO).order("scheduled_at", { ascending: true }).limit(10);
+      .lte("scheduled_at", nowISO).order("scheduled_at", { ascending: true }).limit(3);
 
     if (error) throw new Error(`DB error: ${error.message}`);
     if (!posts || posts.length === 0) return json({ message: "No posts due", count: 0, recovered: stuck?.length || 0 });
