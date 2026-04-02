@@ -26105,6 +26105,9 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [exprUrg, setExprUrg] = useState("normal");
   const [exprDate, setExprDate] = useState("");
   const [exprRef, setExprRef] = useState("");
+  const [moodboard, setMoodboard] = useState(() => { try { return JSON.parse(localStorage.getItem("uh_moodboard")||"[]"); } catch { return []; } });
+  const saveMoodboard = (list) => { setMoodboard(list); localStorage.setItem("uh_moodboard", JSON.stringify(list)); };
+  const addMoodboardItem = () => { const url = prompt("Cole o link da referência (Instagram, site, imagem):"); if (!url?.trim()) return; const item = { id: Date.now(), url: url.trim(), note: "", added: new Date().toISOString() }; saveMoodboard([item, ...moodboard]); showToast("Referência salva ✓"); };
   const [showNPS, setShowNPS] = useState(false);
   const [npsScore, setNpsScore] = useState(null);
   const [npsFeedback, setNpsFeedback] = useState("");
@@ -27542,6 +27545,43 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       <div style={{ display:"flex", gap:10, overflowX:isDesktop?"visible":"auto", flexWrap:isDesktop?"wrap":"nowrap", scrollbarWidth:"none", flex:1 }}>
         {clientPills.map((pk,i) => { const p = CLIENT_PILLS_MAP[pk]; if(!p) return null; const nav = () => { if(p.k==="content") goTab("content"); else if(p.k==="calendar") setSub("calendar"); else if(p.k==="chat") goTab("chat"); else setSub(p.k==="reports"?"reports":p.k==="help"?"help":p.k==="gamify"?"gamify":p.k==="match4biz"?"match4biz":p.k==="library"?"library":p.k==="news"?"news":p.k==="ideas"?"ideas":p.k==="ai"?"ai":p.k==="settings"?"settings":p.k); }; return <div key={pk} onClick={nav} style={{flexShrink:0,display:"flex",alignItems:"center",gap:8,background:C.pill||C.card,border:`1px solid ${C.brd}`,borderRadius:100,padding:"10px 16px",cursor:"pointer",color:C.txt,fontSize:13,fontWeight:600}}><div style={{width:28,height:28,borderRadius:"50%",background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:LIME}}>{IC[pk==="conteudo"?"content":pk==="relatorios"?"reports":pk==="suporte"?"help":pk==="ia"?"ai":pk==="config"?"settings":pk==="calendario"?"calendar":pk==="biblioteca"?"library":pk==="noticias"?"news":pk==="ideias"?"ideas":pk]?.(LIME)||IC.home(LIME)}</div>{p.l}</div>; })}
       </div>
+    </div>
+
+    {/* TESTIMONIAL WIDGET — Item 20 */}
+    {(() => {
+      const clientSince = resolvedClient?.created_at || resolvedClient?.since;
+      if (!clientSince) return null;
+      const months = Math.floor((Date.now() - new Date(clientSince).getTime()) / (30*24*60*60*1000));
+      const milestones = [3,6,12,24];
+      const currentMilestone = milestones.find(m => months >= m && months < m + 1);
+      const dismissed = localStorage.getItem("uh_testimonial_"+months);
+      if (!currentMilestone || dismissed) return null;
+      return <div style={{marginTop:16,padding:"20px 24px",borderRadius:16,background:"linear-gradient(135deg,"+B.accent+"08,"+B.accent+"03)",border:"1.5px solid "+B.accent+"20",display:"flex",alignItems:"center",gap:16}}>
+        <span style={{fontSize:32}}>🎬</span>
+        <div style={{flex:1}}>
+          <p style={{fontSize:14,fontWeight:700}}>🎉 {months} meses juntos!</p>
+          <p style={{fontSize:12,color:B.muted,marginTop:2}}>Que tal gravar um depoimento rápido sobre sua experiência? Ajuda muito nosso trabalho!</p>
+        </div>
+        <div style={{display:"flex",gap:8,flexShrink:0}}>
+          <button onClick={()=>{const msg=encodeURIComponent("Olá! Sou "+(user?.name||"cliente")+" e gostaria de gravar um depoimento sobre o trabalho da agência!");window.open("https://wa.me/552122159867?text="+msg,"_blank");}} style={{padding:"10px 18px",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>Gravar depoimento</button>
+          <button onClick={()=>{localStorage.setItem("uh_testimonial_"+months,"1");location.reload();}} style={{padding:"10px 14px",borderRadius:12,background:"transparent",border:"1px solid "+(B.border||"#ddd"),cursor:"pointer",fontFamily:"inherit",fontSize:12,color:B.muted}}>Depois</button>
+        </div>
+      </div>;
+    })()}
+
+    {/* MOODBOARD — Mural de Inspirações */}
+    <div style={{marginTop:16}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:16}}>💡</span><p style={{fontSize:13,fontWeight:700,margin:0}}>Mural de Inspirações</p><span style={{fontSize:11,color:B.muted}}>({moodboard.length})</span></div>
+        <button onClick={addMoodboardItem} style={{fontSize:12,fontWeight:700,color:B.accent,background:B.accent+"10",border:"1.5px solid "+B.accent+"25",borderRadius:10,padding:"6px 14px",cursor:"pointer",fontFamily:"inherit"}}>+ Adicionar</button>
+      </div>
+      {moodboard.length === 0 ? <div style={{padding:"20px",borderRadius:14,background:B.bgCard,border:"1px solid "+(B.border||"#ddd"),textAlign:"center"}}><p style={{fontSize:12,color:B.muted}}>Salve referências visuais para inspirar a equipe criativa</p></div> :
+      <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:8,scrollbarWidth:"none"}}>
+        {moodboard.slice(0,8).map((item,i)=><div key={item.id} style={{flexShrink:0,width:140,borderRadius:12,overflow:"hidden",background:B.bgCard,border:"1px solid "+(B.border||"#ddd"),cursor:"pointer"}} onClick={()=>window.open(item.url,"_blank")}>
+          <div style={{height:100,background:"linear-gradient(135deg,"+B.accent+"15,"+B.accent+"05)",display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:9,color:B.muted,padding:8,wordBreak:"break-all",overflow:"hidden",maxHeight:"100%"}}>{item.url.replace(/https?:\/\//,"").slice(0,40)}</span></div>
+          <div style={{padding:"8px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:9,color:B.muted}}>{new Date(item.added).toLocaleDateString("pt-BR")}</span><button onClick={e=>{e.stopPropagation();saveMoodboard(moodboard.filter(m=>m.id!==item.id));}} style={{fontSize:10,color:B.red||"#EF4444",background:"none",border:"none",cursor:"pointer"}}>✕</button></div>
+        </div>)}
+      </div>}
     </div>
 
     {/* FEED PREVIEW — Instagram grid mockup */}
