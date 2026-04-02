@@ -25240,7 +25240,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
   return (
     <div className={isGamDesktop?"":"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text, ...(isGamDesktop?{minHeight:"100vh",paddingBottom:80}:{}) }}>
       {ToastEl}
-      <div className={isGamDesktop?"":"content"} style={{ padding:isGamDesktop?"0 16px 60px":"12px 16px 120px" }}>
+      <div className={isGamDesktop?"":"content"} style={{ padding:isGamDesktop?"0 16px 60px":"0 16px 120px" }}>
         <div style={isGamDesktop?{maxWidth:1440,margin:"0 auto",padding:"0 16px"}:{}}>
         <CollapseHeader label="Gamificação" title="Growth Score" onBack={onBack} collapsed={false} />
         {isGamDesktop && <div style={{height:16}} />}
