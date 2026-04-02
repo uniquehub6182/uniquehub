@@ -26373,6 +26373,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     if (finView === "plans") return (
       <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
         <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
+        <div style={{height:14}} />
         <div className="content" style={{ padding:"0 16px 120px" }}>
           {Object.entries(PLAN_INFO).filter(([k]) => k !== "free").map(([k, p], i) => {
             const isCurrent = k === myClient.plan;
@@ -26484,7 +26485,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     return (
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
       <CollapseHeader label="Seu plano" title="Financeiro" onBack={() => { setFinView("main"); setSub(null); }} collapsed={false} />
-      <div className="content" style={{ padding:"0 16px 120px" }}>
+      <div className="content" style={{ padding:"14px 16px 120px" }}>
         <div style={{ borderRadius:20, overflow:"hidden", border:"none" }}>
           <div style={{ background:"#0D0D0D", padding:"20px 20px 18px", borderRadius:"20px 20px 0 0" }}>
             <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Seu plano</p>
