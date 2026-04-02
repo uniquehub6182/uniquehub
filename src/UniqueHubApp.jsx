@@ -13828,10 +13828,10 @@ function NotifsPage({ onBack, user, navigate, clientFilter }) {
   const { showToast, ToastEl } = useToast();
   useEffect(() => { if (!loaded && user?.id) { supaLoadNotifications(user.id, 50).then(d => { 
     if (clientFilter) {
+      const cf = clientFilter.toLowerCase();
       const filtered = d.filter(n => {
-        const msg = (n.title||"")+" "+(n.body||"");
-        return msg.toLowerCase().includes(clientFilter.toLowerCase()) || 
-               ["post_approved","post_rejected","post_for_approval","post_published","publish_failed","demand_created","demand_updated"].includes(n.type);
+        const msg = ((n.title||"")+" "+(n.body||"")).toLowerCase();
+        return msg.includes(cf) || n.type === "system" || n.type === "news_created";
       });
       setNotifs(filtered);
     } else { setNotifs(d); }
