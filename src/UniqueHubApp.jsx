@@ -25850,6 +25850,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [team, setTeam] = useState([]);
   const [chatTermsOk, setChatTermsOk] = useState(true);
   const [headerC, setHeaderC] = useState(false);
+  const [more, setMore] = useState(false);
   const [uiPrefs, setUiPrefs] = useState(() => { try { const s = localStorage.getItem("uh_ui_prefs"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [themeColor, setThemeColor] = useState(() => { try { return localStorage.getItem("uh_theme") || "lime"; } catch { return "lime"; } });
   B = React.useMemo(() => getB(dark, "#BBF246", uiPrefs), [dark, JSON.stringify(uiPrefs)]);
@@ -26266,7 +26267,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     } catch(e) { console.error("respondDemand error:", e); showToast("Erro ao responder"); }
   };
 
-  const goTab = (k) => { setTab(k); setSub(null); setHeaderC(false); setTimeout(()=>{document.querySelector('.content')?.scrollTo(0,0);},0); };
+  const goTab = (k) => { if (k === "more") { setMore(m => !m); return; } setMore(false); setTab(k); setSub(null); setHeaderC(false); setTimeout(()=>{document.querySelector('.content')?.scrollTo(0,0);},0); };
 
   const TABS = [...clientNavPicks.map(k => CLIENT_ALL_TABS.find(t => t.k === k)).filter(Boolean), { k:"more", l:"Mais", i: IC.more || IC.settings }];
 
@@ -27783,51 +27784,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             {tab === "content" && (isDesktop ? <div style={{background:B.bgCard||"#fff",borderRadius:20,padding:"20px 20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`,marginTop:16}}>{renderContent()}</div> : renderContent())}
             {tab === "calendar" && <div style={{ margin:isDesktop?0:"0 -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
             {tab === "chat" && <div style={{ margin:isDesktop?0:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
-          {tab === "more" && (() => {
-            const moreItems = [
-              {l:"Growth Score",ic:IC.gamify,d:"Seu índice de crescimento",sub:"gamify",navKey:null},
-              {l:"Conteúdo",ic:IC.content,d:"Posts para aprovar",sub:null,tab:"content",navKey:"content"},
-              {l:"Match4Biz",ic:IC.match4biz,d:"Conecte-se com empresas",sub:"match4biz",navKey:null},
-              {l:"Financeiro",ic:IC.financial,d:"Plano, faturas e serviços",sub:"financial",navKey:null},
-              {l:"Relatórios",ic:IC.reports,d:"Performance das redes",sub:"reports",navKey:null},
-              {l:"Calendário",ic:IC.calendar,d:"Reuniões e gravações",sub:"calendar",navKey:"calendar"},
-              {l:"Biblioteca",ic:IC.library,d:"Arquivos e materiais",sub:"library",navKey:null},
-              {l:"Academy",ic:IC.academy,d:"Cursos e aprendizado",sub:"academy",navKey:null},
-              {l:"Notícias",ic:IC.news,d:"Novidades e tendências",sub:"news",navKey:null},
-              {l:"Comunique-se",ic:IC.ideas,d:"Envie ideias para a agência",sub:"ideas",navKey:null},
-              {l:"Bloco de Notas",ic:(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,d:"Suas anotações pessoais",sub:"notes",navKey:null},
-              {l:"Assistente IA",ic:IC.ai,d:"IA para seu time comercial",sub:"ai",navKey:null},
-              {l:"Inbox",ic:IC.inbox,d:"Mensagens do Instagram e Facebook",sub:"inbox",navKey:null},
-              {l:"Ajuda",ic:IC.help,d:"Suporte e FAQ",sub:"help",navKey:null},
-              {l:"Configurações",ic:IC.settings,d:"Perfil, aparência e segurança",sub:"settings",navKey:null},
-            ].filter(item => {
-              /* Hide items that are already in the navbar */
-              const navTabKeys = TABS.map(t => t.k);
-              if (item.navKey && navTabKeys.includes(item.navKey)) return false;
-              if (item.tab && navTabKeys.includes(item.tab)) return false;
-              return true;
-            });
-            return <div style={isDesktop?{marginTop:16}:{}}><div style={{ display:"grid", gridTemplateColumns:isDesktop?"repeat(4,1fr)":"1fr", gap:isDesktop?12:0 }}>{moreItems.map((item,i) => (
-              <div key={i} onClick={()=>{if(item.tab)goTab(item.tab);else if(item.sub)setSub(item.sub);}} style={{ padding:isDesktop?"20px 16px":"12px 16px", borderRadius:isDesktop?16:12, background:isDesktop?(B.bgCard||"#fff"):"transparent", border:isDesktop?`1px solid ${B.border||"rgba(0,0,0,0.06)"}`:"none", borderBottom:isDesktop?"none":`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, cursor:(item.sub||item.tab)?"pointer":"default", transition:"all 0.2s", display:"flex", alignItems:"center", flexDirection:isDesktop?"column":"row", gap:isDesktop?10:12, textAlign:isDesktop?"center":"left" }}
-                onMouseEnter={e=>{if(isDesktop){e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.08)";e.currentTarget.style.borderColor=B.accent||"#C8FF00"}}}
-                onMouseLeave={e=>{if(isDesktop){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=B.border||"rgba(0,0,0,0.06)"}}}>
-                <div style={{ width:isDesktop?48:36, height:isDesktop?48:36, borderRadius:isDesktop?14:10, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent, margin:isDesktop?"0 auto":"0" }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
-                <div style={{ flex:isDesktop?"initial":1, textAlign:isDesktop?"center":"left" }}><p style={{ fontSize:13, fontWeight:700 }}>{item.l}</p><p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{item.d}</p></div>
-                {!isDesktop && ((item.sub||item.tab) ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg> : <Tag color={B.accent}>Em breve</Tag>)}
-              </div>
-            ))}</div>
-          </div>; })()}
           </div>}
         </div>
       </div>
     </div>
     </div>
     </div>
+    {more && <>
+      <div onClick={() => setMore(false)} className="overlay" />
+      <div className="sheet">
+        <div style={{ width:32, height:4, borderRadius:2, background:B.border, margin:"0 auto 12px" }} />
+        <p style={{ fontSize:14, fontWeight:700, marginBottom:12, color:B.text }}>Mais funcionalidades</p>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
+          {[
+            {l:"Growth Score",ic:IC.gamify,k:"gamify"},
+            {l:"Match4Biz",ic:IC.match4biz,k:"match4biz"},
+            {l:"Financeiro",ic:IC.financial,k:"financial"},
+            {l:"Relatórios",ic:IC.reports,k:"reports"},
+            {l:"Biblioteca",ic:IC.library,k:"library"},
+            {l:"Academy",ic:IC.academy,k:"academy"},
+            {l:"Notícias",ic:IC.news,k:"news"},
+            {l:"Comunique-se",ic:IC.ideas,k:"ideas"},
+            {l:"Notas",ic:(co) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={co||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,k:"notes"},
+            {l:"Assistente IA",ic:IC.ai,k:"ai"},
+            {l:"Inbox",ic:IC.inbox,k:"inbox"},
+            {l:"Ajuda",ic:IC.help,k:"help"},
+            {l:"Configurações",ic:IC.settings,k:"settings"},
+          ].filter(item => !TABS.some(t => t.k === item.k)).map((item,i) => (
+            <button key={i} onClick={() => { setSub(item.k); setMore(false); }} className="grid-btn" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, padding:"12px 4px", background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit" }}>
+              <div style={{ width:44, height:44, borderRadius:14, background:B.accent+"10", display:"flex", alignItems:"center", justifyContent:"center", color:B.accent, marginBottom:2 }}>{typeof item.ic==="function"?item.ic(B.accent):item.ic}</div>
+              <span style={{ fontSize:10, fontWeight:600, color:B.text }}>{item.l}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>}
     {showClientNavEdit && <NavEditSheet picks={clientNavPicks} setPicks={setClientNavPicksAndSave} onClose={() => setShowClientNavEdit(false)} />}
     {/* Navbar - always visible on desktop, hidden on mobile when sub-page is active */}
     {(!hasSub || isDesktop) && <nav className="bnav" style={{ overflow:"visible" }}>
         {TABS.map(t => {
-          const a = tab === t.k && !sub;
+          const a = (t.k === "more" ? more : (tab === t.k && !sub));
           return (
             <button key={t.k} onClick={()=>{if(sub)setSub(null);goTab(t.k);}} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:48, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
               <div style={{ width:a?54:36, height:a?54:36, borderRadius:"50%", background:a?accentColor:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?"translateY(-22px)":"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${accentColor}50`:"none" }}>
