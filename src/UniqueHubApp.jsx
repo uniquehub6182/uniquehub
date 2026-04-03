@@ -22635,12 +22635,16 @@ Sua função é criar apresentações IMPRESSIONANTES para reuniões mensais com
 
 REGRAS DE OURO:
 - Cada slide deve ter um TÍTULO CRIATIVO e ESTRATÉGICO (nunca genérico como "Visão Geral" ou "Resultados")
-- O body de cada slide deve ter 3-6 bullet points curtos e IMPACTANTES
-- Use números reais, dados concretos e comparações sempre que possível
-- Cada bullet point deve ter no máximo 8-10 palavras
+- O body de cada slide deve ter 3-6 bullet points separados por \\n
+- Cada bullet point DEVE começar com um emoji relevante (📈 🎯 🔥 💡 ✅ 🚀 📊 💰 ⚡ 📱 ✨)
+- Cada bullet deve ser uma frase completa de 6-15 palavras
+- Use dados concretos, números reais e comparações sempre que possível
+- NÃO use travessões (-) nos bullet points, use emojis como marcadores
 - Tom: confiante, estratégico, como uma agência premium apresentando para um CEO
 - Use emojis estratégicos (📈 🎯 🔥 💡 ✅ 🚀) para dar vida aos slides
-- NUNCA use frases genéricas como "resultados positivos" ou "bom desempenho"
+- NUNCA use frases genéricas como "resultados positivos", "bom desempenho" ou "visão geral"
+- Títulos devem ser ESPECÍFICOS ao negócio do cliente (ex: "Chocolates que Vendem por Stories" não "Resultados de Mídias Sociais")
+- Cada slide deve ter uma NARRATIVA que conecta logicamente ao próximo
 - Cada slide deve contar uma HISTÓRIA que conecta com o próximo
 - Personalize com o nome do cliente em slides-chave
 
@@ -22740,43 +22744,98 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
   };
 
   const renderSlide = (slide, idx, total) => {
-    const isMetric = slide.type === "metrics";
     const isCta = slide.type === "cta";
     const isCover = slide.type === "cover" || idx === 0;
     const isHighlight = slide.type === "highlight";
+    const isMetric = slide.type === "metrics";
+    const isStrategy = slide.type === "strategy";
     const fs = fullscreen;
     const d = isPDesktop;
-    // Font sizes: [fullscreen, desktop, mobile]
-    const F = { tag:[16,12,10], tagTitle:[40,28,20], title:[50,36,24], subtitle:[22,16,13], body:[22,18,14], ctaTitle:[44,32,22], label:[18,14,11] };
-    const f = (arr) => fs ? arr[0] : (d ? arr[1] : arr[2]);
-    // Parse body: split by \n and render as lines
-    const renderBody = (text, style) => {
-      const lines = (text||"").split("\\n").filter(l=>l.trim());
-      return <div style={style}>{lines.map((line,i)=><div key={i} style={{marginBottom:lines.length>1?6:0}}>{line}</div>)}</div>;
-    };
-    return (
-      <div style={{ flex:(fs||d)?1:"none", width:"100%", height:(fs||d)?"100%":"auto", ...((fs||d)?{}:{aspectRatio:"4/3"}), background:"linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 50%, #0D0D0D 100%)", borderRadius:fs?0:16, display:"flex", flexDirection:"column", justifyContent:"center", padding:fs?"5vh 8vw":(d?"48px 64px":"32px 24px"), position:"relative", overflow:"hidden", boxSizing:"border-box" }}>
-        {/* Decorative glows */}
-        <div style={{ position:"absolute", top:"-10%", right:"-5%", width:"35%", height:"50%", borderRadius:"50%", background:`${LIME}06`, filter:"blur(80px)", pointerEvents:"none" }} />
-        <div style={{ position:"absolute", bottom:"-10%", left:"-5%", width:"25%", height:"40%", borderRadius:"50%", background:`${LIME}04`, filter:"blur(60px)", pointerEvents:"none" }} />
-        {/* Slide counter */}
-        <div style={{ position:"absolute", top:d?20:12, right:d?28:16, fontSize:f([14,11,10]), color:"rgba(255,255,255,0.25)", fontWeight:600 }}>{idx+1}/{total}</div>
-        <div style={{ position:"absolute", bottom:d?20:12, left:d?28:16, fontSize:f([12,9,8]), color:"rgba(255,255,255,0.12)", fontWeight:700, letterSpacing:1.5, textTransform:"uppercase" }}>Unique Marketing</div>
+    const f = (fv, dv, mv) => fs ? fv : (d ? dv : mv);
 
-        {isCover ? (<div style={{ textAlign:"center", maxWidth:fs?"70vw":"100%" }}>
-          <div style={{ fontSize:f(F.label), fontWeight:700, color:LIME, letterSpacing:3, textTransform:"uppercase", marginBottom:16 }}>{selClient?.name || currentPres?.title?.split("·")[1]?.trim() || ""}</div>
-          <div style={{ fontSize:f(F.title), fontWeight:900, color:"#fff", lineHeight:1.15, marginBottom:16 }}>{slide.title}</div>
-          {renderBody(slide.body, { fontSize:f(F.subtitle), color:"rgba(255,255,255,0.5)", lineHeight:1.6 })}
-        </div>) : isCta ? (<div style={{ textAlign:"center", maxWidth:fs?"70vw":"100%" }}>
-          <div style={{ fontSize:f(F.ctaTitle), fontWeight:900, color:LIME, lineHeight:1.15, marginBottom:20 }}>{slide.title}</div>
-          {renderBody(slide.body, { fontSize:f(F.subtitle), color:"rgba(255,255,255,0.6)", lineHeight:1.6 })}
-        </div>) : (<>
-          <div style={{ marginBottom:d?28:16 }}>
-            <span style={{ display:"inline-block", background:`${LIME}12`, border:`1px solid ${LIME}25`, borderRadius:6, padding:"4px 12px", marginBottom:10, fontSize:f([13,10,9]), fontWeight:700, color:LIME, letterSpacing:1, textTransform:"uppercase" }}>{isMetric?"📊 Dados":isHighlight?"🏆 Destaque":"💡 Estratégia"}</span>
-            <div style={{ fontSize:f(F.tagTitle), fontWeight:800, color:"#fff", lineHeight:1.2 }}>{slide.title}</div>
+    // Parse body lines - handle both \n and actual newlines
+    const rawLines = (slide.body||"").split(/\\n|\n/).map(l=>l.trim()).filter(Boolean);
+    // Detect if line is a bullet (starts with -, •, ✅, 📈, 🎯, etc)
+    const isBullet = (line) => /^[-•·▸►✅📈🎯🔥💡🚀📊🏆⚡💰📱🎯✨🔹➡️▶️]/.test(line);
+    const cleanBullet = (line) => line.replace(/^[-•·▸►]\s*/, "");
+
+    const renderBody = () => {
+      if (!rawLines.length) return null;
+      const hasBullets = rawLines.some(isBullet);
+      return (
+        <div style={{ display:"flex", flexDirection:"column", gap:f(14,10,8) }}>
+          {rawLines.map((line, i) => {
+            const bullet = isBullet(line);
+            const cleaned = bullet ? cleanBullet(line) : line;
+            const emoji = bullet && /^[^\w\s]/.test(line) ? line.match(/^([^\w\s]+)\s*/)?.[1] : null;
+            return (
+              <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:f(14,10,8) }}>
+                {(bullet || hasBullets) && (
+                  <div style={{ flexShrink:0, width:f(8,6,5), height:f(8,6,5), borderRadius:"50%", background:emoji ? "transparent" : LIME, marginTop:f(10,8,6) }}>
+                    {emoji && <span style={{ fontSize:f(20,16,13) }}>{emoji}</span>}
+                  </div>
+                )}
+                <div style={{ fontSize:f(22,17,13), color:"rgba(255,255,255,0.85)", lineHeight:1.6, fontWeight: i===0 && !hasBullets ? 500 : 400 }}>
+                  {emoji ? cleaned.replace(emoji,"").trim() : cleaned}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
+
+    // Tag labels per type
+    const TAG = isMetric ? {emoji:"📊", label:"DADOS", color:"#4FC3F7"} : isHighlight ? {emoji:"🏆", label:"DESTAQUE", color:"#FFD54F"} : isStrategy ? {emoji:"💡", label:"ESTRATÉGIA", color:"#81C784"} : {emoji:"📋", label:"CONTEÚDO", color:LIME};
+
+    return (
+      <div style={{ flex:(fs||d)?1:"none", width:"100%", height:(fs||d)?"100%":"auto", ...((fs||d)?{}:{aspectRatio:"4/3"}), background:"linear-gradient(145deg, #0a0a12 0%, #141428 40%, #0a0a12 100%)", borderRadius:fs?0:16, display:"flex", flexDirection:"column", justifyContent:"center", padding:fs?"5vh 10vw":(d?"48px 72px":"32px 24px"), position:"relative", overflow:"hidden", boxSizing:"border-box" }}>
+        {/* Decorative elements */}
+        <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg, transparent, ${LIME}40, transparent)` }} />
+        <div style={{ position:"absolute", top:"-15%", right:"-8%", width:"40%", height:"50%", borderRadius:"50%", background:`${LIME}04`, filter:"blur(100px)", pointerEvents:"none" }} />
+        <div style={{ position:"absolute", bottom:"-10%", left:"-5%", width:"30%", height:"40%", borderRadius:"50%", background:"rgba(79,195,247,0.03)", filter:"blur(80px)", pointerEvents:"none" }} />
+        {/* Counter */}
+        <div style={{ position:"absolute", top:f(28,20,12), right:f(36,28,16), fontSize:f(13,10,9), color:"rgba(255,255,255,0.2)", fontWeight:600, fontFamily:"monospace" }}>{String(idx+1).padStart(2,"0")} / {String(total).padStart(2,"0")}</div>
+        {/* Watermark */}
+        <div style={{ position:"absolute", bottom:f(28,20,12), left:f(36,28,16), display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:f(24,18,14), height:2, background:`${LIME}30` }} />
+          <span style={{ fontSize:f(10,8,7), color:"rgba(255,255,255,0.12)", fontWeight:700, letterSpacing:2, textTransform:"uppercase" }}>Unique Marketing</span>
+        </div>
+
+        {/* ── COVER SLIDE ── */}
+        {isCover && (<div style={{ textAlign:"center", maxWidth:fs?"70vw":(d?"80%":"100%"), margin:"0 auto" }}>
+          <div style={{ fontSize:f(13,10,9), fontWeight:700, color:LIME, letterSpacing:4, textTransform:"uppercase", marginBottom:f(24,16,12) }}>{selClient?.name || currentPres?.title?.split("·")[1]?.trim() || ""}</div>
+          <div style={{ width:40, height:2, background:LIME, margin:"0 auto", marginBottom:f(24,16,12) }} />
+          <div style={{ fontSize:f(44,32,22), fontWeight:900, color:"#fff", lineHeight:1.15, marginBottom:f(24,16,12), letterSpacing:"-0.5px" }}>{slide.title}</div>
+          <div style={{ width:60, height:1, background:"rgba(255,255,255,0.15)", margin:"0 auto", marginBottom:f(20,14,10) }} />
+          <div style={{ fontSize:f(18,14,11), color:"rgba(255,255,255,0.45)", lineHeight:1.6, fontWeight:300 }}>
+            {rawLines.map((l,i) => <div key={i}>{l}</div>)}
           </div>
-          {renderBody(slide.body, { fontSize:f(F.body), color:"rgba(255,255,255,0.75)", lineHeight:1.7 })}
-        </>)}
+        </div>)}
+
+        {/* ── CTA SLIDE ── */}
+        {isCta && (<div style={{ textAlign:"center", maxWidth:fs?"70vw":(d?"80%":"100%"), margin:"0 auto" }}>
+          <div style={{ width:48, height:48, borderRadius:"50%", background:`${LIME}15`, border:`2px solid ${LIME}30`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", marginBottom:f(24,16,12) }}>
+            <span style={{ fontSize:f(24,20,16) }}>🚀</span>
+          </div>
+          <div style={{ fontSize:f(38,28,20), fontWeight:900, color:LIME, lineHeight:1.15, marginBottom:f(20,14,10) }}>{slide.title}</div>
+          <div style={{ width:60, height:1, background:`${LIME}30`, margin:"0 auto", marginBottom:f(20,14,10) }} />
+          {renderBody()}
+        </div>)}
+
+        {/* ── CONTENT SLIDES (metrics, highlight, strategy) ── */}
+        {!isCover && !isCta && (<div style={{ maxWidth:fs?"80vw":"100%", width:"100%" }}>
+          {/* Tag + Title */}
+          <div style={{ display:"flex", alignItems:"center", gap:f(12,8,6), marginBottom:f(12,8,6) }}>
+            <span style={{ fontSize:f(18,14,12) }}>{TAG.emoji}</span>
+            <span style={{ fontSize:f(11,9,8), fontWeight:700, color:TAG.color, letterSpacing:2, textTransform:"uppercase" }}>{TAG.label}</span>
+            <div style={{ flex:1, height:1, background:`${TAG.color}20` }} />
+          </div>
+          <div style={{ fontSize:f(36,26,18), fontWeight:800, color:"#fff", lineHeight:1.2, marginBottom:f(8,6,4), letterSpacing:"-0.3px" }}>{slide.title}</div>
+          <div style={{ width:f(50,36,28), height:3, background:TAG.color, borderRadius:2, marginBottom:f(28,20,14) }} />
+          {/* Body */}
+          {renderBody()}
+        </div>)}
       </div>
     );
   };
