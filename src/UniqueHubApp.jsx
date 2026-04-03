@@ -22786,7 +22786,7 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
     const slides = currentPres.slides || [];
     const slide = slides[slideIdx] || {};
     return (
-      <div style={{ position:"fixed", inset:0, zIndex:999999, background:"#000", display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
+      <div className="content-wide" style={{ position:"fixed", inset:0, zIndex:999999, background:"#000", display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
         <div style={{ flex:1, position:"relative" }}>
           {renderSlide(slide, slideIdx, slides.length)}
         </div>
