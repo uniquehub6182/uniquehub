@@ -22630,83 +22630,85 @@ function PresentationsPage({ onBack, clients, user, demands }) {
       const aiKey = await supaGetSetting("claude_key");
       if (!aiKey) { showToast("Configure a chave da API Claude nas configurações", "error"); setGenerating(false); return; }
       const metrics = mode === "metrics" ? gatherMetrics() : null;
-      const systemPrompt = `Você é Alice, estrategista sênior de marketing digital da agência Unique Marketing.
-Sua função é criar apresentações IMPRESSIONANTES para reuniões mensais com clientes.
+      const systemPrompt = `Você é a equipe de marketing da Unique Marketing, preparando uma apresentação profissional para reunião com o cliente.
 
-REGRAS DE OURO:
-- Cada slide deve ter um TÍTULO CRIATIVO e ESTRATÉGICO (nunca genérico como "Visão Geral" ou "Resultados")
-- O body de cada slide deve ter 3-6 bullet points separados por \\n
-- Cada bullet point DEVE começar com um emoji relevante (📈 🎯 🔥 💡 ✅ 🚀 📊 💰 ⚡ 📱 ✨)
-- Cada bullet deve ser uma frase completa de 6-15 palavras
-- Use dados concretos, números reais e comparações sempre que possível
-- NÃO use travessões (-) nos bullet points, use emojis como marcadores
-- Tom: confiante, estratégico, como uma agência premium apresentando para um CEO
-- Use emojis estratégicos (📈 🎯 🔥 💡 ✅ 🚀) para dar vida aos slides
-- NUNCA use frases genéricas como "resultados positivos", "bom desempenho" ou "visão geral"
-- Títulos devem ser ESPECÍFICOS ao negócio do cliente (ex: "Chocolates que Vendem por Stories" não "Resultados de Mídias Sociais")
-- Cada slide deve ter uma NARRATIVA que conecta logicamente ao próximo
-- Cada slide deve contar uma HISTÓRIA que conecta com o próximo
-- Personalize com o nome do cliente em slides-chave
+CONTEXTO: Esta apresentação será MOSTRADA DIRETAMENTE AO CLIENTE em reunião presencial ou online. A linguagem deve ser direcionada ao cliente: "Sua marca", "Seus resultados", "Seu público".
 
-TIPOS DE SLIDE:
-- "cover": Slide de abertura (título impactante + subtítulo)
-- "metrics": Dados e números (use bullet points com valores)
-- "highlight": Destaque especial (conquista, top post, insight)
-- "strategy": Análise e direcionamento estratégico
-- "cta": Encerramento com próximos passos
+REGRAS VISUAIS (CRÍTICO - siga rigorosamente):
+1. Cada slide deve ter um TÍTULO conciso (máximo 6 palavras) e específico ao negócio
+2. O body deve ter 4-6 bullet points separados por \\\\n
+3. Cada bullet DEVE começar com um emoji relevante seguido de espaço
+4. Cada bullet deve ser uma frase de 8-15 palavras, clara e direta
+5. NÃO use travessões, asteriscos ou marcadores de texto - APENAS emojis como marcadores
+6. Títulos PROIBIDOS: "Visão Geral", "Resultados", "Resumo", "Próximos Passos" (muito genéricos)
+7. Use títulos criativos como: "O Mês Que Sua Marca Brilhou", "Onde Seus Clientes Estão", "A Receita do Engajamento"
 
-FORMATO DE RESPOSTA:
-JSON array PURO, sem markdown, sem explicações:
-[{ "title": "...", "body": "...", "type": "cover|metrics|highlight|strategy|cta" }]
-Use "\\n" para separar bullet points no body. Gere 10-14 slides.`;
+TOM E LINGUAGEM:
+- Fale COM o cliente, não sobre ele: "Sua marca alcançou..." não "A marca alcançou..."
+- Confiante mas não arrogante: mostre resultados com orgulho
+- Específico: use números, datas, nomes de campanhas reais
+- Narrativo: cada slide conecta logicamente ao próximo, contando a história do mês
+
+TIPOS DE SLIDE (use exatamente estes valores):
+- "cover": Abertura (título da apresentação + subtítulo elegante)
+- "metrics": Números e resultados concretos
+- "highlight": Conquistas e destaques especiais
+- "strategy": Análises, insights e direcionamentos
+- "cta": Encerramento e próximos passos
+
+FORMATO: Responda APENAS com JSON array puro, sem markdown:
+[{"title":"...","body":"...","type":"cover|metrics|highlight|strategy|cta"}]
+Gere 10-14 slides.`
       let userPrompt;
       if (mode === "metrics") {
-        userPrompt = `Crie uma apresentação de RESULTADOS MENSAIS para o cliente "${metrics.clientName}" referente a ${metrics.month}.
+        userPrompt = `Prepare uma apresentação de RESULTADOS MENSAIS para apresentar ao cliente "${metrics.clientName}" na reunião de ${metrics.month}.
 
-DADOS REAIS DO MÊS:
-📊 Posts publicados: ${metrics.published} (mês anterior: ${metrics.prevPublished})
-📈 Crescimento: ${metrics.growth}%
-✅ Aprovados: ${metrics.approved} | ⏳ Pendentes: ${metrics.pending}
-📋 Total de demandas: ${metrics.totalDemands}
-📱 Tipos de conteúdo: ${JSON.stringify(metrics.types)}
-🏆 Top posts: ${JSON.stringify(metrics.topPosts)}
+DADOS REAIS PARA USAR NOS SLIDES:
+📊 ${metrics.published} posts publicados este mês (vs ${metrics.prevPublished} no mês anterior)
+📈 Crescimento de ${metrics.growth}% em publicações
+✅ ${metrics.approved} conteúdos aprovados | ⏳ ${metrics.pending} pendentes
+📋 ${metrics.totalDemands} demandas totais no pipeline
+📱 Distribuição: ${JSON.stringify(metrics.types)}
+🏆 Destaques: ${JSON.stringify(metrics.topPosts)}
 
-ESTRUTURA OBRIGATÓRIA (nesta ordem):
-1. COVER: Slide de abertura com nome do cliente + mês (tipo "cover")
-2. PANORAMA: Resumo executivo dos números-chave do mês (tipo "metrics")
-3. CRESCIMENTO: Comparativo com mês anterior, destaque de evolução (tipo "metrics")
-4. PRODUÇÃO: Breakdown por tipo de conteúdo produzido (tipo "metrics")
-5. DESTAQUES: Top 2-3 posts que mais performaram (tipo "highlight")
-6. INSIGHTS: O que funcionou e por quê (tipo "strategy")
-7. OPORTUNIDADES: O que pode melhorar no próximo mês (tipo "strategy")
-8. ESTRATÉGIA: Direcionamento para o próximo período (tipo "strategy")
-9. PRÓXIMOS PASSOS: Ações concretas planejadas (tipo "cta")
-10. ENCERRAMENTO: Agradecimento + CTA de próxima reunião (tipo "cta")
+ESTRUTURA (siga esta ordem):
+1. COVER: "Resultados [Mês] · [Cliente]" + subtítulo motivador (tipo "cover")
+2. PANORAMA DO MÊS: Números-chave em bullets com emojis (tipo "metrics")  
+3. EVOLUÇÃO: Comparativo mês anterior com % de crescimento (tipo "metrics")
+4. PRODUÇÃO DE CONTEÚDO: O que foi criado, por tipo (tipo "metrics")
+5. DESTAQUES: Os 2-3 posts que mais performaram (tipo "highlight")
+6. O QUE FUNCIONOU: Insights sobre formatos e horários (tipo "strategy")
+7. OPORTUNIDADES: Onde podemos crescer mais (tipo "strategy")
+8. ESTRATÉGIA PRÓXIMO MÊS: Direcionamento claro (tipo "strategy")
+9. AGENDA: Próximas ações concretas com datas (tipo "cta")
+10. ENCERRAMENTO: Agradecimento + próxima reunião (tipo "cta")
 
-Adicione 2-4 slides extras se os dados justificarem.
-IMPORTANTE: Use os números REAIS fornecidos acima. Não invente dados.`;
+IMPORTANTE: Fale diretamente com o cliente. Use "sua marca", "seu público", "seus resultados".
+Use os NÚMEROS REAIS fornecidos acima. Não invente dados.`
       } else {
-        userPrompt = `Crie uma apresentação de PLANEJAMENTO DE CAMPANHAS para o cliente "${selClient.name}" referente a ${formatMonth(selMonth)}.
+        userPrompt = `Prepare uma apresentação de PLANEJAMENTO DE CAMPANHAS para apresentar ao cliente "${selClient.name}" na reunião de ${formatMonth(selMonth)}.
 
-CONTEÚDO EXTRAÍDO DO CALENDÁRIO DE CAMPANHAS:
+CONTEÚDO DO CALENDÁRIO (extraído do PDF do cliente):
 ${pdfText}
 
-ESTRUTURA OBRIGATÓRIA:
-1. COVER: Abertura com nome do cliente + "Planejamento ${formatMonth(selMonth)}" (tipo "cover")
-2. VISÃO ESTRATÉGICA: Objetivo geral do mês, posicionamento (tipo "strategy")
-3-7. CAMPANHAS: Um slide para CADA campanha identificada no PDF. Para cada uma:
+ESTRUTURA (siga esta ordem):
+1. COVER: "[Cliente] · Campanhas [Mês]" + subtítulo estratégico (tipo "cover")
+2. ESTRATÉGIA DO MÊS: Visão geral do posicionamento e objetivos (tipo "strategy")
+3-7. UMA SLIDE POR CAMPANHA: Para cada campanha do PDF, crie um slide com:
    - Título criativo da campanha
-   - Objetivo específico
-   - Mecânica / formato
-   - Datas-chave
-   - Resultado esperado
+   - 📎 Objetivo da campanha
+   - 🎯 Público-alvo
+   - 📱 Formato e canal (Feed, Reels, Stories)
+   - 📅 Período de veiculação
+   - 💡 Resultado esperado
    (tipo "highlight" para cada)
-8. CALENDÁRIO VISUAL: Resumo cronológico de todas as ações (tipo "metrics")
-9. INVESTIMENTO: Sugestão de budget se mencionado no PDF (tipo "metrics")
-10. PRÓXIMOS PASSOS: O que o cliente precisa aprovar/fornecer (tipo "cta")
-11. ENCERRAMENTO: Motivação + próxima reunião (tipo "cta")
+8. CALENDÁRIO: Resumo cronológico das ações mês inteiro (tipo "metrics")
+9. INVESTIMENTO: Budget sugerido se mencionado no PDF (tipo "metrics")  
+10. PRÓXIMAS ETAPAS: O que precisamos do cliente para executar (tipo "cta")
+11. ENCERRAMENTO: Mensagem de parceria + próxima reunião (tipo "cta")
 
-IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que não existem no documento.`;
+IMPORTANTE: Extraia informações REAIS do PDF. Fale com o cliente: "Para sua marca", "Seus clientes vão...".
+NÃO invente campanhas que não existem no documento.`
       }
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST", headers: { "Content-Type": "application/json", "x-api-key": aiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
@@ -22748,94 +22750,88 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
     const isCover = slide.type === "cover" || idx === 0;
     const isHighlight = slide.type === "highlight";
     const isMetric = slide.type === "metrics";
-    const isStrategy = slide.type === "strategy";
     const fs = fullscreen;
     const d = isPDesktop;
     const f = (fv, dv, mv) => fs ? fv : (d ? dv : mv);
 
-    // Parse body lines - handle both \n and actual newlines
-    const rawLines = (slide.body||"").split(/\\n|\n/).map(l=>l.trim()).filter(Boolean);
-    // Detect if line is a bullet (starts with -, •, ✅, 📈, 🎯, etc)
-    const isBullet = (line) => /^[-•·▸►✅📈🎯🔥💡🚀📊🏆⚡💰📱🎯✨🔹➡️▶️]/.test(line);
-    const cleanBullet = (line) => line.replace(/^[-•·▸►]\s*/, "");
+    // Parse body into clean lines
+    const lines = (slide.body||"").split(/\\n|\n/).map(l=>l.trim()).filter(Boolean);
 
-    const renderBody = () => {
-      if (!rawLines.length) return null;
-      const hasBullets = rawLines.some(isBullet);
-      return (
-        <div style={{ display:"flex", flexDirection:"column", gap:f(14,10,8) }}>
-          {rawLines.map((line, i) => {
-            const bullet = isBullet(line);
-            const cleaned = bullet ? cleanBullet(line) : line;
-            const emoji = bullet && /^[^\w\s]/.test(line) ? line.match(/^([^\w\s]+)\s*/)?.[1] : null;
-            return (
-              <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:f(14,10,8) }}>
-                {(bullet || hasBullets) && (
-                  <div style={{ flexShrink:0, width:f(8,6,5), height:f(8,6,5), borderRadius:"50%", background:emoji ? "transparent" : LIME, marginTop:f(10,8,6) }}>
-                    {emoji && <span style={{ fontSize:f(20,16,13) }}>{emoji}</span>}
-                  </div>
-                )}
-                <div style={{ fontSize:f(22,17,13), color:"rgba(255,255,255,0.85)", lineHeight:1.6, fontWeight: i===0 && !hasBullets ? 500 : 400 }}>
-                  {emoji ? cleaned.replace(emoji,"").trim() : cleaned}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      );
-    };
-
-    // Tag labels per type
-    const TAG = isMetric ? {emoji:"📊", label:"DADOS", color:"#4FC3F7"} : isHighlight ? {emoji:"🏆", label:"DESTAQUE", color:"#FFD54F"} : isStrategy ? {emoji:"💡", label:"ESTRATÉGIA", color:"#81C784"} : {emoji:"📋", label:"CONTEÚDO", color:LIME};
-
+    // ── SLIDE CONTAINER ──
     return (
-      <div style={{ flex:(fs||d)?1:"none", width:"100%", height:(fs||d)?"100%":"auto", ...((fs||d)?{}:{aspectRatio:"4/3"}), background:"linear-gradient(145deg, #0a0a12 0%, #141428 40%, #0a0a12 100%)", borderRadius:fs?0:16, display:"flex", flexDirection:"column", justifyContent:"center", padding:fs?"5vh 10vw":(d?"48px 72px":"32px 24px"), position:"relative", overflow:"hidden", boxSizing:"border-box" }}>
-        {/* Decorative elements */}
-        <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg, transparent, ${LIME}40, transparent)` }} />
-        <div style={{ position:"absolute", top:"-15%", right:"-8%", width:"40%", height:"50%", borderRadius:"50%", background:`${LIME}04`, filter:"blur(100px)", pointerEvents:"none" }} />
-        <div style={{ position:"absolute", bottom:"-10%", left:"-5%", width:"30%", height:"40%", borderRadius:"50%", background:"rgba(79,195,247,0.03)", filter:"blur(80px)", pointerEvents:"none" }} />
-        {/* Counter */}
-        <div style={{ position:"absolute", top:f(28,20,12), right:f(36,28,16), fontSize:f(13,10,9), color:"rgba(255,255,255,0.2)", fontWeight:600, fontFamily:"monospace" }}>{String(idx+1).padStart(2,"0")} / {String(total).padStart(2,"0")}</div>
-        {/* Watermark */}
-        <div style={{ position:"absolute", bottom:f(28,20,12), left:f(36,28,16), display:"flex", alignItems:"center", gap:8 }}>
-          <div style={{ width:f(24,18,14), height:2, background:`${LIME}30` }} />
-          <span style={{ fontSize:f(10,8,7), color:"rgba(255,255,255,0.12)", fontWeight:700, letterSpacing:2, textTransform:"uppercase" }}>Unique Marketing</span>
+      <div style={{ flex:(fs||d)?1:"none", width:"100%", height:(fs||d)?"100%":"auto", ...((fs||d)?{}:{aspectRatio:"4/3"}), background:"#0D0D0D", borderRadius:fs?0:16, display:"flex", flexDirection:"column", justifyContent:"space-between", padding:fs?"6vh 8vw":(d?"40px 56px":"28px 20px"), position:"relative", overflow:"hidden", boxSizing:"border-box", fontFamily:"'Figtree',sans-serif" }}>
+
+        {/* ── Top accent line ── */}
+        <div style={{ position:"absolute", top:0, left:0, right:0, height:3, background:`linear-gradient(90deg, ${LIME}, ${LIME}60, transparent 70%)` }} />
+
+        {/* ── Subtle corner glow ── */}
+        <div style={{ position:"absolute", top:"-20%", right:"-10%", width:"50%", height:"60%", borderRadius:"50%", background:`${LIME}03`, filter:"blur(120px)", pointerEvents:"none" }} />
+
+        {/* ══ SLIDE CONTENT ══ */}
+        <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", zIndex:1 }}>
+
+          {/* ── COVER ── */}
+          {isCover && (<div style={{ display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", gap:f(20,14,10) }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{ width:f(40,28,20), height:2, background:LIME }} />
+              <span style={{ fontSize:f(14,11,9), fontWeight:700, color:LIME, letterSpacing:4, textTransform:"uppercase" }}>{selClient?.name || currentPres?.title?.split("·")[1]?.trim() || ""}</span>
+              <div style={{ width:f(40,28,20), height:2, background:LIME }} />
+            </div>
+            <h1 style={{ fontSize:f(42,30,20), fontWeight:900, color:"#fff", lineHeight:1.15, margin:0, maxWidth:"80%", letterSpacing:"-0.5px" }}>{slide.title}</h1>
+            {lines.length > 0 && <div style={{ display:"flex", flexDirection:"column", gap:4, marginTop:f(8,4,2) }}>
+              {lines.map((l,i) => <p key={i} style={{ margin:0, fontSize:f(16,13,11), color:"rgba(255,255,255,0.4)", lineHeight:1.5, fontWeight:300 }}>{l}</p>)}
+            </div>}
+          </div>)}
+
+          {/* ── CTA ── */}
+          {isCta && (<div style={{ display:"flex", flexDirection:"column", alignItems:"center", textAlign:"center", gap:f(20,14,10) }}>
+            <h1 style={{ fontSize:f(38,28,20), fontWeight:900, color:LIME, lineHeight:1.15, margin:0 }}>{slide.title}</h1>
+            <div style={{ width:48, height:2, background:`${LIME}40` }} />
+            {lines.length > 0 && <div style={{ display:"flex", flexDirection:"column", gap:f(12,8,6), maxWidth:f("60vw","80%","100%") }}>
+              {lines.map((l,i) => <p key={i} style={{ margin:0, fontSize:f(18,14,12), color:"rgba(255,255,255,0.6)", lineHeight:1.6 }}>{l}</p>)}
+            </div>}
+          </div>)}
+
+          {/* ── CONTENT SLIDES ── */}
+          {!isCover && !isCta && (<div style={{ display:"flex", flexDirection:"column", gap:f(24,18,12) }}>
+            {/* Tag */}
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:3, height:f(20,16,12), background:LIME, borderRadius:2 }} />
+              <span style={{ fontSize:f(12,10,8), fontWeight:700, color:LIME, letterSpacing:3, textTransform:"uppercase" }}>{isMetric ? "Dados & Métricas" : isHighlight ? "Destaque" : "Estratégia"}</span>
+            </div>
+            {/* Title */}
+            <h2 style={{ fontSize:f(32,24,17), fontWeight:800, color:"#fff", lineHeight:1.2, margin:0, letterSpacing:"-0.3px", maxWidth:"90%" }}>{slide.title}</h2>
+            {/* Divider */}
+            <div style={{ width:f(48,36,28), height:2, background:LIME, borderRadius:1 }} />
+            {/* Body - each line as a spaced item */}
+            <div style={{ display:"flex", flexDirection:"column", gap:f(16,12,8) }}>
+              {lines.map((line, i) => {
+                const hasEmoji = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u.test(line);
+                const emoji = hasEmoji ? line.match(/^([\p{Emoji_Presentation}\p{Extended_Pictographic}]+)\s*/u)?.[1] : null;
+                const text = emoji ? line.slice(emoji.length).trim() : line.replace(/^[-•·]\s*/, "");
+                return (
+                  <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:f(14,10,8) }}>
+                    {emoji ? (
+                      <span style={{ fontSize:f(20,16,14), flexShrink:0, lineHeight:1.4 }}>{emoji}</span>
+                    ) : (
+                      <div style={{ width:f(6,5,4), height:f(6,5,4), borderRadius:"50%", background:LIME, flexShrink:0, marginTop:f(10,8,6) }} />
+                    )}
+                    <span style={{ fontSize:f(18,15,12), color:"rgba(255,255,255,0.8)", lineHeight:1.6, fontWeight:400 }}>{text}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>)}
         </div>
 
-        {/* ── COVER SLIDE ── */}
-        {isCover && (<div style={{ textAlign:"center", maxWidth:fs?"70vw":(d?"80%":"100%"), margin:"0 auto" }}>
-          <div style={{ fontSize:f(13,10,9), fontWeight:700, color:LIME, letterSpacing:4, textTransform:"uppercase", marginBottom:f(24,16,12) }}>{selClient?.name || currentPres?.title?.split("·")[1]?.trim() || ""}</div>
-          <div style={{ width:40, height:2, background:LIME, margin:"0 auto", marginBottom:f(24,16,12) }} />
-          <div style={{ fontSize:f(44,32,22), fontWeight:900, color:"#fff", lineHeight:1.15, marginBottom:f(24,16,12), letterSpacing:"-0.5px" }}>{slide.title}</div>
-          <div style={{ width:60, height:1, background:"rgba(255,255,255,0.15)", margin:"0 auto", marginBottom:f(20,14,10) }} />
-          <div style={{ fontSize:f(18,14,11), color:"rgba(255,255,255,0.45)", lineHeight:1.6, fontWeight:300 }}>
-            {rawLines.map((l,i) => <div key={i}>{l}</div>)}
+        {/* ══ FOOTER ══ */}
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", zIndex:1, marginTop:f(16,10,6) }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <div style={{ width:f(18,14,10), height:2, background:`${LIME}40` }} />
+            <span style={{ fontSize:f(10,8,7), color:"rgba(255,255,255,0.15)", fontWeight:700, letterSpacing:2, textTransform:"uppercase" }}>Unique Marketing</span>
           </div>
-        </div>)}
-
-        {/* ── CTA SLIDE ── */}
-        {isCta && (<div style={{ textAlign:"center", maxWidth:fs?"70vw":(d?"80%":"100%"), margin:"0 auto" }}>
-          <div style={{ width:48, height:48, borderRadius:"50%", background:`${LIME}15`, border:`2px solid ${LIME}30`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", marginBottom:f(24,16,12) }}>
-            <span style={{ fontSize:f(24,20,16) }}>🚀</span>
-          </div>
-          <div style={{ fontSize:f(38,28,20), fontWeight:900, color:LIME, lineHeight:1.15, marginBottom:f(20,14,10) }}>{slide.title}</div>
-          <div style={{ width:60, height:1, background:`${LIME}30`, margin:"0 auto", marginBottom:f(20,14,10) }} />
-          {renderBody()}
-        </div>)}
-
-        {/* ── CONTENT SLIDES (metrics, highlight, strategy) ── */}
-        {!isCover && !isCta && (<div style={{ maxWidth:fs?"80vw":"100%", width:"100%" }}>
-          {/* Tag + Title */}
-          <div style={{ display:"flex", alignItems:"center", gap:f(12,8,6), marginBottom:f(12,8,6) }}>
-            <span style={{ fontSize:f(18,14,12) }}>{TAG.emoji}</span>
-            <span style={{ fontSize:f(11,9,8), fontWeight:700, color:TAG.color, letterSpacing:2, textTransform:"uppercase" }}>{TAG.label}</span>
-            <div style={{ flex:1, height:1, background:`${TAG.color}20` }} />
-          </div>
-          <div style={{ fontSize:f(36,26,18), fontWeight:800, color:"#fff", lineHeight:1.2, marginBottom:f(8,6,4), letterSpacing:"-0.3px" }}>{slide.title}</div>
-          <div style={{ width:f(50,36,28), height:3, background:TAG.color, borderRadius:2, marginBottom:f(28,20,14) }} />
-          {/* Body */}
-          {renderBody()}
-        </div>)}
+          <span style={{ fontSize:f(11,9,8), color:"rgba(255,255,255,0.2)", fontWeight:600, fontFamily:"monospace" }}>{String(idx+1).padStart(2,"0")}/{String(total).padStart(2,"0")}</span>
+        </div>
       </div>
     );
   };
