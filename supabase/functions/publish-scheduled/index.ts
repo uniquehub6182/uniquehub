@@ -9,6 +9,10 @@ const H = {
 const json = (d: unknown, s = 200) =>
   new Response(JSON.stringify(d), { headers: { ...H, "Content-Type": "application/json" }, status: s });
 
+const MAX_RETRIES = 6;
+const STUCK_TIMEOUT_MIN = 3;
+const PROCESSING_TIMEOUT_MIN = 15;
+
 /* ── Get Instagram token for a client ── */
 async function getIGToken(sb: any, clientId: string) {
   let uid = "", at = "";
@@ -29,16 +33,12 @@ async function getIGToken(sb: any, clientId: string) {
   return { uid, at };
 }
 
-/* waitReady removed — ALL IG posts now use 2-phase (no in-function waiting) */
-
-/* ── Check IG container status (single call, for 2-phase REELS) ── */
-async function checkContainerStatus(containerId: string, token: string): Promise<string> {
-  const r = await fetch(`https://graph.facebook.com/v21.0/${containerId}?fields=status_code&access_token=${token}`);
+async function checkContainerStatus(containerId: string, token: string): Promise<{status: string, error?: string}> {
+  const r = await fetch(`https://graph.facebook.com/v21.0/${containerId}?fields=status_code,status&access_token=${token}`);
   const d = await r.json();
-  return d.status_code || "UNKNOWN"; // FINISHED, IN_PROGRESS, ERROR
+  return { status: d.status_code || "UNKNOWN", error: d.status || undefined };
 }
 
-/* ── R2 proxy (fails loud if needed) ── */
 async function proxyToR2(fileUrl: string, sb: any): Promise<string> {
   if (fileUrl.includes("r2.dev") || fileUrl.includes("r2.cloudflarestorage")) return fileUrl;
   if (!fileUrl.includes("supabase.co/storage")) return fileUrl;
@@ -51,21 +51,16 @@ async function proxyToR2(fileUrl: string, sb: any): Promise<string> {
     body: JSON.stringify({ fileName: filename, contentType: ct, sourceUrl: fileUrl }),
   });
   const r2Data = await r2Res.json();
-  if (r2Data.publicUrl) { console.log(`[R2] ${filename} → OK`); return r2Data.publicUrl; }
+  if (r2Data.publicUrl) return r2Data.publicUrl;
   throw new Error(`R2 proxy failed for ${filename}: ${r2Data.error || 'unknown'}`);
 }
 
-/* ══════════════════════════════════════════════════════════
-   INSTAGRAM PUBLISHING
-   ══════════════════════════════════════════════════════════ */
-
-/* ── Phase 1 for ALL IG types: Create container only (fast) ── */
+/* ══ INSTAGRAM PHASE 1: Create container ══ */
 async function createIGContainer(sb: any, clientId: string, urls: string[], caption: string, mediaType: string) {
   const { uid, at } = await getIGToken(sb, clientId);
   const type = (mediaType || "FEED").toUpperCase();
   const proxied = await Promise.all(urls.map(u => proxyToR2(u, sb)));
-  
-  let cid: string;
+
   if (type === "REELS") {
     const videoUrl = proxied[0];
     const coverUrl = proxied.length > 1 ? proxied[1] : null;
@@ -74,75 +69,60 @@ async function createIGContainer(sb: any, clientId: string, urls: string[], capt
     if (coverUrl) p.append("cover_url", coverUrl);
     const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
-    if (d.error) throw new Error(d.error.message);
-    cid = d.id;
+    if (d.error) throw new Error(`IG REELS container: ${d.error.message}`);
+    return { container_id: d.id, ig_user_id: uid, type };
   } else if (proxied.length > 1 && type !== "STORIES") {
-    /* CAROUSEL: create children (no wait needed at creation) + main container */
     const kids: string[] = [];
     for (const imgUrl of proxied) {
       const p = new URLSearchParams({ access_token: at, image_url: imgUrl, is_carousel_item: "true" });
       const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
       const d = await r.json();
-      if (d.error) throw new Error(d.error.message);
+      if (d.error) throw new Error(`IG carousel child: ${d.error.message}`);
       kids.push(d.id);
     }
-    /* Save kids + main will be created in Phase 2 after kids are ready */
     return { container_id: null, ig_user_id: uid, type: "CAROUSEL", children: kids, caption };
   } else {
-    /* FEED or STORIES */
     const p = new URLSearchParams({ access_token: at, image_url: proxied[0] });
     if (type === "STORIES") p.append("media_type", "STORIES");
     if (caption && type !== "STORIES") p.append("caption", caption);
     const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
-    if (d.error) throw new Error(d.error.message);
-    cid = d.id;
+    if (d.error) throw new Error(`IG ${type} container: ${d.error.message}`);
+    return { container_id: d.id, ig_user_id: uid, type };
   }
-  console.log(`[IG Phase1] Container created: ${cid} (${type})`);
-  return { container_id: cid, ig_user_id: uid, type };
 }
 
-/* ── Phase 2 for ALL IG types: Check ready & publish ── */
+/* ══ INSTAGRAM PHASE 2: Check & publish ══ */
 async function checkAndPublishIG(sb: any, clientId: string, meta: any) {
   const { at } = await getIGToken(sb, clientId);
   const uid = meta.ig_user_id;
-  
+
   if (meta.type === "CAROUSEL" && meta.children && !meta.container_id) {
-    /* CAROUSEL Phase 2a: check kids ready, then create main container */
     for (const kidId of meta.children) {
-      const status = await checkContainerStatus(kidId, at);
-      if (status === "IN_PROGRESS" || status === "UNKNOWN") return { ready: false, status: "children_processing" };
+      const { status } = await checkContainerStatus(kidId, at);
+      if (status === "IN_PROGRESS" || status === "UNKNOWN") return { ready: false };
       if (status === "ERROR") throw new Error("Carousel child processing error");
     }
-    /* All kids ready → create main carousel container */
     const p = new URLSearchParams({ access_token: at, media_type: "CAROUSEL", children: meta.children.join(",") });
     if (meta.caption) p.append("caption", meta.caption);
     const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
-    if (d.error) throw new Error(d.error.message);
-    /* Update meta with main container_id for next check */
-    return { ready: false, status: "carousel_created", updated_meta: { ...meta, container_id: d.id } };
+    if (d.error) throw new Error(`Carousel main: ${d.error.message}`);
+    return { ready: false, updated_meta: { ...meta, container_id: d.id } };
   }
-  
-  /* Check container status */
-  const status = await checkContainerStatus(meta.container_id, at);
-  console.log(`[IG Phase2] Container ${meta.container_id} (${meta.type}): ${status}`);
-  if (status === "IN_PROGRESS" || status === "UNKNOWN") return { ready: false, status };
-  if (status === "ERROR") throw new Error("Instagram rejeitou a mídia durante processamento");
-  
-  /* FINISHED → publish! */
+
+  const { status, error: statusError } = await checkContainerStatus(meta.container_id, at);
+  if (status === "IN_PROGRESS" || status === "UNKNOWN") return { ready: false };
+  if (status === "ERROR") throw new Error(`IG processamento falhou: ${statusError || "erro desconhecido"}`);
+
   const pp = new URLSearchParams({ access_token: at, creation_id: meta.container_id });
   const pr = await fetch(`https://graph.facebook.com/v21.0/${uid}/media_publish`, { method: "POST", body: pp });
   const pd = await pr.json();
-  if (pd.error) throw new Error(pd.error.message);
+  if (pd.error) throw new Error(`IG publish: ${pd.error.message}`);
   return { ready: true, success: true, media_id: pd.id, media_type: meta.type };
 }
 
-/* (publishInstagramImages removed — ALL IG posts now use 2-phase via createIGContainer + checkAndPublishIG) */
-
-/* ══════════════════════════════════════════════════════════
-   FACEBOOK PUBLISHING (single-phase, streaming upload)
-   ══════════════════════════════════════════════════════════ */
+/* ══ FACEBOOK PUBLISHING ══ */
 async function publishFacebook(sb: any, clientId: string, imageUrls: string[], caption: string, mediaType?: string) {
   let pageToken: string | null = null, pageId: string | null = null;
   const { data: s1 } = await sb.from("app_settings").select("value").eq("key", `client_socials_${clientId}`).single();
@@ -160,7 +140,7 @@ async function publishFacebook(sb: any, clientId: string, imageUrls: string[], c
     if (!videoUrl) throw new Error("No video URL for Reels");
     const initRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: new URLSearchParams({ upload_phase: "start", access_token: pageToken }) });
     const initData = await initRes.json();
-    if (initData.error) throw new Error(initData.error.message);
+    if (initData.error) throw new Error(`FB Reels init: ${initData.error.message}`);
     const videoRes = await fetch(videoUrl);
     if (!videoRes.ok) throw new Error(`Download failed: ${videoRes.status}`);
     const fileSize = videoRes.headers.get("content-length") || "0";
@@ -170,45 +150,44 @@ async function publishFacebook(sb: any, clientId: string, imageUrls: string[], c
     if (proxied.length > 1 && proxied[1]) finishParams.append("thumb", proxied[1]);
     const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_reels`, { method: "POST", body: finishParams });
     const finishData = await finishRes.json();
-    if (finishData.error) throw new Error(finishData.error.message);
+    if (finishData.error) throw new Error(`FB Reels finish: ${finishData.error.message}`);
     await fetch(`https://graph.facebook.com/v21.0/${initData.video_id}`, { method: "POST", body: new URLSearchParams({ access_token: pageToken, published: "true" }) });
     return { success: true, media_id: initData.video_id };
   }
-  /* FEED photo */
   const r = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photos`, { method: "POST", body: new URLSearchParams({ access_token: pageToken, message: caption || "", url: proxied[0] || "" }) });
   const d = await r.json();
-  if (d.error) throw new Error(d.error.message);
+  if (d.error) throw new Error(`FB photo: ${d.error.message}`);
   return { success: true, media_id: d.id || d.post_id };
 }
 
-/* ── Helper: mark demand published only when ALL posts are done ── */
+/* ── Helpers ── */
 async function tryMarkDemandPublished(sb: any, demandId: string) {
   if (!demandId) return;
   const { data: siblings } = await sb.from("scheduled_posts").select("id,status").eq("demand_id", demandId);
-  const allDone = (siblings || []).every((s: any) => s.status === "published");
-  if (allDone) {
+  if ((siblings || []).every((s: any) => s.status === "published")) {
     await sb.from("demands").update({ stage: "published" }).eq("id", demandId);
-    console.log(`[Scheduler] ALL posts for demand ${demandId} → published`);
   }
 }
 
-/* ── Helper: notify admins on failure ── */
 async function notifyFailure(sb: any, post: any, errorMsg: string) {
   try {
     let clientName = post.client_id;
     const { data: cl } = await sb.from("clients").select("name").eq("id", post.client_id).single();
     if (cl?.name) clientName = cl.name;
     const platform = post.platform === "instagram" ? "Instagram" : "Facebook";
-    const msg = (errorMsg || "Erro desconhecido").substring(0, 120);
     const { data: team } = await sb.from("profiles").select("id, role").in("role", ["admin", "owner", "manager"]);
     for (const u of (team || [])) {
-      await sb.from("notifications").insert({ user_id: u.id, type: "publish_failed", title: `❌ Falha — ${clientName} (${platform})`, body: `Erro: ${msg}`, read: false });
+      await sb.from("notifications").insert({ user_id: u.id, type: "publish_failed", title: `❌ Falha — ${clientName} (${platform})`, body: `${(errorMsg || "Erro desconhecido").substring(0, 200)}`, read: false });
     }
-  } catch (e) { console.error("[Notif] Error:", e); }
+  } catch (e) { console.error("[Notif]", e); }
+}
+
+function isTransientError(msg: string): boolean {
+  return /unexpected|temporarily|timeout|ETIMEDOUT|retry|ECONNRESET|socket|network|502|503|429/i.test(msg);
 }
 
 /* ══════════════════════════════════════════════════════════
-   MAIN HANDLER
+   MAIN HANDLER — FIXED: uses updated_at, higher retry limit, processes more per call
    ══════════════════════════════════════════════════════════ */
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: H });
@@ -219,84 +198,80 @@ serve(async (req) => {
     let body: any = {};
     try { body = await req.json(); } catch {}
     if (body?.action === "reset_all") {
-      const r1 = await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("status", "publishing").select("id");
-      const r2 = await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("status", "failed").ilike("error", "%Only photo or video%").select("id");
-      const r3 = await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("status", "failed").ilike("error", "%Invalid image format%").select("id");
-      const r4 = await sb.from("scheduled_posts").update({ status: "pending", error: null }).eq("status", "failed").ilike("error", "%R2 proxy failed%").select("id");
-      const { data: badDemands } = await sb.from("scheduled_posts").select("demand_id").in("status", ["pending","failed"]).not("demand_id","is",null);
-      const uids = [...new Set((badDemands||[]).map((d:any) => d.demand_id))];
-      let dr = 0;
-      for (const did of uids) { const { data: dem } = await sb.from("demands").select("stage").eq("id", did).single(); if (dem?.stage === "published") { await sb.from("demands").update({ stage: "scheduled" }).eq("id", did); dr++; } }
-      return json({ reset: true, stuck: r1.data?.length||0, r2_fix: (r2.data?.length||0)+(r3.data?.length||0)+(r4.data?.length||0), demands_reset: dr });
+      const r1 = await sb.from("scheduled_posts").update({ status: "pending", error: null, retry_count: 0 }).eq("status", "publishing").select("id");
+      const r2 = await sb.from("scheduled_posts").update({ status: "pending", error: null, retry_count: 0 }).eq("status", "failed").select("id");
+      return json({ reset: true, publishing_reset: r1.data?.length||0, failed_reset: r2.data?.length||0 });
     }
 
     const now = new Date();
-    const nowISO = now.toISOString();
     const results: any[] = [];
 
-    /* ═══ RECOVERY: stuck "publishing" posts (>5 min) — max 3 retries ═══ */
-    const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
-    const { data: stuck } = await sb.from("scheduled_posts").select("id,retry_count").eq("status", "publishing").lte("created_at", fiveMinAgo);
+    /* ═══ RECOVERY: stuck "publishing" posts — uses UPDATED_AT not created_at ═══ */
+    const stuckCutoff = new Date(now.getTime() - STUCK_TIMEOUT_MIN * 60 * 1000).toISOString();
+    const { data: stuck } = await sb.from("scheduled_posts")
+      .select("id,retry_count")
+      .eq("status", "publishing")
+      .lte("updated_at", stuckCutoff);
     if (stuck?.length) {
       for (const s of stuck) {
         const retries = (s.retry_count || 0) + 1;
-        if (retries >= 3) {
-          await sb.from("scheduled_posts").update({ status: "failed", error: `Falhou após ${retries} tentativas — verifique o arquivo de mídia`, retry_count: retries }).eq("id", s.id);
+        if (retries >= MAX_RETRIES) {
+          await sb.from("scheduled_posts").update({ status: "failed", error: `Falhou após ${retries} tentativas (publishing stuck)`, retry_count: retries }).eq("id", s.id);
           console.log(`[Recovery] FAILED ${s.id} after ${retries} retries`);
         } else {
           await sb.from("scheduled_posts").update({ status: "pending", error: null, retry_count: retries }).eq("id", s.id);
-          console.log(`[Recovery] Reset ${s.id} (retry ${retries}/3)`);
+          console.log(`[Recovery] Reset ${s.id} (retry ${retries}/${MAX_RETRIES})`);
         }
       }
     }
 
-    /* ═══ PHASE 2: Check REELS containers being processed by Instagram ═══ */
+    /* ═══ PHASE 2: Check containers being processed by Instagram ═══ */
     const { data: processing } = await sb.from("scheduled_posts").select("*").eq("status", "processing");
     for (const post of (processing || [])) {
       try {
         const meta = typeof post.result === "string" ? JSON.parse(post.result) : post.result;
-        if (!meta?.container_id || !meta?.ig_user_id) { 
-          await sb.from("scheduled_posts").update({ status: "failed", error: "Missing container_id from Phase 1" }).eq("id", post.id);
-          continue; 
+        if (!meta?.ig_user_id) {
+          await sb.from("scheduled_posts").update({ status: "failed", error: "Dados do container ausentes (Phase 1 incompleto)" }).eq("id", post.id);
+          continue;
+        }
+        /* Carousel without main container_id — check children first */
+        if (meta.type === "CAROUSEL" && !meta.container_id && !meta.children?.length) {
+          await sb.from("scheduled_posts").update({ status: "failed", error: "Carousel sem children IDs" }).eq("id", post.id);
+          continue;
         }
         const res = await checkAndPublishIG(sb, post.client_id, meta);
         if (res.ready) {
           await sb.from("scheduled_posts").update({ status: "published", result: res, published_at: new Date().toISOString() }).eq("id", post.id);
-          console.log(`[Phase2] ✅ ${post.id} published on Instagram!`);
+          console.log(`[Phase2] ✅ Published ${post.id}`);
           results.push({ id: post.id, status: "published", phase: 2 });
           await tryMarkDemandPublished(sb, post.demand_id);
         } else if (res.updated_meta) {
-          /* Carousel: main container created, save and check next cycle */
           await sb.from("scheduled_posts").update({ result: res.updated_meta }).eq("id", post.id);
-          console.log(`[Phase2] Carousel main container created, will publish next cycle`);
           results.push({ id: post.id, status: "processing", phase: 2, note: "carousel_main_created" });
         } else {
-          /* Not ready yet — check how long it's been processing */
-          const created = new Date(post.created_at).getTime();
-          const elapsed = (now.getTime() - created) / 60000; /* minutes */
-          if (elapsed > 10) {
-            await sb.from("scheduled_posts").update({ status: "failed", error: "Instagram não processou o vídeo em 10 min — verifique o arquivo" }).eq("id", post.id);
-            await notifyFailure(sb, post, "Vídeo não processado após 10 min");
-            results.push({ id: post.id, status: "failed", phase: 2, reason: "timeout_10min" });
+          /* Still processing — check timeout */
+          const elapsed = (now.getTime() - new Date(post.updated_at || post.created_at).getTime()) / 60000;
+          if (elapsed > PROCESSING_TIMEOUT_MIN) {
+            await sb.from("scheduled_posts").update({ status: "failed", error: `Instagram não processou em ${PROCESSING_TIMEOUT_MIN} min` }).eq("id", post.id);
+            await notifyFailure(sb, post, `Vídeo não processado após ${PROCESSING_TIMEOUT_MIN} min`);
+            results.push({ id: post.id, status: "failed", phase: 2, reason: "timeout" });
           } else {
-            console.log(`[Phase2] REELS ${post.id} still processing (${elapsed.toFixed(0)}min)...`);
             results.push({ id: post.id, status: "processing", phase: 2, minutes: elapsed.toFixed(0) });
           }
         }
       } catch (e: any) {
         const msg = e.message || "";
-        const isTransient = msg.includes("unexpected") || msg.includes("temporarily") || msg.includes("timeout") || msg.includes("ETIMEDOUT");
-        console.error(`[Phase2] ${isTransient?"Transient":"Fatal"} error for ${post.id}: ${msg}`);
-        if (isTransient) {
+        console.error(`[Phase2] Error ${post.id}: ${msg}`);
+        if (isTransientError(msg)) {
           const retries = (post.retry_count || 0) + 1;
-          if (retries >= 3) {
-            await sb.from("scheduled_posts").update({ status: "failed", error: `Transient error após ${retries} tentativas: ${msg}`, retry_count: retries }).eq("id", post.id);
+          if (retries >= MAX_RETRIES) {
+            await sb.from("scheduled_posts").update({ status: "failed", error: `Falhou após ${retries} tentativas: ${msg}`, retry_count: retries }).eq("id", post.id);
             await notifyFailure(sb, post, msg);
-            results.push({ id: post.id, status: "failed", phase: 2, retries });
           } else {
-            await sb.from("scheduled_posts").update({ status: "pending", error: null, retry_count: retries }).eq("id", post.id);
-            results.push({ id: post.id, status: "retry", phase: 2, retries });
+            /* Keep in processing — don't reset to pending, just increment retry */
+            await sb.from("scheduled_posts").update({ retry_count: retries }).eq("id", post.id);
           }
+          results.push({ id: post.id, status: retries >= MAX_RETRIES ? "failed" : "retry", phase: 2 });
         } else {
           await sb.from("scheduled_posts").update({ status: "failed", error: msg }).eq("id", post.id);
           await notifyFailure(sb, post, msg);
@@ -307,7 +282,7 @@ serve(async (req) => {
 
     /* ═══ PHASE 1: Process pending posts that are due ═══ */
     const { data: allDue, error } = await sb.from("scheduled_posts").select("*")
-      .eq("status", "pending").lte("scheduled_at", nowISO)
+      .eq("status", "pending").lte("scheduled_at", now.toISOString())
       .order("scheduled_at", { ascending: true }).limit(10);
 
     if (error) throw new Error(`DB: ${error.message}`);
@@ -315,53 +290,46 @@ serve(async (req) => {
       return json({ message: "No posts due", phase2: processing?.length || 0, recovered: stuck?.length || 0 });
     }
 
-    /* Sort: images first (fast), videos last. Max 4 images + 1 video per call */
+    /* Process: all images + up to 3 videos per call */
     const imgs = (allDue||[]).filter((p: any) => p.media_type !== "REELS");
     const vids = (allDue||[]).filter((p: any) => p.media_type === "REELS");
-    const batch = [...imgs.slice(0, 4), ...vids.slice(0, 1)];
-    console.log(`[Phase1] ${allDue?.length || 0} due → processing ${batch.length} (${imgs.length > 4 ? 4 : imgs.length} img + ${vids.length > 0 ? 1 : 0} vid)`);
+    const batch = [...imgs.slice(0, 5), ...vids.slice(0, 3)];
+    console.log(`[Phase1] ${allDue?.length || 0} due → batch ${batch.length} (${Math.min(imgs.length,5)} img + ${Math.min(vids.length,3)} vid)`);
 
     for (const post of batch) {
-      /* Atomically claim the post */
+      /* Atomically claim */
       const { data: claimed } = await sb.from("scheduled_posts")
         .update({ status: "publishing" }).eq("id", post.id).eq("status", "pending").select("id").single();
       if (!claimed) continue;
 
       try {
         const urls = (post.image_urls || []) as string[];
+        if (!urls.length) throw new Error("Sem mídia — adicione imagens/vídeo");
 
         if (post.platform === "instagram") {
-          /* ── ALL Instagram: 2-PHASE — create container now, publish in Phase 2 ── */
           const container = await createIGContainer(sb, post.client_id, urls, post.caption || "", post.media_type);
-          await sb.from("scheduled_posts").update({
-            status: "processing",
-            result: container,
-            error: null
-          }).eq("id", post.id);
-          console.log(`[Phase1] IG container created (${container.type}) → "processing"`);
+          await sb.from("scheduled_posts").update({ status: "processing", result: container, error: null }).eq("id", post.id);
+          console.log(`[Phase1] IG container ${container.type} → processing`);
           results.push({ id: post.id, status: "processing", phase: 1, type: container.type });
         } else {
-          /* ── Facebook: single-phase publish ── */
           const result = await publishFacebook(sb, post.client_id, urls, post.caption || "", post.media_type);
           await sb.from("scheduled_posts").update({ status: "published", result, published_at: new Date().toISOString() }).eq("id", post.id);
-          console.log(`[Phase1] ✅ Published ${post.id} on Facebook`);
+          console.log(`[Phase1] ✅ FB published ${post.id}`);
           results.push({ id: post.id, status: "published", phase: 1 });
           await tryMarkDemandPublished(sb, post.demand_id);
         }
       } catch (e: any) {
         const msg = e.message || "";
-        const isTransient = msg.includes("unexpected") || msg.includes("temporarily") || msg.includes("timeout") || msg.includes("ETIMEDOUT") || msg.includes("retry");
-        console.error(`[Phase1] ${isTransient?"Transient":"Fatal"} ${post.id}: ${msg}`);
-        if (isTransient) {
+        console.error(`[Phase1] ${post.id}: ${msg}`);
+        if (isTransientError(msg)) {
           const retries = (post.retry_count || 0) + 1;
-          if (retries >= 3) {
+          if (retries >= MAX_RETRIES) {
             await sb.from("scheduled_posts").update({ status: "failed", error: `Falhou após ${retries} tentativas: ${msg}`, retry_count: retries }).eq("id", post.id);
             await notifyFailure(sb, post, msg);
-            results.push({ id: post.id, status: "failed", phase: 1, retries });
           } else {
             await sb.from("scheduled_posts").update({ status: "pending", error: null, retry_count: retries }).eq("id", post.id);
-            results.push({ id: post.id, status: "retry", phase: 1, retries });
           }
+          results.push({ id: post.id, status: retries >= MAX_RETRIES ? "failed" : "retry", phase: 1 });
         } else {
           await sb.from("scheduled_posts").update({ status: "failed", error: msg }).eq("id", post.id);
           await notifyFailure(sb, post, msg);
