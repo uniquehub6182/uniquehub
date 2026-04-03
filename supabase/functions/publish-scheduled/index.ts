@@ -281,25 +281,43 @@ serve(async (req) => {
     }
 
     /* ═══ PHASE 1: Process pending posts that are due ═══ */
+    const startTime = Date.now();
+    const WALL_LIMIT_MS = 45000; /* Stop processing if we've been running > 45s (Edge Function limit is 60s) */
+    const elapsed = () => Date.now() - startTime;
+
     const { data: allDue, error } = await sb.from("scheduled_posts").select("*")
       .eq("status", "pending").lte("scheduled_at", now.toISOString())
-      .order("scheduled_at", { ascending: true }).limit(10);
+      .order("scheduled_at", { ascending: true }).limit(12);
 
     if (error) throw new Error(`DB: ${error.message}`);
     if ((!allDue || allDue.length === 0) && results.length === 0) {
       return json({ message: "No posts due", phase2: processing?.length || 0, recovered: stuck?.length || 0 });
     }
 
-    /* Process: all images + up to 3 videos per call */
-    const imgs = (allDue||[]).filter((p: any) => p.media_type !== "REELS");
-    const vids = (allDue||[]).filter((p: any) => p.media_type === "REELS");
-    const batch = [...imgs.slice(0, 5), ...vids.slice(0, 3)];
-    console.log(`[Phase1] ${allDue?.length || 0} due → batch ${batch.length} (${Math.min(imgs.length,5)} img + ${Math.min(vids.length,3)} vid)`);
+    /* Sort: Instagram first (fast ~2s per container), then Facebook FEED (fast ~3s), then Facebook REELS (slow ~20s) */
+    const igPosts = (allDue||[]).filter((p: any) => p.platform === "instagram");
+    const fbImages = (allDue||[]).filter((p: any) => p.platform === "facebook" && p.media_type !== "REELS");
+    const fbReels = (allDue||[]).filter((p: any) => p.platform === "facebook" && p.media_type === "REELS");
+    const batch = [...igPosts.slice(0, 6), ...fbImages.slice(0, 4), ...fbReels.slice(0, 2)];
+    console.log(`[Phase1] ${allDue?.length} due → batch ${batch.length} | elapsed ${elapsed()}ms`);
 
     for (const post of batch) {
-      /* Atomically claim */
-      const { data: claimed } = await sb.from("scheduled_posts")
-        .update({ status: "publishing" }).eq("id", post.id).eq("status", "pending").select("id").single();
+      /* ── WATCHDOG: Stop if running too long ── */
+      if (elapsed() > WALL_LIMIT_MS) {
+        console.log(`[Phase1] WATCHDOG: Stopping at ${elapsed()}ms — ${results.length} processed so far`);
+        break;
+      }
+
+      /* Atomically claim — one at a time */
+      let claimed: any = null;
+      try {
+        const res = await sb.from("scheduled_posts")
+          .update({ status: "publishing" }).eq("id", post.id).eq("status", "pending").select("id").single();
+        claimed = res.data;
+      } catch (claimErr: any) {
+        console.error(`[Phase1] Claim error ${post.id}: ${claimErr.message}`);
+        continue;
+      }
       if (!claimed) continue;
 
       try {
@@ -307,20 +325,22 @@ serve(async (req) => {
         if (!urls.length) throw new Error("Sem mídia — adicione imagens/vídeo");
 
         if (post.platform === "instagram") {
+          console.log(`[Phase1] Creating IG container for ${post.id} (${post.media_type})...`);
           const container = await createIGContainer(sb, post.client_id, urls, post.caption || "", post.media_type);
           await sb.from("scheduled_posts").update({ status: "processing", result: container, error: null }).eq("id", post.id);
-          console.log(`[Phase1] IG container ${container.type} → processing`);
+          console.log(`[Phase1] IG ${post.id} → processing (${elapsed()}ms)`);
           results.push({ id: post.id, status: "processing", phase: 1, type: container.type });
         } else {
+          console.log(`[Phase1] Publishing FB ${post.id} (${post.media_type})...`);
           const result = await publishFacebook(sb, post.client_id, urls, post.caption || "", post.media_type);
           await sb.from("scheduled_posts").update({ status: "published", result, published_at: new Date().toISOString() }).eq("id", post.id);
-          console.log(`[Phase1] ✅ FB published ${post.id}`);
+          console.log(`[Phase1] ✅ FB ${post.id} published (${elapsed()}ms)`);
           results.push({ id: post.id, status: "published", phase: 1 });
           await tryMarkDemandPublished(sb, post.demand_id);
         }
       } catch (e: any) {
-        const msg = e.message || "";
-        console.error(`[Phase1] ${post.id}: ${msg}`);
+        const msg = e.message || String(e);
+        console.error(`[Phase1] ERROR ${post.id} (${elapsed()}ms): ${msg}`);
         if (isTransientError(msg)) {
           const retries = (post.retry_count || 0) + 1;
           if (retries >= MAX_RETRIES) {
@@ -338,7 +358,8 @@ serve(async (req) => {
       }
     }
 
-    return json({ message: `Processed ${results.length} posts`, results, recovered: stuck?.length || 0 });
+    console.log(`[Scheduler] Done in ${elapsed()}ms — ${results.length} processed`);
+    return json({ message: `Processed ${results.length} posts`, results, recovered: stuck?.length || 0, elapsed_ms: elapsed() });
   } catch (e: any) {
     console.error("[Scheduler] Fatal:", e.message);
     return json({ error: e.message }, 500);
