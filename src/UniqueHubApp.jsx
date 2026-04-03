@@ -22786,7 +22786,7 @@ IMPORTANTE: Extraia DETALHES ESPECÍFICOS do PDF. NÃO invente campanhas que nã
     const slides = currentPres.slides || [];
     const slide = slides[slideIdx] || {};
     return (
-      <div className="content-wide" style={{ position:"fixed", inset:0, zIndex:999999, background:"#000", display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
+      <div className="pres-fs" style={{ position:"fixed", inset:0, zIndex:999999, background:"#000", display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
         <div style={{ flex:1, position:"relative" }}>
           {renderSlide(slide, slideIdx, slides.length)}
         </div>
@@ -29661,6 +29661,7 @@ html.uh-desktop .card:hover{box-shadow:0 8px 30px ${dark?"rgba(0,0,0,0.25)":"rgb
 html.uh-desktop input,html.uh-desktop textarea{font-size:14px!important}
 html.uh-desktop .tinput{font-size:14px!important;padding:10px 14px;border-radius:10px}
 html.uh-desktop .bnav{position:fixed!important;bottom:20px!important;z-index:9999!important}
+.pres-fs{position:fixed!important;inset:0!important;max-width:none!important;width:100vw!important;height:100vh!important;padding:0!important;margin:0!important;z-index:999999!important;transform:none!important}
 html.uh-desktop .sheet{bottom:auto!important;top:50%!important;left:50%!important;right:auto!important;transform:translate(-50%,-50%)!important;max-width:480px!important;width:90%!important;border-radius:20px!important;max-height:80vh!important;z-index:10001!important;animation:fadeIn .2s ease!important}
 html.uh-desktop .overlay{z-index:10000!important}
 html.uh-desktop .d-dash-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:20px!important;align-items:start!important}
