@@ -323,6 +323,18 @@ serve(async (req) => {
       if (!claimed) continue;
 
       try {
+        /* Guard: check if same demand already has a published post on this platform */
+        if (post.demand_id) {
+          const { data: alreadyDone } = await sb.from("scheduled_posts")
+            .select("id").eq("demand_id", post.demand_id).eq("platform", post.platform).eq("status", "published").limit(1);
+          if (alreadyDone?.length) {
+            await sb.from("scheduled_posts").update({ status: "published", error: "Duplicado — já publicado por outra entrada" }).eq("id", post.id);
+            console.log(`[Phase1] SKIP ${post.id} — demand already published on ${post.platform}`);
+            results.push({ id: post.id, status: "skipped_duplicate", phase: 1 });
+            continue;
+          }
+        }
+
         const urls = (post.image_urls || []) as string[];
         if (!urls.length) throw new Error("Sem mídia — adicione imagens/vídeo");
 

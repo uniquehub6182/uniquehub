@@ -9070,46 +9070,46 @@ REGRAS TÉCNICAS:
     return !isNaN(dt) && dt < new Date();
   };
   const pendingCount = demands.filter(d => !["published","completed"].includes(d.stage)).length;
-  /* ── Auto-publisher: calls publish-scheduled Edge Function every 60s ── */
+  /* ── Auto-publisher REMOVED — pg_cron handles all publishing server-side ── */
+  /* This poller only checks if scheduled demands got published and updates UI */
   const autoPublishRef = useRef(false);
   const demandsRef = useRef(demands);
   useEffect(() => { demandsRef.current = demands; }, [demands]);
   useEffect(() => {
-    const callScheduler = async () => {
-      /* Only call if there are scheduled demands */
+    const pollPublished = async () => {
       const hasScheduled = demandsRef.current.some(d => d.stage === "scheduled");
       if (!hasScheduled) return;
-      if (autoPublishRef.current) return; /* prevent concurrent calls */
+      if (autoPublishRef.current) return;
       autoPublishRef.current = true;
       try {
-        const res = await fetch(`${SUPA_URL}/functions/v1/publish-scheduled`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-          body: "{}"
-        });
-        const data = await res.json();
-        if (data.results?.length > 0) {
-          /* Some posts were published — update local state */
-          const published = data.results.filter(r => r.status === "published");
-          if (published.length > 0) {
-            /* Reload demands from Supabase to get updated stages */
-            const { data: freshDemands } = await supabase.from("demands").select("*").in("id", published.map(r => r.demand_id || r.id));
-            if (freshDemands) {
-              setDemands(prev => {
-                const map = new Map(freshDemands.map(d => [d.id, d]));
-                return prev.map(d => map.has(d.supaId) ? { ...d, stage: map.get(d.supaId).stage || d.stage } : d);
-              });
-            }
-            showToast(`✅ ${published.length} post${published.length>1?"s":""} publicado${published.length>1?"s":""} automaticamente!`);
-          }
-          const failed = data.results.filter(r => r.status === "failed");
-          if (failed.length > 0) showToast(`⚠️ ${failed.length} post${failed.length>1?"s":""} falhou: ${failed[0].error||"erro desconhecido"}`);
+        /* Just check DB for status changes — do NOT call publish-scheduled */
+        const scheduledIds = demandsRef.current.filter(d => d.stage === "scheduled" && d.supaId).map(d => d.supaId);
+        if (!scheduledIds.length) { autoPublishRef.current = false; return; }
+        const { data: publishedPosts } = await supabase.from("scheduled_posts").select("demand_id, status").in("demand_id", scheduledIds);
+        const doneIds = new Set();
+        for (const did of scheduledIds) {
+          const siblings = (publishedPosts||[]).filter(p => p.demand_id === did);
+          if (siblings.length > 0 && siblings.every(p => p.status === "published")) doneIds.add(did);
         }
-      } catch(e) { console.error("Auto-publish scheduler error:", e); }
+        if (doneIds.size > 0) {
+          setDemands(prev => prev.map(d => doneIds.has(d.supaId) ? { ...d, stage: "published" } : d));
+          showToast(`✅ ${doneIds.size} post${doneIds.size>1?"s":""} publicado${doneIds.size>1?"s":""} automaticamente!`);
+          for (const did of doneIds) { await supabase.from("demands").update({ stage: "published" }).eq("id", did); }
+        }
+        /* Check for failures too */
+        for (const did of scheduledIds) {
+          if (doneIds.has(did)) continue;
+          const siblings = (publishedPosts||[]).filter(p => p.demand_id === did);
+          const failures = siblings.filter(p => p.status === "failed");
+          if (failures.length > 0 && failures.length === siblings.length) {
+            showToast(`⚠️ Falha na publicação — verifique a demanda`);
+          }
+        }
+      } catch(e) { console.error("Publish poll error:", e); }
       autoPublishRef.current = false;
     };
-    /* Check every 60s — stable timer, no re-creation on demands change */
-    const timer = setInterval(callScheduler, 60000);
+    /* Poll every 3 minutes — cron handles actual publishing server-side */
+    const timer = setInterval(pollPublished, 180000);
     return () => clearInterval(timer);
   }, []);
 
