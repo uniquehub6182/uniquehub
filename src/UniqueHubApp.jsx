@@ -28707,7 +28707,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
           return (
             <button key={t.k} onClick={() => {
               if (t.k === "more") { setMore(!more); return; }
-              if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "ai", "help", "search", "settings", "team", "inbox", "notes", "presentations"].includes(t.k)) { goSub(t.k); return; }
+              if (["clients", "checkin", "academy", "financial", "calendar", "library", "reports", "news", "ideas", "gamify", "match4biz", "comments", "ai", "help", "search", "settings", "team", "inbox", "notes", "presentations"].includes(t.k)) { goSub(t.k); return; }
               goTab(t.k);
             }} className="bt" style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", height:sz.h, padding:0, background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", position:"relative", zIndex:a?3:1 }}>
               <div style={{ width:a?sz.circle:sz.inactive, height:a?sz.circle:sz.inactive, borderRadius:"50%", background:a?circleBg:"transparent", display:"flex", alignItems:"center", justifyContent:"center", transform:a?`translateY(${sz.lift}px)`:"translateY(0)", transition:"all .4s cubic-bezier(0.34,1.56,0.64,1)", boxShadow:a?`0 6px 20px ${circleBg}50`:"none" }}>
