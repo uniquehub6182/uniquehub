@@ -16158,7 +16158,7 @@ const ALL_TABS = [
   { k: "presentations", l: "Apresentações", i: IC.presentations },
   { k: "gamify", l: "Ranking", i: IC.gamify },
   { k: "match4biz", l: "Match4Biz", i: IC.match4biz },
-  { k: "comments", l: "Comentários IA" },
+  { k: "comments", l: "Comentários IA", i: (c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M8 9h8"/><path d="M8 13h4"/></svg> },
   { k: "help", l: "Ajuda", i: IC.help },
   { k: "search", l: "Buscar", i: IC.search },
   { k: "settings", l: "Config", i: IC.settings },
@@ -16168,7 +16168,7 @@ const moreItems = [
   { k: "checkin", l: "Check-in" }, { k: "academy", l: "Academy" }, { k: "team", l: "Equipe" },
   { k: "financial", l: "Financeiro" }, { k: "calendar", l: "Calendário" }, { k: "library", l: "Biblioteca" },
   { k: "feedplanner", l: "Feed Planner" }, { k: "reports", l: "Relatórios" }, { k: "news", l: "News" }, { k: "ideas", l: "Ideias" },
-  { k: "ai", l: "Assistente IA" }, { k: "inbox", l: "Inbox" }, { k: "notes", l: "Notas" }, { k: "presentations", l: "Apresentações" }, { k: "gamify", l: "Ranking" }, { k: "match4biz", l: "Match4Biz" }, { k: "help", l: "Ajuda" }, { k: "settings", l: "Config" },
+  { k: "ai", l: "Assistente IA" }, { k: "inbox", l: "Inbox" }, { k: "notes", l: "Notas" }, { k: "presentations", l: "Apresentações" }, { k: "gamify", l: "Ranking" }, { k: "match4biz", l: "Match4Biz" }, { k: "comments", l: "Comentários IA" }, { k: "help", l: "Ajuda" }, { k: "settings", l: "Config" },
 ];
 
 function MoreSheet({ onClose, goSub }) {
