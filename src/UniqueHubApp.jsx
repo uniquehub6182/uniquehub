@@ -24317,15 +24317,30 @@ function CommentRepliesPage({ onBack, clients, user }) {
   };
   useEffect(()=>{loadComments();},[]);
 
+  const [scanProgress, setScanProgress] = useState("");
   const scanNow = async()=>{
     setScanning(true);
+    let totalNew=0;
     try{
-      const res=await fetch(`${SUPA_URL}/functions/v1/comment-monitor`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_KEY}`},body:JSON.stringify({action:"scan"})});
-      const d=await res.json();
-      if(d.error){showToast("Erro: "+d.error);}
-      else{const total=d.results?.reduce((s,r)=>s+(r.new_comments||0),0)||0;showToast(total>0?total+" comentário(s) encontrado(s)!":"Nenhum comentário novo");await loadComments();}
-    }catch(e){showToast("Erro de conexão: "+e.message);}
-    setScanning(false);
+      /* Scan each client individually to avoid timeout */
+      const{data:tokens}=await supabase.from("app_settings").select("key").like("key","meta_token_%");
+      const clientIds=(tokens||[]).map(t=>t.key.replace("meta_token_",""));
+      if(!clientIds.length){showToast("Nenhum cliente com token Meta");setScanning(false);return;}
+      for(let i=0;i<clientIds.length;i++){
+        const cid=clientIds[i];
+        const cname=getClientName(cid);
+        setScanProgress(`${i+1}/${clientIds.length}: ${cname}...`);
+        try{
+          const res=await fetch(`${SUPA_URL}/functions/v1/comment-monitor`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_KEY}`},body:JSON.stringify({action:"scan",client_id:cid})});
+          const d=await res.json();
+          if(d.results?.[0]?.new_comments)totalNew+=d.results[0].new_comments;
+        }catch{}
+      }
+      setScanProgress("");
+      showToast(totalNew>0?totalNew+" comentário(s) encontrado(s)!":"Nenhum comentário novo");
+      await loadComments();
+    }catch(e){showToast("Erro: "+e.message);}
+    setScanning(false);setScanProgress("");
   };
   const generateAI = async(id)=>{
     setComments(p=>p.map(c=>c.id===id?{...c,_generating:true}:c));
@@ -24364,7 +24379,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
     <div style={{display:"flex",justifyContent:"flex-end",marginTop:16,marginBottom:12}}>
       <button onClick={scanNow} disabled={scanning} style={{padding:"10px 20px",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:scanning?.5:1,display:"flex",alignItems:"center",gap:6}}>
         {scanning?<div style={{width:14,height:14,border:"2px solid #0D0D0D",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>}
-        {scanning?"Escaneando...":"Escanear comentários"}
+        {scanning?(scanProgress||"Escaneando..."):"Escanear comentários"}
       </button>
     </div>
     {/* Stats */}
