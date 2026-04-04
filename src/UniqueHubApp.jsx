@@ -24734,7 +24734,24 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   </div>;
 
   /* Chat */
-  if(chatMatch){const otherName=chatMatch.client_a_id===myClientId?chatMatch.client_b_name:chatMatch.client_a_name; return <div className="content-wide" style={{paddingTop:0,paddingBottom:100,minHeight:"100%"}}>{ToastEl}<Head title={otherName} onBack={()=>setChatMatch(null)}/><div style={{maxWidth:700,margin:"0 auto",display:"flex",flexDirection:"column",height:isDesktop?"calc(100vh - 200px)":"calc(100vh - 120px)",background:B.bgCard,borderRadius:isDesktop?20:0,border:isDesktop?`1px solid ${B.border}`:"none",overflow:"hidden",marginTop:isDesktop?16:0}}><div style={{flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:6}}>{messages.length===0&&<p style={{textAlign:"center",color:B.muted,fontSize:13,padding:40}}>Diga olá! 👋</p>}{messages.map(m=>{const mine=m.sender_client_id===myClientId;return<div key={m.id} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start"}}><div style={{maxWidth:"75%",padding:"10px 14px",borderRadius:mine?"18px 18px 4px 18px":"18px 18px 18px 4px",background:mine?LIME:`${B.muted}12`,color:mine?"#0D0D0D":B.text}}><p style={{fontSize:13,lineHeight:1.5}}>{m.text}</p><p style={{fontSize:9,color:mine?"rgba(0,0,0,0.35)":B.muted,marginTop:4,textAlign:"right"}}>{new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p></div></div>;})}</div><div style={{display:"flex",gap:8,padding:"12px 16px",borderTop:`1px solid ${B.border}`,flexShrink:0}}><input value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMessage();}} placeholder="Mensagem..." className="tinput" style={{flex:1}}/><button onClick={sendMessage} disabled={!msgText.trim()} style={{padding:"10px 20px",borderRadius:12,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:msgText.trim()?1:0.4}}>Enviar</button></div></div></div>;}
+  if(chatMatch){const otherName=chatMatch.client_a_id===myClientId?chatMatch.client_b_name:chatMatch.client_a_name; return <div style={{position:"fixed",inset:0,zIndex:90,display:"flex",flexDirection:"column",background:B.bg}}>{ToastEl}
+    {/* HEADER */}
+    <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:B.bgCard,borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
+      <button onClick={()=>setChatMatch(null)} style={{width:36,height:36,borderRadius:10,border:`1.5px solid ${B.border}`,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.back()}</button>
+      <div style={{width:40,height:40,borderRadius:"50%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:LIME,flexShrink:0}}>{(otherName||"?")[0]}</div>
+      <div style={{flex:1,minWidth:0}}><p style={{fontSize:15,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{otherName}</p><p style={{fontSize:11,color:B.muted}}>{chatMatch.is_super?"⭐ Super Match":"Match"} · {new Date(chatMatch.matched_at).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})}</p></div>
+    </div>
+    {/* MESSAGES */}
+    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"16px",display:"flex",flexDirection:"column",gap:6}}>
+      {messages.length===0&&<div style={{textAlign:"center",padding:40}}><span style={{fontSize:40}}>👋</span><p style={{fontSize:14,fontWeight:700,marginTop:8}}>Diga olá!</p><p style={{fontSize:12,color:B.muted,marginTop:4}}>Comece a conversa sobre a parceria.</p></div>}
+      {messages.map(m=>{const mine=m.sender_client_id===myClientId;return<div key={m.id} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start"}}><div style={{maxWidth:"75%",padding:"10px 14px",borderRadius:mine?"18px 18px 4px 18px":"18px 18px 18px 4px",background:mine?LIME:`${B.muted}12`,color:mine?"#0D0D0D":B.text}}><p style={{fontSize:13,lineHeight:1.5}}>{m.text}</p><p style={{fontSize:9,color:mine?"rgba(0,0,0,0.35)":B.muted,marginTop:4,textAlign:"right"}}>{new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p></div></div>;})}
+    </div>
+    {/* INPUT — always visible at bottom */}
+    <div style={{display:"flex",gap:8,padding:"10px 16px",paddingBottom:"max(10px, env(safe-area-inset-bottom))",borderTop:`1px solid ${B.border}`,background:B.bgCard,flexShrink:0}}>
+      <input value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMessage();}} placeholder="Mensagem..." className="tinput" style={{flex:1}}/>
+      <button onClick={sendMessage} disabled={!msgText.trim()} style={{padding:"10px 20px",borderRadius:12,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:msgText.trim()?1:0.4}}>Enviar</button>
+    </div>
+  </div>;}
 
   /* ═══ MAIN RETURN ═══ */
   const onTouchStart = (e) => { setTouchStart(e.touches[0].clientX); setTouchDelta(0); };
