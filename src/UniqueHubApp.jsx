@@ -14031,7 +14031,7 @@ const profileFieldIcon = (k) => {
   if (k==="users") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
   return <span style={{fontSize:14}}>•</span>;
 };
-function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, navPicks, setNavPicks, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud, isClientView }) {
+function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, navPicks, setNavPicks, navTabs, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud, isClientView }) {
   const isSetDesktop = useIsDesktop();
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -14473,7 +14473,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               {SET_ITEMS.map(s => {
                 const isSel = sub === s.k;
                 return (
-                  <button key={s.k} onClick={()=>{if(s.k==="navmenu"){if(isSetDesktop&&navPicks){setSub("navmenu");}else{onNavEdit&&onNavEdit();}return;}setSub(s.k);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12.5, fontWeight:isSel?700:500, background:isSel?`${accent}10`:"transparent", color:isSel?accent:B.text, borderRadius:10, textAlign:"left", marginBottom:1, transition:"all .12s" }}
+                  <button key={s.k} onClick={()=>{if(s.k==="navmenu"){if(isSetDesktop){setSub("navmenu");}else{onNavEdit&&onNavEdit();}return;}setSub(s.k);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12.5, fontWeight:isSel?700:500, background:isSel?`${accent}10`:"transparent", color:isSel?accent:B.text, borderRadius:10, textAlign:"left", marginBottom:1, transition:"all .12s" }}
                     onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${accent}06`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
                     <span style={{ display:"flex", flexShrink:0, color:isSel?accent:B.muted }}>{setIcon(s.k, isSel?accent:B.muted)}</span>
                     <span style={{ flex:1 }}>{s.l}</span>
@@ -15636,7 +15636,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* ═══ PERSONALIZAR MENU (desktop inline) ═══ */
   if (sub === "navmenu" && isSetDesktop && navPicks) {
-    const avail = ALL_TABS.filter(t => t.k !== "more");
+    const avail = (navTabs || ALL_TABS).filter(t => t.k !== "more");
     const toggleNav = k => { if (navPicks.includes(k)) { if (navPicks.length <= 3) return; setNavPicks(navPicks.filter(x => x !== k)); } else { if (navPicks.length >= 5) return; setNavPicks([...navPicks, k]); } };
     const moveNav = (i, d) => { const n = [...navPicks]; const j = i + d; if (j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; setNavPicks(n); };
     const notPicked = avail.filter(t => !navPicks.includes(t.k));
@@ -28432,7 +28432,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "help" ? <HelpPage onBack={() => setSub(null)} /> :
       sub === "inbox" ? <InboxPage onBack={() => setSub(null)} clients={resolvedClient ? [resolvedClient] : clients} user={user} isClientView /> :
       sub === "reports" ? <ReportsPage onBack={() => setSub(null)} clients={resolvedClient ? [resolvedClient] : clients.slice(0,1)} team={team} isClientView /> :
-      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>{const n={...p,...v};try{localStorage.setItem("uh_ui_prefs",JSON.stringify(n))}catch{}return n;})}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_ui_prefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
+      sub === "settings" ? <SettingsPage onBack={() => setSub(null)} user={user} setUser={setLocalUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor||"lime"} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={()=>setShowClientNavEdit(true)} navPicks={clientNavPicks} setNavPicks={setClientNavPicksAndSave} navTabs={CLIENT_ALL_TABS} propClients={clients} uiPrefs={uiPrefs||{}} updateUiPrefs={v=>{setUiPrefs(p=>{const n={...p,...v};try{localStorage.setItem("uh_ui_prefs",JSON.stringify(n))}catch{}return n;})}} replaceUiPrefs={v=>{setUiPrefs(v);try{localStorage.setItem("uh_ui_prefs",JSON.stringify(v))}catch{}}} savePrefsToCloud={()=>{}} isClientView /> :
       sub === "notifications" ? <NotifsPage onBack={() => setSub(null)} user={user} clientFilter={resolvedClient?.name} navigate={(k)=>{const mainTabs=["home","content","chat","calendar"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} /> :
       sub === "financial" ? renderFinancialSub() :
       sub?.startsWith("demand_") ? renderDemandSub() :
