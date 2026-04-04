@@ -16858,10 +16858,10 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
     return (
       <div className="pg">
         {ToastEl}
-        <Head title="" onBack={() => setViewEvent(null)} right={
+        <Head title="" onBack={() => setViewEvent(null)} right={!isClientView ?
           <button onClick={() => deleteEvent(ev.id)} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 12px", borderRadius:10, background:`${B.red}08`, border:`1.5px solid ${B.red}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.red }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Excluir
-          </button>
+          </button> : null
         } />
         <Card style={{ marginBottom:12, borderLeft:`4px solid ${et.c}` }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
@@ -16979,8 +16979,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
           </div>
         </Card>
 
-        {/* ── Desmarcar / Reagendar ── */}
-        {!ev.cancelled && <Card style={{ marginTop:12 }}>
+        {/* ── Desmarcar / Reagendar (only for real events, not posts) ── */}
+        {!ev.cancelled && !ev.isDemand && <Card style={{ marginTop:12 }}>
           {!cancelFlow || cancelFlow.eventId !== ev.id ? (
             <button onClick={() => setCancelFlow({ eventId: ev.id, step: "ask", newDate: "", newTime: "" })} style={{ width:"100%", padding:"12px 0", borderRadius:12, background:`${B.red}06`, border:`1.5px solid ${B.red}20`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
@@ -17313,8 +17313,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
                 <button onClick={()=>setViewEvent(null)} style={{width:32,height:32,borderRadius:8,border:`1px solid ${B.border}`,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
                 <div style={{flex:1}}><p style={{fontSize:16,fontWeight:800}}>{ev.title}</p><p style={{fontSize:11,color:B.muted}}>{et.l} · {ev.time}{ev.cancelled?" · ❌ Desmarcado":""}</p></div>
-                {!ev.cancelled && <button onClick={() => setCancelFlow({ eventId: ev.id, step: "ask", newDate: "", newTime: "" })} style={{padding:"6px 14px",borderRadius:8,border:`1.5px solid ${B.red}30`,background:`${B.red}06`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.red,display:"flex",alignItems:"center",gap:5}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Desmarcar</button>}
-                <button onClick={()=>{deleteEvent(ev.id);setViewEvent(null);}} style={{width:32,height:32,borderRadius:8,border:"1px solid #FEE2E2",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+                {!ev.cancelled && !ev.isDemand && <button onClick={() => setCancelFlow({ eventId: ev.id, step: "ask", newDate: "", newTime: "" })} style={{padding:"6px 14px",borderRadius:8,border:`1.5px solid ${B.red}30`,background:`${B.red}06`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:B.red,display:"flex",alignItems:"center",gap:5}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Desmarcar</button>}
+                {!isClientView && <button onClick={()=>{deleteEvent(ev.id);setViewEvent(null);}} style={{width:32,height:32,borderRadius:8,border:"1px solid #FEE2E2",background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>}
               </div>
               {/* Reagendar dialog (expanded) */}
               {cancelFlow && cancelFlow.eventId === ev.id && (
@@ -17455,8 +17455,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 <div style={{ padding:"14px 16px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10 }}>
                   <button onClick={()=>setViewEvent(null)} style={{ width:30, height:30, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
                   <div style={{ flex:1 }}><p style={{ fontSize:16, fontWeight:800, color:B.text }}>{ev.title}</p><p style={{ fontSize:11, color:B.muted }}>{et.l} · {ev.time}{ev.cancelled?" · ❌ Desmarcado":""}</p></div>
-                  {!ev.cancelled && <button onClick={() => setCancelFlow({ eventId: ev.id, step: "ask", newDate: "", newTime: "" })} style={{ padding:"6px 14px", borderRadius:8, border:`1.5px solid ${B.red}30`, background:`${B.red}06`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.red, display:"flex", alignItems:"center", gap:5 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Desmarcar</button>}
-                  <button onClick={()=>{deleteEvent(ev.id);setViewEvent(null);}} style={{ width:32, height:32, borderRadius:8, border:"1px solid #FEE2E2", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>
+                  {!ev.cancelled && !ev.isDemand && <button onClick={() => setCancelFlow({ eventId: ev.id, step: "ask", newDate: "", newTime: "" })} style={{ padding:"6px 14px", borderRadius:8, border:`1.5px solid ${B.red}30`, background:`${B.red}06`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.red, display:"flex", alignItems:"center", gap:5 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Desmarcar</button>}
+                  {!isClientView && <button onClick={()=>{deleteEvent(ev.id);setViewEvent(null);}} style={{ width:32, height:32, borderRadius:8, border:"1px solid #FEE2E2", background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button>}
                 </div>
                 <div style={{ flex:1, overflowY:"auto", padding:"16px 20px" }}>
                   <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:16 }}>
