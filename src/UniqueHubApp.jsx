@@ -26998,25 +26998,73 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       </div>
     );
 
-    if (finView === "plans") return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
-        <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
-        <div style={{height:14}} />
-        <div className="content" style={{ padding:"0 16px 120px" }}>
-          {Object.entries(PLAN_INFO).filter(([k]) => k !== "free").map(([k, p], i) => {
-            const isCurrent = k === myClient.plan;
-            return <Card key={k} style={{ marginBottom:10, border: isCurrent ? `2px solid ${B.accent}` : `1px solid ${B.border}`, position:"relative", overflow:"hidden" }}>
-              {isCurrent && <div style={{ position:"absolute", top:0, right:0, padding:"4px 14px", borderRadius:"0 0 0 12px", background:B.accent, fontSize:10, fontWeight:700, color:"#0D0D0D" }}>Seu plano</div>}
-              <p style={{ fontSize:18, fontWeight:900 }}>{p.name}</p>
-              
-              <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{p.desc}</p>
-              <div style={{ marginTop:12 }}>{p.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}</div>
-              {!isCurrent && (() => { const thisRank = PLAN_RANK[k] || 0; const isUpgrade = thisRank > myPlanRank; const label = isUpgrade ? "Solicitar upgrade" : "Solicitar downgrade"; const action = isUpgrade ? "upgrade" : "downgrade"; return <button onClick={() => { const msg = encodeURIComponent(`Olá! Sou ${user?.name||"cliente"} (${myClient.name||""}) e tenho interesse no plano ${p.name} do UniqueHub. Gostaria de saber mais sobre o ${action}.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:isUpgrade?B.accent:`${B.muted}20`, border:isUpgrade?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:isUpgrade?"#0D0D0D":B.muted }}>{label}</button>; })()}
-            </Card>;
-          })}
+    if (finView === "plans") {
+      const _plDk = typeof window !== "undefined" && window.innerWidth > 900;
+      const allPlans = Object.entries(PLAN_INFO).filter(([k]) => k !== "free");
+      const planCards = allPlans.map(([k, p]) => {
+        const isCurrent = k === myClient.plan;
+        const thisRank = PLAN_RANK[k] || 0;
+        const isUpgrade = thisRank > myPlanRank;
+        return { key: k, plan: p, isCurrent, isUpgrade, rank: thisRank };
+      });
+
+      if (_plDk) return (
+        <div className="content-wide" style={{ paddingTop:60, minHeight:"100vh", display:"flex", flexDirection:"column" }}>
+          <div style={{ maxWidth:1440, margin:"0 auto", width:"100%", padding:"0 32px" }}>
+            <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
+            <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", gap:20, padding:"16px 0 80px" }}>
+              {/* Sidebar — Seu plano atual */}
+              <div>
+                <div style={{ background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", position:"sticky", top:80 }}>
+                  <div style={{ background:"linear-gradient(135deg,#0D0D0D 0%,#141820 100%)", padding:"24px 24px 20px", color:"#fff" }}>
+                    <p style={{ fontSize:10, fontWeight:600, letterSpacing:1.5, color:"rgba(255,255,255,0.4)", textTransform:"uppercase" }}>Seu plano atual</p>
+                    <p style={{ fontSize:24, fontWeight:900, marginTop:6 }}>{plan.name}</p>
+                    <span style={{ display:"inline-block", marginTop:8, fontSize:11, color:LIME, fontWeight:700, padding:"3px 12px", borderRadius:6, background:LIME+"15" }}>{plan.desc}</span>
+                  </div>
+                  <div style={{ padding:"16px 24px 20px" }}>
+                    <p style={{ fontSize:12, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:10 }}>Incluso</p>
+                    {plan.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}
+                  </div>
+                </div>
+              </div>
+              {/* Main — Grid de planos */}
+              <div>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 }}>
+                  {planCards.map(({ key: k, plan: p, isCurrent, isUpgrade }) => (
+                    <div key={k} style={{ background:B.bgCard, borderRadius:20, border: isCurrent ? `2px solid ${B.accent}` : `1px solid ${B.border}`, padding:"24px 24px 20px", position:"relative", display:"flex", flexDirection:"column" }}>
+                      {isCurrent && <div style={{ position:"absolute", top:12, right:12, padding:"4px 12px", borderRadius:8, background:B.accent, fontSize:10, fontWeight:700, color:"#0D0D0D" }}>Seu plano</div>}
+                      <p style={{ fontSize:20, fontWeight:900 }}>{p.name}</p>
+                      <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{p.desc}</p>
+                      <div style={{ marginTop:14, flex:1 }}>{p.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}</div>
+                      {!isCurrent && <button onClick={() => { const action = isUpgrade ? "upgrade" : "downgrade"; const msg = encodeURIComponent(`Olá! Sou ${user?.name||"cliente"} (${myClient.name||""}) e tenho interesse no plano ${p.name} do UniqueHub. Gostaria de saber mais sobre o ${action}.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:14, width:"100%", padding:"12px 0", borderRadius:12, background:isUpgrade?B.accent:`${B.muted}15`, border:isUpgrade?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:isUpgrade?"#0D0D0D":B.muted }}>{isUpgrade ? "Solicitar upgrade" : "Solicitar downgrade"}</button>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    );
+      );
+
+      /* Mobile */
+      return (
+        <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
+          <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
+          <div style={{height:14}} />
+          <div className="content" style={{ padding:"0 16px 120px" }}>
+            {planCards.map(({ key: k, plan: p, isCurrent, isUpgrade }) => (
+              <Card key={k} style={{ marginBottom:10, border: isCurrent ? `2px solid ${B.accent}` : `1px solid ${B.border}`, position:"relative", overflow:"hidden" }}>
+                {isCurrent && <div style={{ position:"absolute", top:0, right:0, padding:"4px 14px", borderRadius:"0 0 0 12px", background:B.accent, fontSize:10, fontWeight:700, color:"#0D0D0D" }}>Seu plano</div>}
+                <p style={{ fontSize:18, fontWeight:900 }}>{p.name}</p>
+                <p style={{ fontSize:12, color:B.muted, marginTop:2 }}>{p.desc}</p>
+                <div style={{ marginTop:12 }}>{p.features.map((f, j) => <div key={j} style={{ display:"flex", alignItems:"center", gap:8, padding:"5px 0" }}><span style={{ color:B.green }}>{IC.check}</span><span style={{ fontSize:12 }}>{f}</span></div>)}</div>
+                {!isCurrent && <button onClick={() => { const action = isUpgrade ? "upgrade" : "downgrade"; const msg = encodeURIComponent(`Olá! Sou ${user?.name||"cliente"} (${myClient.name||""}) e tenho interesse no plano ${p.name} do UniqueHub. Gostaria de saber mais sobre o ${action}.`); window.open(`https://wa.me/552122159867?text=${msg}`, "_blank"); showToast("Redirecionando para WhatsApp..."); }} style={{ marginTop:12, width:"100%", padding:"12px 0", borderRadius:12, background:isUpgrade?B.accent:`${B.muted}20`, border:isUpgrade?"none":`1.5px solid ${B.border}`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:isUpgrade?"#0D0D0D":B.muted }}>{isUpgrade ? "Solicitar upgrade" : "Solicitar downgrade"}</button>}
+              </Card>
+            ))}
+          </div>
+        </div>
+      );
+    }
 
     if (finView === "service") return (
       <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
