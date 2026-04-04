@@ -1629,7 +1629,7 @@ const DesktopSidebar = ({ tabs, activeTab, onTabChange, user, logo, title, accen
   const SECTIONS = sections || [
     { label: null, keys: ["home"] },
     { label: "Gestão", keys: ["content","clients","chat","team","calendar"] },
-    { label: "Análise", keys: ["reports","financial","gamify","match4biz"] },
+    { label: "Análise", keys: ["reports","financial","gamify","match4biz","comments"] },
     { label: "Ferramentas", keys: ["library","feedplanner","academy","news","ideas","ai"] },
     { label: "Sistema", keys: ["checkin","help","settings"] },
   ];
@@ -3362,7 +3362,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     const fn = icons[ak];
     return typeof fn === "function" ? fn("currentColor") : fn || IC.more("currentColor");
   };
-  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Inbox",k:"inbox"},{l:"Notas",k:"notes"},{l:"Apresentações",k:"presentations"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
+  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"Comentários IA",k:"comments"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Inbox",k:"inbox"},{l:"Notas",k:"notes"},{l:"Apresentações",k:"presentations"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
   const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
   const renderSection = (key) => {
     if(key==="comunicados") {
@@ -16158,6 +16158,7 @@ const ALL_TABS = [
   { k: "presentations", l: "Apresentações", i: IC.presentations },
   { k: "gamify", l: "Ranking", i: IC.gamify },
   { k: "match4biz", l: "Match4Biz", i: IC.match4biz },
+  { k: "comments", l: "Comentários IA" },
   { k: "help", l: "Ajuda", i: IC.help },
   { k: "search", l: "Buscar", i: IC.search },
   { k: "settings", l: "Config", i: IC.settings },
@@ -24293,6 +24294,133 @@ function PlaceholderPage({ title, onBack, icon }) {
 }
 
 /* ═══════════════════════ MATCH4BIZ (AGENCY PANEL) ═══════════════════════ */
+/* ═══════════════════════════════════════════════════
+   COMMENT REPLIES PAGE — AI-powered comment responses
+   ═══════════════════════════════════════════════════ */
+function CommentRepliesPage({ onBack, clients, user }) {
+  const isDesktop = useIsDesktop();
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [scanning, setScanning] = useState(false);
+  const [filter, setFilter] = useState("pending");
+  const [editId, setEditId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [clientFilter, setClientFilter] = useState("all");
+  const { showToast, ToastEl } = useToast();
+  const CDATA = clients || [];
+
+  const loadComments = async()=>{
+    if(!supabase)return;
+    const{data}=await supabase.from("comment_replies").select("*").order("created_at",{ascending:false}).limit(200);
+    setComments(data||[]);
+    setLoading(false);
+  };
+  useEffect(()=>{loadComments();},[]);
+
+  const scanNow = async()=>{
+    setScanning(true);
+    try{
+      const res=await fetch(`${SUPA_URL}/functions/v1/comment-monitor`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_ANON}`},body:JSON.stringify({})});
+      const d=await res.json();
+      showToast("Scan concluído!");
+      await loadComments();
+    }catch(e){showToast("Erro no scan");}
+    setScanning(false);
+  };
+
+  const approveReply = async(id,text)=>{
+    try{
+      const res=await fetch(`${SUPA_URL}/functions/v1/comment-reply`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_ANON}`},body:JSON.stringify({reply_id:id,reply_text:text})});
+      const d=await res.json();
+      if(d.success){setComments(p=>p.map(c=>c.id===id?{...c,status:"replied",approved_reply:text,replied_at:new Date().toISOString()}:c));showToast("Resposta enviada!");}
+      else showToast(d.error||"Erro");
+    }catch(e){showToast("Erro ao enviar");}
+    setEditId(null);
+  };
+
+  const dismissReply = async(id)=>{
+    await supabase.from("comment_replies").update({status:"dismissed"}).eq("id",id);
+    setComments(p=>p.map(c=>c.id===id?{...c,status:"dismissed"}:c));
+    showToast("Descartado");
+  };
+
+  const getClientName=(cid)=>{const c=CDATA.find(x=>(x.supaId||x.id)===cid);return c?.name||cid;};
+  const filtered=comments.filter(c=>(filter==="all"||c.status===filter)&&(clientFilter==="all"||c.client_id===clientFilter));
+  const stats={total:comments.length,pending:comments.filter(c=>c.status==="pending").length,replied:comments.filter(c=>c.status==="replied").length};
+  const uniqueClients=[...new Set(comments.map(c=>c.client_id))];
+
+  return <div className="content-wide" style={{paddingTop:TOP,minHeight:"100%"}}>
+    {ToastEl}
+    <CollapseHeader icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M8 9h8M8 13h4"/></svg>} label="Engajamento" title="Comentários IA" onBack={onBack} collapsed={false}
+      right={<button onClick={scanNow} disabled={scanning} style={{padding:"8px 16px",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D",opacity:scanning?.5:1}}>{scanning?"Escaneando...":"Escanear agora"}</button>}
+    />
+    {/* Stats */}
+    <div style={{display:"grid",gridTemplateColumns:isDesktop?"repeat(3,1fr)":"repeat(3,1fr)",gap:10,margin:"12px 0 16px"}}>
+      {[{l:"Pendentes",v:stats.pending,c:"#F59E0B"},{l:"Respondidos",v:stats.replied,c:"#10B981"},{l:"Total",v:stats.total,c:B.accent}].map((s,i)=>
+        <div key={i} style={{background:B.bgCard,borderRadius:14,border:`1px solid ${B.border}`,padding:"12px 16px",textAlign:"center"}}>
+          <p style={{fontSize:9,fontWeight:600,color:B.muted,textTransform:"uppercase"}}>{s.l}</p>
+          <p style={{fontSize:24,fontWeight:900,color:s.c}}>{s.v}</p>
+        </div>
+      )}
+    </div>
+    {/* Filters */}
+    <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+      <div style={{display:"flex",gap:4}}>
+        {[{k:"pending",l:"Pendentes"},{k:"replied",l:"Respondidos"},{k:"dismissed",l:"Descartados"},{k:"all",l:"Todos"}].map(f=>
+          <button key={f.k} onClick={()=>setFilter(f.k)} style={{padding:"6px 12px",borderRadius:8,border:filter===f.k?"none":`1px solid ${B.border}`,background:filter===f.k?B.accent:"transparent",color:filter===f.k?"#0D0D0D":B.muted,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f.l}</button>
+        )}
+      </div>
+      {uniqueClients.length>1&&<select value={clientFilter} onChange={e=>setClientFilter(e.target.value)} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${B.border}`,background:B.bgCard,color:B.text,fontSize:11,fontFamily:"inherit",marginLeft:"auto"}}>
+        <option value="all">Todos os clientes</option>
+        {uniqueClients.map(cid=><option key={cid} value={cid}>{getClientName(cid)}</option>)}
+      </select>}
+    </div>
+    {/* List */}
+    {loading?<p style={{textAlign:"center",color:B.muted,padding:40}}>Carregando...</p>
+    :filtered.length===0?<div style={{textAlign:"center",padding:40,background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`}}><p style={{fontSize:14,fontWeight:700}}>Nenhum comentário {filter==="all"?"encontrado":"neste filtro"}</p><p style={{fontSize:12,color:B.muted,marginTop:6}}>Clique em "Escanear agora" para buscar comentários novos.</p></div>
+    :<div style={{display:"flex",flexDirection:"column",gap:10}}>
+      {filtered.map(c=>{
+        const isEditing=editId===c.id;
+        const statusColor=c.status==="replied"?"#10B981":c.status==="pending"?"#F59E0B":B.muted;
+        return <div key={c.id} style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 18px",borderLeft:`3px solid ${statusColor}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:12,fontWeight:700}}>{getClientName(c.client_id)}</span>
+              <span style={{fontSize:10,color:B.muted}}>·</span>
+              <span style={{fontSize:10,color:B.muted}}>{c.platform}</span>
+            </div>
+            <span style={{fontSize:9,color:B.muted}}>{new Date(c.created_at).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</span>
+          </div>
+          {/* Comment */}
+          <div style={{background:B.bg,borderRadius:10,padding:"10px 14px",marginBottom:10}}>
+            <p style={{fontSize:10,fontWeight:700,color:B.muted,marginBottom:2}}>@{c.comment_author}</p>
+            <p style={{fontSize:13,lineHeight:1.5}}>{c.comment_text}</p>
+          </div>
+          {/* AI Suggestion */}
+          {c.suggested_reply&&<div style={{marginBottom:10}}>
+            <p style={{fontSize:10,fontWeight:700,color:B.accent,marginBottom:4}}>Sugestão da IA:</p>
+            {isEditing?<textarea value={editText} onChange={e=>setEditText(e.target.value)} className="tinput" rows={2} style={{width:"100%",resize:"vertical",fontSize:13}}/>
+            :<p style={{fontSize:13,lineHeight:1.5,color:B.text,opacity:0.8,fontStyle:"italic"}}>{c.suggested_reply}</p>}
+          </div>}
+          {/* Actions */}
+          {c.status==="pending"&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {isEditing?<>
+              <button onClick={()=>approveReply(c.id,editText)} style={{padding:"8px 16px",borderRadius:8,background:"#10B981",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Enviar</button>
+              <button onClick={()=>setEditId(null)} style={{padding:"8px 16px",borderRadius:8,background:"transparent",border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted}}>Cancelar</button>
+            </>:<>
+              <button onClick={()=>approveReply(c.id,c.suggested_reply)} style={{padding:"8px 16px",borderRadius:8,background:"#10B981",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Aprovar</button>
+              <button onClick={()=>{setEditId(c.id);setEditText(c.suggested_reply||"");}} style={{padding:"8px 16px",borderRadius:8,background:"transparent",border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.text}}>Editar</button>
+              <button onClick={()=>dismissReply(c.id)} style={{padding:"8px 16px",borderRadius:8,background:"transparent",border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted}}>Descartar</button>
+            </>}
+          </div>}
+          {c.status==="replied"&&<p style={{fontSize:11,color:"#10B981",fontWeight:600}}>Respondido: "{(c.approved_reply||"").substring(0,60)}..."</p>}
+          {c.status==="dismissed"&&<p style={{fontSize:11,color:B.muted}}>Descartado</p>}
+        </div>;
+      })}
+    </div>}
+  </div>;
+}
+
 function Match4BizPage({ onBack, clients, user }) {
   const isM4bDesktop = useIsDesktop();
   const [view, setView] = useState("list");
@@ -28554,6 +28682,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "news" && <NewsPage onBack={() => setSub(null)} onArticlesLoad={setSharedArticles} initialArticleId={pendingSubId} onOpenIdConsumed={() => setPendingSubId(null)} user={user} onCreatePost={handleCreatePostFromNews} />}
         {sub === "ideas" && <IdeasPage onBack={() => setSub(null)} user={user} clients={sharedClients} />}
         {sub === "gamify" && <GamifyPage onBack={() => setSub(null)} user={user} team={sharedTeam} />}
+        {sub === "comments" && <CommentRepliesPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "match4biz" && <Match4BizPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} agencyIdentity={agencyIdentity} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
