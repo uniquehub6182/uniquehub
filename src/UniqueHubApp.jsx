@@ -24761,7 +24761,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   const curProfile = profiles[currentIdx];
   const TABS = [{k:"discover",l:"Descobrir",ic:"🔍"},{k:"matches",l:"Matches",ic:"💚",badge:matches.length},{k:"profile",l:"Meu Perfil",ic:"👤"},{k:"credits",l:"Créditos",ic:"💰",badge:credits}];
 
-  if (loading) return <div className="pg" style={{paddingBottom:100}}><CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} /><div style={{textAlign:"center",padding:60}}><div style={{width:28,height:28,border:`3px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto"}}/><p style={{fontSize:13,color:B.muted,marginTop:12}}>Carregando Match4Biz...</p></div></div>;
+  if (loading) return <div className="pg" style={{paddingBottom:100}}><div style={isDesktop?{margin:"0 -32px"}:{}}><CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} /></div><div style={{textAlign:"center",padding:60}}><div style={{width:28,height:28,border:`3px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto"}}/><p style={{fontSize:13,color:B.muted,marginTop:12}}>Carregando Match4Biz...</p></div></div>;
 
   /* ── MATCH POPUP ── */
   const matchPopupEl = matchPopup && <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setMatchPopup(null)}>
@@ -24796,7 +24796,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
 
   return <div className="pg" style={{paddingBottom:100}}>
     {ToastEl}{matchPopupEl}
-    <CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
+    <div style={isDesktop?{margin:"0 -32px"}:{}}><CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} /></div>
     {/* Tab bar */}
     <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",scrollbarWidth:"none"}}>
       {TABS.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:12,border:tab===t.k?"none":`1.5px solid ${B.border}`,background:tab===t.k?LIME:"transparent",color:tab===t.k?"#0D0D0D":B.muted,fontSize:12,fontWeight:tab===t.k?700:500,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}><span>{t.ic}</span>{t.l}{t.badge>0&&<span style={{fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:6,background:tab===t.k?"rgba(0,0,0,0.15)":`${LIME}20`,color:tab===t.k?"#0D0D0D":LIME}}>{t.badge}</span>}</button>)}
@@ -24812,7 +24812,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
         <span style={{fontSize:48,display:"block",marginBottom:12}}>🎉</span>
         <h3 style={{fontSize:18,fontWeight:800,marginBottom:6}}>Você viu todas as empresas!</h3>
         <p style={{fontSize:13,color:B.muted}}>Novos perfis aparecerão quando novos clientes entrarem na plataforma.</p>
-      </div> : <div style={{maxWidth:400,margin:"0 auto"}}>
+      </div> : <div style={{maxWidth:isDesktop?520:400,margin:"0 auto"}}>
         {/* Card */}
         <div style={{borderRadius:24,overflow:"hidden",border:`1px solid ${B.border}`,background:B.bgCard,boxShadow:"0 8px 30px rgba(0,0,0,0.08)",transition:"transform .3s, opacity .3s",transform:swipeAnim==="left"?"translateX(-120%) rotate(-15deg)":swipeAnim==="right"?"translateX(120%) rotate(15deg)":swipeAnim==="super"?"translateY(-100px) scale(1.1)":"none",opacity:swipeAnim?0:1}}>
           {/* Logo / Avatar */}
