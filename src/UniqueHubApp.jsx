@@ -26683,8 +26683,15 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     const refetch = async () => {
       if (document.visibilityState !== "visible" || subRef.current) return;
       try {
-        /* Use already-resolved client if available, otherwise re-resolve */
-        let myClient = resolvedClient;
+        /* Always re-fetch client record to get latest data (website, etc.) */
+        let myClient = null;
+        if (resolvedClient?.id) {
+          const { data } = await supabase.from("clients").select("id, name, contact_email, website").eq("id", resolvedClient.id).limit(1);
+          myClient = data?.[0] || resolvedClient;
+          if (myClient.website !== resolvedClient.website || myClient.name !== resolvedClient.name) {
+            setResolvedClient({ id: myClient.id, name: myClient.name, contact_email: myClient.contact_email, website: myClient.website });
+          }
+        }
         if (!myClient) {
           const { data: allClients } = await supabase.from("clients").select("id, name, contact_email, website");
           const extrasRaw = await supaGetSetting(`client_extras_${user?.id}`);
@@ -28150,8 +28157,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           const ec = editCfg || { cards:[...clientCards], pills:[...clientPills] };
           const toggle = (arr, key, max) => { const idx = ec[arr].indexOf(key); let n; if (idx>=0) n=ec[arr].filter(x=>x!==key); else if(!max||ec[arr].length<max) n=[...ec[arr],key]; else return; setEditCfg({...ec,[arr]:n}); };
           const BLOCK_OPTIONS = [["content","Conteúdo / Aprovações"],["growth","Growth Score"],["news","Comunicados"],["metricas","Métricas"],["agenda","Agenda"],["match","Match4Biz"],["ai","Assistente IA"]];
+          const BLOCK_LABELS = Object.fromEntries(BLOCK_OPTIONS);
           const curBlocks = ec.blocks || [...clientBlocks];
           const toggleBlock = (k) => { const idx = curBlocks.indexOf(k); let n; if(idx>=0) n=curBlocks.filter(x=>x!==k); else if(curBlocks.length<6) n=[...curBlocks,k]; else return; setEditCfg({...ec,blocks:n}); };
+          const moveBlock = (i,dir) => { const n=[...curBlocks]; const j=i+dir; if(j<0||j>=n.length) return; [n[i],n[j]]=[n[j],n[i]]; setEditCfg({...ec,blocks:n}); };
           const Chip = ({on,label,onTap,disabled}) => <button onClick={onTap} disabled={disabled} style={{padding:"7px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:disabled?"default":"pointer",fontFamily:"inherit",opacity:disabled?0.4:1}}>{label}</button>;
           const saveCfg = () => { setClientCards(ec.cards); setClientPills(ec.pills); if(ec.blocks) setClientBlocks(ec.blocks); try { localStorage.setItem("uh_client_cards",JSON.stringify(ec.cards)); localStorage.setItem("uh_client_pills",JSON.stringify(ec.pills)); if(ec.blocks) localStorage.setItem("uh_client_blocks",JSON.stringify(ec.blocks)); supaSetSetting("client_portal_config",JSON.stringify({cards:ec.cards,pills:ec.pills,blocks:ec.blocks||clientBlocks})); } catch {} setEditCfg(null); setShowDashEdit(false); };
           return <><div onClick={()=>{setEditCfg(null);setShowDashEdit(false);}} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:999}} />
@@ -28169,10 +28178,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               {Object.entries(CLIENT_PILLS_MAP).map(([k,v])=><Chip key={k} on={ec.pills.includes(k)} label={v.l} onTap={()=>toggle("pills",k,8)} disabled={!ec.pills.includes(k)&&ec.pills.length>=8} />)}
             </div>
             <p style={{fontSize:11,fontWeight:700,color:C.mut,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Blocos do Dashboard (máx 6)</p>
-            <p style={{fontSize:11,color:C.mut,marginBottom:10}}>Widgets funcionais que aparecem no seu dashboard.</p>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
-              {BLOCK_OPTIONS.map(([k,l])=><Chip key={k} on={curBlocks.includes(k)} label={l} onTap={()=>toggleBlock(k)} disabled={!curBlocks.includes(k)&&curBlocks.length>=6} />)}
+            <p style={{fontSize:11,color:C.mut,marginBottom:10}}>Arraste para reordenar. Clique no X para remover.</p>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+              {curBlocks.map((bk,i) => <div key={bk} style={{display:"flex",alignItems:"center",gap:0,background:`${LIME}08`,borderRadius:12,overflow:"hidden",border:`1.5px solid ${LIME}25`}}>
+                <div style={{display:"flex",flexDirection:"column",borderRight:`1px solid ${C.brd}`}}>
+                  <button onClick={()=>moveBlock(i,-1)} disabled={i===0} style={{width:32,height:22,background:"none",border:"none",cursor:i===0?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===0?0.25:1,color:C.txt}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+                  <button onClick={()=>moveBlock(i,1)} disabled={i===curBlocks.length-1} style={{width:32,height:22,background:"none",border:"none",cursor:i===curBlocks.length-1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:i===curBlocks.length-1?0.25:1,color:C.txt}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+                </div>
+                <span style={{flex:1,padding:"10px 14px",fontSize:13,fontWeight:700}}>{BLOCK_LABELS[bk]||bk}</span>
+                <button onClick={()=>toggleBlock(bk)} style={{width:44,height:44,background:"none",border:"none",borderLeft:`1px solid ${C.brd}`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:C.mut}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+              </div>)}
             </div>
+            {BLOCK_OPTIONS.filter(([k])=>!curBlocks.includes(k)).length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
+              {BLOCK_OPTIONS.filter(([k])=>!curBlocks.includes(k)).map(([k,l])=><Chip key={k} on={false} label={"+ "+l} onTap={()=>toggleBlock(k)} disabled={curBlocks.length>=6} />)}
+            </div>}
             <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],blocks:["content","growth","news"]});}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
           </div></>;
         })()}
