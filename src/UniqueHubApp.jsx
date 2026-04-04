@@ -24782,16 +24782,17 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
               </div>
               <div style={{display:"flex",justifyContent:"center",gap:20,fontSize:11,color:B.muted}}><span>Passar</span><span style={{color:"#8B5CF6"}}>⭐ 3 créd</span><span style={{color:B.green||"#22C55E"}}>💚 1 créd</span></div>
             </div>
-            {/* Queue preview */}
-            {nextProfiles.length>0&&<div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 18px"}}>
-              <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Próximas empresas ({profiles.length - 1} restantes)</p>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {nextProfiles.map((p,i) => <div key={p.client_id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:12,background:`${B.muted}04`,border:`1px solid ${B.border}`}}>
-                  <div style={{width:36,height:36,borderRadius:10,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:LIME,flexShrink:0}}>{(p.client_name||"?")[0]}</div>
-                  <div style={{flex:1,minWidth:0}}><p style={{fontSize:12,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.client_name}</p>{p.segment&&<p style={{fontSize:10,color:B.muted}}>{p.segment}</p>}</div>
+            {/* Stats */}
+            <div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 18px"}}>
+              <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,marginBottom:12}}>Sua atividade</p>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {[{l:"Empresas restantes",v:profiles.length,icon:"🏢"},{l:"Matches",v:matches.length,icon:"💚"},{l:"Swipes feitos",v:swipes.length,icon:"👆"},{l:"Créditos gastos",v:creditHistory.filter(c=>c.amount<0).reduce((s,c)=>s+Math.abs(c.amount),0),icon:"💰"}].map((s,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:10,background:`${B.muted}04`}}>
+                  <span style={{fontSize:16}}>{s.icon}</span>
+                  <span style={{flex:1,fontSize:12,color:B.muted}}>{s.l}</span>
+                  <span style={{fontSize:14,fontWeight:800,color:B.text}}>{s.v}</span>
                 </div>)}
               </div>
-            </div>}
+            </div>
           </div>
         </div>
       : /* ── MOBILE: Centered card ── */
