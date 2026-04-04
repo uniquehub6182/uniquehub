@@ -191,6 +191,7 @@ function isTransientError(msg: string): boolean {
    ══════════════════════════════════════════════════════════ */
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: H });
+  console.log(`[Scheduler] Request received at ${new Date().toISOString()}`);
   try {
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -291,6 +292,7 @@ serve(async (req) => {
 
     if (error) throw new Error(`DB: ${error.message}`);
     if ((!allDue || allDue.length === 0) && results.length === 0) {
+      console.log(`[Scheduler] No posts due. phase2=${processing?.length||0} recovered=${stuck?.length||0}`);
       return json({ message: "No posts due", phase2: processing?.length || 0, recovered: stuck?.length || 0 });
     }
 
@@ -327,9 +329,21 @@ serve(async (req) => {
         if (post.platform === "instagram") {
           console.log(`[Phase1] Creating IG container for ${post.id} (${post.media_type})...`);
           const container = await createIGContainer(sb, post.client_id, urls, post.caption || "", post.media_type);
-          await sb.from("scheduled_posts").update({ status: "processing", result: container, error: null }).eq("id", post.id);
-          console.log(`[Phase1] IG ${post.id} → processing (${elapsed()}ms)`);
-          results.push({ id: post.id, status: "processing", phase: 1, type: container.type });
+          /* CRITICAL: update status AND result. Do NOT use .select().single() — it causes errors in Deno */
+          const { error: updErr } = await sb.from("scheduled_posts")
+            .update({ status: "processing", result: container, error: null })
+            .eq("id", post.id);
+          if (updErr) {
+            const errDetail = `code=${updErr.code}|msg=${updErr.message}|hint=${updErr.hint}|details=${updErr.details}`;
+            console.error(`[Phase1] DB UPDATE FAILED for ${post.id}: ${errDetail}`);
+            results.push({ id: post.id, status: "db_error", phase: 1, db_error: errDetail, type: container.type });
+            /* Fallback: try status and result separately */
+            await sb.from("scheduled_posts").update({ status: "processing" }).eq("id", post.id);
+            await sb.from("scheduled_posts").update({ result: container }).eq("id", post.id);
+          } else {
+            console.log(`[Phase1] IG ${post.id} → processing (${elapsed()}ms)`);
+            results.push({ id: post.id, status: "processing", phase: 1, type: container.type });
+          }
         } else {
           console.log(`[Phase1] Publishing FB ${post.id} (${post.media_type})...`);
           const result = await publishFacebook(sb, post.client_id, urls, post.caption || "", post.media_type);
