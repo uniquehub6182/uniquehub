@@ -24643,43 +24643,34 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   const { showToast, ToastEl } = useToast();
   const LIME = B.accent || "#BBF246";
 
-  /* ── Resolve client ID ── */
   const myClientId = React.useMemo(() => {
     const email = (user?.email||"").toLowerCase();
     const cl = clients.find(c => c.id === user?.linked_client_id) || clients.find(c => (c.contact_email||"").toLowerCase() === email) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
     return cl?.id || cl?.supaId || null;
   }, [user, clients]);
 
-  /* ── Load all data ── */
   useEffect(() => {
     if (!supabase || !myClientId) return;
     (async () => {
       setLoading(true);
       try {
-        /* My profile */
         const { data: prof } = await supabase.from("match4biz_profiles").select("*").eq("client_id", myClientId).limit(1);
         if (prof?.[0]) { setMyProfile(prof[0]); setEditData(prof[0]); }
-        /* My swipes */
         const { data: sw } = await supabase.from("match4biz_swipes").select("*").eq("from_client_id", myClientId);
         setSwipes(sw || []);
-        /* All visible profiles except mine */
         const { data: allProf } = await supabase.from("match4biz_profiles").select("*").eq("visible", true).neq("client_id", myClientId);
         const swipedIds = new Set((sw||[]).map(s => s.to_client_id));
         setProfiles((allProf||[]).filter(p => !swipedIds.has(p.client_id)));
-        /* My matches */
         const { data: ma } = await supabase.from("match4biz_matches").select("*").or(`client_a_id.eq.${myClientId},client_b_id.eq.${myClientId}`).order("matched_at", { ascending: false });
         setMatches(ma || []);
-        /* Credits */
         const { data: cr } = await supabase.from("match4biz_credits").select("*").eq("client_id", myClientId).order("created_at", { ascending: false });
         setCreditHistory(cr || []);
-        const bal = (cr||[]).reduce((sum, c) => sum + c.amount, 0);
-        setCredits(bal);
+        setCredits((cr||[]).reduce((sum, c) => sum + c.amount, 0));
       } catch(e) { console.error("M4B load:", e); }
       setLoading(false);
     })();
   }, [myClientId]);
 
-  /* ── Swipe handler ── */
   const handleSwipe = async (direction) => {
     if (!profiles[currentIdx] || !myClientId) return;
     const target = profiles[currentIdx];
@@ -24688,251 +24679,205 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
     setSwipeAnim(direction);
     setTimeout(() => setSwipeAnim(null), 400);
     try {
-      /* Record swipe */
       await supabase.from("match4biz_swipes").insert({ from_client_id: myClientId, to_client_id: target.client_id, direction });
-      /* Deduct credits */
       if (cost > 0) {
         await supabase.from("match4biz_credits").insert({ client_id: myClientId, amount: -cost, type: "spend", description: direction === "super" ? "Super Match" : "Interesse enviado", reference_id: target.client_id });
         setCredits(prev => prev - cost);
         setCreditHistory(prev => [{ id: Date.now(), client_id: myClientId, amount: -cost, type: "spend", description: direction==="super"?"Super Match":"Interesse enviado", created_at: new Date().toISOString() }, ...prev]);
       }
-      /* Check for match: did the other person already swipe right on us? */
       if (direction === "right" || direction === "super") {
         const { data: reverse } = await supabase.from("match4biz_swipes").select("*").eq("from_client_id", target.client_id).eq("to_client_id", myClientId).in("direction", ["right","super"]).limit(1);
         if (reverse?.length > 0) {
-          /* MATCH! */
           const ids = [myClientId, target.client_id].sort();
           const myName = myProfile?.client_name || user?.name || "Cliente";
           const { data: newMatch } = await supabase.from("match4biz_matches").insert({ client_a_id: ids[0], client_b_id: ids[1], client_a_name: ids[0]===myClientId?myName:target.client_name, client_b_name: ids[1]===myClientId?myName:target.client_name, is_super: direction==="super" }).select().single();
-          if (newMatch) {
-            setMatches(prev => [newMatch, ...prev]);
-            setMatchPopup({ profile: target, match: newMatch });
-            /* Give 10 credits reward for matching */
+          if (newMatch) { setMatches(prev => [newMatch, ...prev]); setMatchPopup({ profile: target, match: newMatch });
             await supabase.from("match4biz_credits").insert({ client_id: myClientId, amount: 10, type: "reward", description: "Match com " + target.client_name, reference_id: newMatch.id });
-            setCredits(prev => prev + 10);
-          }
+            setCredits(prev => prev + 10); }
         }
       }
-      /* Move to next */
       setTimeout(() => { setProfiles(prev => prev.filter((_,i) => i !== currentIdx)); if (currentIdx >= profiles.length - 1) setCurrentIdx(0); }, 300);
-    } catch(e) { console.error("Swipe error:", e); showToast("Erro ao processar. Tente novamente."); }
+    } catch(e) { console.error("Swipe error:", e); showToast("Erro ao processar."); }
   };
 
-  /* ── Send message ── */
-  const sendMessage = async () => {
-    if (!msgText.trim() || !chatMatch) return;
-    const msg = { match_id: chatMatch.id, sender_client_id: myClientId, sender_name: myProfile?.client_name || user?.name, text: msgText.trim() };
-    const { data } = await supabase.from("match4biz_messages").insert(msg).select().single();
-    if (data) setMessages(prev => [...prev, data]);
-    setMsgText("");
-  };
+  const sendMessage = async () => { if (!msgText.trim() || !chatMatch) return; const msg = { match_id: chatMatch.id, sender_client_id: myClientId, sender_name: myProfile?.client_name || user?.name, text: msgText.trim() }; const { data } = await supabase.from("match4biz_messages").insert(msg).select().single(); if (data) setMessages(prev => [...prev, data]); setMsgText(""); };
 
-  /* ── Load chat messages ── */
-  useEffect(() => {
-    if (!chatMatch || !supabase) return;
-    (async () => {
-      const { data } = await supabase.from("match4biz_messages").select("*").eq("match_id", chatMatch.id).order("created_at", { ascending: true });
-      setMessages(data || []);
-    })();
+  useEffect(() => { if (!chatMatch || !supabase) return; (async () => { const { data } = await supabase.from("match4biz_messages").select("*").eq("match_id", chatMatch.id).order("created_at", { ascending: true }); setMessages(data || []); })();
     const channel = supabase.channel("m4b_chat_" + chatMatch.id).on("postgres_changes", { event: "INSERT", schema: "public", table: "match4biz_messages", filter: `match_id=eq.${chatMatch.id}` }, payload => { setMessages(prev => [...prev.filter(m => m.id !== payload.new.id), payload.new]); }).subscribe();
-    return () => supabase.removeChannel(channel);
-  }, [chatMatch?.id]);
+    return () => supabase.removeChannel(channel); }, [chatMatch?.id]);
 
-  /* ── Save profile ── */
-  const saveProfile = async () => {
-    if (!myClientId) return;
-    const payload = { tagline: editData.tagline||"", description: editData.description||"", segment: editData.segment||"", city: editData.city||"", offers: editData.offers||[], seeks: editData.seeks||[], website: editData.website||"", instagram: editData.instagram||"", linkedin: editData.linkedin||"" };
-    await supabase.from("match4biz_profiles").update(payload).eq("client_id", myClientId);
-    setMyProfile(prev => ({ ...prev, ...payload }));
-    setEditMode(false);
-    showToast("Perfil atualizado ✓");
-  };
+  const saveProfile = async () => { if (!myClientId) return; const payload = { tagline: editData.tagline||"", description: editData.description||"", segment: editData.segment||"", city: editData.city||"", offers: editData.offers||[], seeks: editData.seeks||[], website: editData.website||"", instagram: editData.instagram||"", linkedin: editData.linkedin||"" }; await supabase.from("match4biz_profiles").update(payload).eq("client_id", myClientId); setMyProfile(prev => ({ ...prev, ...payload })); setEditMode(false); showToast("Perfil atualizado ✓"); };
 
-  /* ── Tag input helper ── */
-  const TagInput = ({ label, items, setItems, placeholder }) => {
-    const [v, setV] = useState("");
-    return <div style={{marginBottom:14}}>
-      <label style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>{label}</label>
-      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:6}}>{(items||[]).map((t,i) => <span key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:8,background:`${LIME}12`,fontSize:11,fontWeight:600,color:LIME}}>{t}<button onClick={()=>setItems(items.filter((_,j)=>j!==i))} style={{background:"none",border:"none",cursor:"pointer",color:LIME,fontSize:14,padding:0,lineHeight:1}}>×</button></span>)}</div>
-      <div style={{display:"flex",gap:6}}><input value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&v.trim()){e.preventDefault();setItems([...(items||[]),v.trim()]);setV("");}}} placeholder={placeholder} className="tinput" style={{flex:1,fontSize:13}} /><button onClick={()=>{if(v.trim()){setItems([...(items||[]),v.trim()]);setV("");}}} style={{padding:"8px 14px",borderRadius:10,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>+</button></div>
-    </div>;
-  };
+  const TagInput = ({ label, items, setItems, placeholder }) => { const [v, setV] = useState(""); return <div style={{marginBottom:14}}><label style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>{label}</label><div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:6}}>{(items||[]).map((t,i) => <span key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:8,background:`${LIME}12`,fontSize:11,fontWeight:600,color:LIME}}>{t}<button onClick={()=>setItems(items.filter((_,j)=>j!==i))} style={{background:"none",border:"none",cursor:"pointer",color:LIME,fontSize:14,padding:0,lineHeight:1}}>×</button></span>)}</div><div style={{display:"flex",gap:6}}><input value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&v.trim()){e.preventDefault();setItems([...(items||[]),v.trim()]);setV("");}}} placeholder={placeholder} className="tinput" style={{flex:1,fontSize:13}} /><button onClick={()=>{if(v.trim()){setItems([...(items||[]),v.trim()]);setV("");}}} style={{padding:"8px 14px",borderRadius:10,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>+</button></div></div>; };
 
   const curProfile = profiles[currentIdx];
+  const nextProfiles = profiles.slice(currentIdx + 1, currentIdx + 4);
   const TABS = [{k:"discover",l:"Descobrir",ic:"🔍"},{k:"matches",l:"Matches",ic:"💚",badge:matches.length},{k:"profile",l:"Meu Perfil",ic:"👤"},{k:"credits",l:"Créditos",ic:"💰",badge:credits}];
 
   if (loading) return <div className="content-wide" style={{paddingTop:0,minHeight:"100%"}}><CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} /><div style={{textAlign:"center",padding:60}}><div style={{width:28,height:28,border:`3px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto"}}/><p style={{fontSize:13,color:B.muted,marginTop:12}}>Carregando Match4Biz...</p></div></div>;
 
-  /* ── MATCH POPUP ── */
-  const matchPopupEl = matchPopup && <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setMatchPopup(null)}>
-    <div onClick={e=>e.stopPropagation()} style={{background:"#0D0D0D",borderRadius:28,padding:"40px 36px",textAlign:"center",maxWidth:380,width:"90%",position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:-40,left:"50%",transform:"translateX(-50%)",width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle, ${LIME}30, transparent 70%)`,filter:"blur(40px)"}}/>
-      <div style={{position:"relative",zIndex:1}}>
-        <span style={{fontSize:48}}>💚</span>
-        <h2 style={{fontSize:28,fontWeight:900,color:LIME,margin:"12px 0 4px"}}>Match!</h2>
-        <p style={{fontSize:14,color:"rgba(255,255,255,0.6)",marginBottom:24}}>Você e <strong style={{color:"#fff"}}>{matchPopup.profile.client_name}</strong> têm interesse mútuo!</p>
-        <p style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:20}}>Vocês ganharam <strong style={{color:LIME}}>+10 créditos</strong> cada!</p>
-        <div style={{display:"flex",gap:10}}><button onClick={()=>{setChatMatch(matchPopup.match);setTab("matches");setMatchPopup(null);}} style={{flex:1,padding:"14px",borderRadius:14,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#0D0D0D"}}>Conversar</button><button onClick={()=>setMatchPopup(null)} style={{flex:1,padding:"14px",borderRadius:14,background:"rgba(255,255,255,0.1)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:600,color:"#fff"}}>Continuar</button></div>
-      </div>
-    </div>
-  </div>;
+  const matchPopupEl = matchPopup && <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setMatchPopup(null)}><div onClick={e=>e.stopPropagation()} style={{background:"#0D0D0D",borderRadius:28,padding:"40px 36px",textAlign:"center",maxWidth:380,width:"90%",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",top:-40,left:"50%",transform:"translateX(-50%)",width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle, ${LIME}30, transparent 70%)`,filter:"blur(40px)"}}/><div style={{position:"relative",zIndex:1}}><span style={{fontSize:48}}>💚</span><h2 style={{fontSize:28,fontWeight:900,color:LIME,margin:"12px 0 4px"}}>Match!</h2><p style={{fontSize:14,color:"rgba(255,255,255,0.6)",marginBottom:24}}>Você e <strong style={{color:"#fff"}}>{matchPopup.profile.client_name}</strong> têm interesse mútuo!</p><p style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:20}}>Vocês ganharam <strong style={{color:LIME}}>+10 créditos</strong> cada!</p><div style={{display:"flex",gap:10}}><button onClick={()=>{setChatMatch(matchPopup.match);setTab("matches");setMatchPopup(null);}} style={{flex:1,padding:"14px",borderRadius:14,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#0D0D0D"}}>Conversar</button><button onClick={()=>setMatchPopup(null)} style={{flex:1,padding:"14px",borderRadius:14,background:"rgba(255,255,255,0.1)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:600,color:"#fff"}}>Continuar</button></div></div></div></div>;
 
-  /* ── CHAT VIEW ── */
-  if (chatMatch) {
-    const otherName = chatMatch.client_a_id === myClientId ? chatMatch.client_b_name : chatMatch.client_a_name;
-    return <div className="content-wide" style={{paddingTop:0,paddingBottom:100,display:"flex",flexDirection:"column",minHeight:"100%"}}>
-      {ToastEl}
-      <Head title={otherName || "Chat"} onBack={()=>setChatMatch(null)} />
-      <div style={{flex:1,overflowY:"auto",padding:"10px 0",display:"flex",flexDirection:"column",gap:6}}>
-        {messages.length===0&&<p style={{textAlign:"center",color:B.muted,fontSize:13,padding:30}}>Nenhuma mensagem ainda. Diga olá!</p>}
-        {messages.map(m => { const mine = m.sender_client_id === myClientId; return <div key={m.id} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start",padding:"0 4px"}}><div style={{maxWidth:"75%",padding:"10px 14px",borderRadius:mine?"16px 16px 4px 16px":"16px 16px 16px 4px",background:mine?LIME:`${B.muted}12`,color:mine?"#0D0D0D":B.text}}><p style={{fontSize:13,lineHeight:1.5}}>{m.text}</p><p style={{fontSize:9,color:mine?"rgba(0,0,0,0.4)":B.muted,marginTop:4,textAlign:"right"}}>{new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p></div></div>; })}
+  if (chatMatch) { const otherName = chatMatch.client_a_id === myClientId ? chatMatch.client_b_name : chatMatch.client_a_name;
+    return <div className="content-wide" style={{paddingTop:0,paddingBottom:100,minHeight:"100%"}}>{ToastEl}<Head title={otherName || "Chat"} onBack={()=>setChatMatch(null)} /><div style={{maxWidth:700,margin:"0 auto",display:"flex",flexDirection:"column",height:isDesktop?"calc(100vh - 200px)":"calc(100vh - 120px)",background:B.bgCard,borderRadius:isDesktop?20:0,border:isDesktop?`1px solid ${B.border}`:"none",overflow:"hidden",marginTop:isDesktop?16:0}}>
+      <div style={{flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:6}}>
+        {messages.length===0&&<p style={{textAlign:"center",color:B.muted,fontSize:13,padding:30}}>Nenhuma mensagem ainda. Diga olá! 👋</p>}
+        {messages.map(m => { const mine = m.sender_client_id === myClientId; return <div key={m.id} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start"}}><div style={{maxWidth:"75%",padding:"10px 14px",borderRadius:mine?"16px 16px 4px 16px":"16px 16px 16px 4px",background:mine?LIME:`${B.muted}12`,color:mine?"#0D0D0D":B.text}}><p style={{fontSize:13,lineHeight:1.5}}>{m.text}</p><p style={{fontSize:9,color:mine?"rgba(0,0,0,0.4)":B.muted,marginTop:4,textAlign:"right"}}>{new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p></div></div>; })}
       </div>
-      <div style={{display:"flex",gap:8,padding:"8px 0",flexShrink:0}}>
-        <input value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMessage();}} placeholder="Digite sua mensagem..." className="tinput" style={{flex:1}} />
-        <button onClick={sendMessage} disabled={!msgText.trim()} style={{padding:"10px 18px",borderRadius:12,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:msgText.trim()?1:0.4}}>Enviar</button>
-      </div>
-    </div>;
-  }
+      <div style={{display:"flex",gap:8,padding:"12px 16px",borderTop:`1px solid ${B.border}`,flexShrink:0}}><input value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMessage();}} placeholder="Digite sua mensagem..." className="tinput" style={{flex:1}} /><button onClick={sendMessage} disabled={!msgText.trim()} style={{padding:"10px 18px",borderRadius:12,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:msgText.trim()?1:0.4}}>Enviar</button></div>
+    </div></div>; }
 
+  /* ═══ MAIN RETURN ═══ */
   return <div className="content-wide" style={{paddingTop:0,paddingBottom:100,minHeight:"100%"}}>
     {ToastEl}{matchPopupEl}
     <CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-    {/* Tab bar */}
-    <div style={{display:"flex",gap:6,marginBottom:16,marginTop:isDesktop?16:0,overflowX:"auto",scrollbarWidth:"none"}}>
-      {TABS.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:12,border:tab===t.k?"none":`1.5px solid ${B.border}`,background:tab===t.k?LIME:"transparent",color:tab===t.k?"#0D0D0D":B.muted,fontSize:12,fontWeight:tab===t.k?700:500,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}><span>{t.ic}</span>{t.l}{t.badge>0&&<span style={{fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:6,background:tab===t.k?"rgba(0,0,0,0.15)":`${LIME}20`,color:tab===t.k?"#0D0D0D":LIME}}>{t.badge}</span>}</button>)}
+    <div style={{display:"flex",gap:8,marginTop:isDesktop?16:0,marginBottom:16,overflowX:"auto",scrollbarWidth:"none"}}>
+      {TABS.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{display:"flex",alignItems:"center",gap:6,padding:isDesktop?"10px 20px":"9px 16px",borderRadius:12,border:tab===t.k?"none":`1.5px solid ${B.border}`,background:tab===t.k?LIME:"transparent",color:tab===t.k?"#0D0D0D":B.muted,fontSize:isDesktop?13:12,fontWeight:tab===t.k?700:500,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}><span>{t.ic}</span>{t.l}{t.badge>0&&<span style={{fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:6,background:tab===t.k?"rgba(0,0,0,0.15)":`${LIME}20`,color:tab===t.k?"#0D0D0D":LIME}}>{t.badge}</span>}</button>)}
     </div>
 
     {/* ═══ DISCOVER TAB ═══ */}
     {tab === "discover" && <>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <p style={{fontSize:12,color:B.muted}}>{profiles.length} {profiles.length===1?"empresa":"empresas"} para descobrir</p>
-        <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:`${LIME}10`,border:`1px solid ${LIME}20`}}><span style={{fontSize:12}}>💰</span><span style={{fontSize:12,fontWeight:700,color:LIME}}>{credits} créditos</span></div>
-      </div>
-      {!curProfile ? <div style={{textAlign:"center",padding:60}}>
-        <span style={{fontSize:48,display:"block",marginBottom:12}}>🎉</span>
-        <h3 style={{fontSize:18,fontWeight:800,marginBottom:6}}>Você viu todas as empresas!</h3>
-        <p style={{fontSize:13,color:B.muted}}>Novos perfis aparecerão quando novos clientes entrarem na plataforma.</p>
-      </div> : <div style={{maxWidth:isDesktop?600:400,margin:"0 auto"}}>
-        {/* Card */}
-        <div style={{borderRadius:24,overflow:"hidden",border:`1px solid ${B.border}`,background:B.bgCard,boxShadow:"0 8px 30px rgba(0,0,0,0.08)",transition:"transform .3s, opacity .3s",transform:swipeAnim==="left"?"translateX(-120%) rotate(-15deg)":swipeAnim==="right"?"translateX(120%) rotate(15deg)":swipeAnim==="super"?"translateY(-100px) scale(1.1)":"none",opacity:swipeAnim?0:1}}>
-          {/* Logo / Avatar */}
-          <div style={{height:200,background:`linear-gradient(135deg, ${LIME}20, ${B.bgCard})`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
-            {curProfile.logo_url ? <img src={curProfile.logo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : <div style={{width:100,height:100,borderRadius:"50%",background:`linear-gradient(135deg, ${LIME}40, ${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,fontWeight:900,color:LIME}}>{(curProfile.client_name||"?")[0]}</div>}
-            {curProfile.segment && <span style={{position:"absolute",top:12,right:12,padding:"4px 12px",borderRadius:8,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(10px)",fontSize:10,fontWeight:700,color:"#fff"}}>{curProfile.segment}</span>}
+      {!curProfile ? <div style={{textAlign:"center",padding:isDesktop?80:60,background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`}}><span style={{fontSize:56,display:"block",marginBottom:16}}>🎉</span><h3 style={{fontSize:20,fontWeight:800,marginBottom:8}}>Você viu todas as empresas!</h3><p style={{fontSize:14,color:B.muted,lineHeight:1.6}}>Novos perfis aparecerão quando novos clientes entrarem na plataforma.</p></div>
+      : isDesktop ? /* ── DESKTOP: Split layout ── */
+        <div style={{display:"grid",gridTemplateColumns:"1fr 380px",gap:20,alignItems:"start"}}>
+          {/* LEFT: Profile card */}
+          <div style={{background:B.bgCard,borderRadius:24,border:`1px solid ${B.border}`,overflow:"hidden",transition:"transform .3s, opacity .3s",transform:swipeAnim==="left"?"translateX(-80px) rotate(-5deg)":swipeAnim==="right"?"translateX(80px) rotate(5deg)":swipeAnim==="super"?"translateY(-40px) scale(1.03)":"none",opacity:swipeAnim?0.3:1}}>
+            {/* Hero gradient */}
+            <div style={{height:180,background:`linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)`,position:"relative",display:"flex",alignItems:"flex-end",padding:"0 28px 0"}}>
+              <div style={{position:"absolute",top:16,right:16,display:"flex",gap:6}}>
+                {curProfile.segment&&<span style={{padding:"5px 14px",borderRadius:10,background:"rgba(255,255,255,0.15)",backdropFilter:"blur(10px)",fontSize:11,fontWeight:700,color:"#fff"}}>{curProfile.segment}</span>}
+                {curProfile.city&&<span style={{padding:"5px 14px",borderRadius:10,background:"rgba(255,255,255,0.1)",backdropFilter:"blur(10px)",fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.7)",display:"flex",alignItems:"center",gap:4}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>{curProfile.city}</span>}
+              </div>
+              <div style={{width:90,height:90,borderRadius:20,background:curProfile.logo_url?"transparent":"linear-gradient(135deg,"+LIME+"60,"+LIME+"20)",border:"4px solid #fff",overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginBottom:-40,zIndex:2,boxShadow:"0 8px 24px rgba(0,0,0,0.2)"}}>
+                {curProfile.logo_url?<img src={curProfile.logo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:32,fontWeight:900,color:LIME}}>{(curProfile.client_name||"?")[0]}</span>}
+              </div>
+            </div>
+            {/* Profile content */}
+            <div style={{padding:"48px 28px 24px"}}>
+              <h2 style={{fontSize:24,fontWeight:900,marginBottom:4}}>{curProfile.client_name}</h2>
+              {curProfile.tagline&&<p style={{fontSize:14,color:B.muted,lineHeight:1.5,marginBottom:16}}>{curProfile.tagline}</p>}
+              {curProfile.description&&<p style={{fontSize:13,lineHeight:1.7,color:B.text,opacity:0.8,marginBottom:20,padding:"14px 16px",background:`${B.muted}06`,borderRadius:14,borderLeft:`3px solid ${LIME}`}}>{curProfile.description}</p>}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                {(curProfile.offers||[]).length>0&&<div style={{padding:"14px 16px",borderRadius:14,background:`${B.green||"#22C55E"}06`,border:`1px solid ${B.green||"#22C55E"}15`}}><p style={{fontSize:10,fontWeight:700,color:B.green||"#22C55E",textTransform:"uppercase",letterSpacing:.5,marginBottom:8,display:"flex",alignItems:"center",gap:4}}>✦ Oferece</p><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{curProfile.offers.map((t,i)=><span key={i} style={{padding:"5px 12px",borderRadius:8,background:`${B.green||"#22C55E"}12`,fontSize:11,fontWeight:600,color:B.green||"#22C55E"}}>{t}</span>)}</div></div>}
+                {(curProfile.seeks||[]).length>0&&<div style={{padding:"14px 16px",borderRadius:14,background:"#3B82F606",border:"1px solid #3B82F615"}}><p style={{fontSize:10,fontWeight:700,color:"#3B82F6",textTransform:"uppercase",letterSpacing:.5,marginBottom:8,display:"flex",alignItems:"center",gap:4}}>🔍 Busca</p><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{curProfile.seeks.map((t,i)=><span key={i} style={{padding:"5px 12px",borderRadius:8,background:"#3B82F612",fontSize:11,fontWeight:600,color:"#3B82F6"}}>{t}</span>)}</div></div>}
+              </div>
+              {/* Social links */}
+              {(curProfile.website||curProfile.instagram||curProfile.linkedin)&&<div style={{display:"flex",gap:8,marginTop:16}}>{curProfile.website&&<a href={curProfile.website.startsWith("http")?curProfile.website:"https://"+curProfile.website} target="_blank" rel="noopener noreferrer" style={{padding:"6px 14px",borderRadius:8,background:`${B.muted}08`,border:`1px solid ${B.border}`,fontSize:11,fontWeight:600,color:B.muted,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>Site</a>}{curProfile.instagram&&<span style={{padding:"6px 14px",borderRadius:8,background:`${B.muted}08`,border:`1px solid ${B.border}`,fontSize:11,fontWeight:600,color:B.muted}}>{curProfile.instagram}</span>}{curProfile.linkedin&&<span style={{padding:"6px 14px",borderRadius:8,background:`${B.muted}08`,border:`1px solid ${B.border}`,fontSize:11,fontWeight:600,color:B.muted}}>LinkedIn</span>}</div>}
+            </div>
           </div>
-          {/* Info */}
-          <div style={{padding:"20px 20px 16px"}}>
-            <h3 style={{fontSize:20,fontWeight:900,marginBottom:4}}>{curProfile.client_name}</h3>
-            {curProfile.tagline && <p style={{fontSize:13,color:B.muted,marginBottom:12}}>{curProfile.tagline}</p>}
-            {curProfile.city && <p style={{fontSize:11,color:B.muted,display:"flex",alignItems:"center",gap:4,marginBottom:10}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>{curProfile.city}</p>}
-            {(curProfile.offers||[]).length > 0 && <div style={{marginBottom:10}}><p style={{fontSize:9,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Oferece</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{curProfile.offers.map((t,i) => <span key={i} style={{padding:"3px 10px",borderRadius:6,background:`${B.green}12`,fontSize:10,fontWeight:600,color:B.green}}>{t}</span>)}</div></div>}
-            {(curProfile.seeks||[]).length > 0 && <div><p style={{fontSize:9,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Busca</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{curProfile.seeks.map((t,i) => <span key={i} style={{padding:"3px 10px",borderRadius:6,background:`#3B82F612`,fontSize:10,fontWeight:600,color:"#3B82F6"}}>{t}</span>)}</div></div>}
+          {/* RIGHT: Actions + Queue */}
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            {/* Credits badge */}
+            <div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div><p style={{fontSize:11,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5}}>Seus créditos</p><p style={{fontSize:28,fontWeight:900,color:LIME,marginTop:4}}>{credits}</p></div>
+              <div style={{width:48,height:48,borderRadius:14,background:`${LIME}12`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:24}}>💰</span></div>
+            </div>
+            {/* Action buttons */}
+            <div style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,padding:"24px 20px",textAlign:"center"}}>
+              <p style={{fontSize:12,fontWeight:700,color:B.muted,marginBottom:16}}>O que acha de <strong style={{color:B.text}}>{curProfile.client_name}</strong>?</p>
+              <div style={{display:"flex",justifyContent:"center",gap:16,marginBottom:12}}>
+                <button onClick={()=>handleSwipe("left")} style={{width:64,height:64,borderRadius:"50%",background:B.bgCard,border:`2px solid ${B.red||"#EF4444"}25`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 14px rgba(0,0,0,0.06)",transition:"all .2s"}} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.12)";e.currentTarget.style.background=`${B.red||"#EF4444"}08`;}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.background=B.bgCard;}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                <button onClick={()=>handleSwipe("super")} disabled={credits<3} style={{width:56,height:56,borderRadius:"50%",background:B.bgCard,border:"2px solid #8B5CF625",cursor:credits<3?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:credits<3?0.35:1,boxShadow:"0 4px 14px rgba(0,0,0,0.06)",transition:"all .2s",alignSelf:"center"}} onMouseEnter={e=>{if(credits>=3){e.currentTarget.style.transform="scale(1.12)";e.currentTarget.style.background="#8B5CF608";}}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.background=B.bgCard;}} title="Super Match (3 créditos)"><span style={{fontSize:22}}>⭐</span></button>
+                <button onClick={()=>handleSwipe("right")} disabled={credits<1} style={{width:64,height:64,borderRadius:"50%",background:B.bgCard,border:`2px solid ${B.green||"#22C55E"}25`,cursor:credits<1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:credits<1?0.35:1,boxShadow:"0 4px 14px rgba(0,0,0,0.06)",transition:"all .2s"}} onMouseEnter={e=>{if(credits>=1){e.currentTarget.style.transform="scale(1.12)";e.currentTarget.style.background=`${B.green||"#22C55E"}08`;}}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.background=B.bgCard;}}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.green||"#22C55E"} strokeWidth="2.5" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
+              </div>
+              <div style={{display:"flex",justifyContent:"center",gap:20,fontSize:11,color:B.muted}}><span>Passar</span><span style={{color:"#8B5CF6"}}>⭐ 3 créd</span><span style={{color:B.green||"#22C55E"}}>💚 1 créd</span></div>
+            </div>
+            {/* Queue preview */}
+            {nextProfiles.length>0&&<div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 18px"}}>
+              <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>Próximas empresas ({profiles.length - 1} restantes)</p>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {nextProfiles.map((p,i) => <div key={p.client_id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:12,background:`${B.muted}04`,border:`1px solid ${B.border}`}}>
+                  <div style={{width:36,height:36,borderRadius:10,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:LIME,flexShrink:0}}>{(p.client_name||"?")[0]}</div>
+                  <div style={{flex:1,minWidth:0}}><p style={{fontSize:12,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.client_name}</p>{p.segment&&<p style={{fontSize:10,color:B.muted}}>{p.segment}</p>}</div>
+                </div>)}
+              </div>
+            </div>}
           </div>
-          {/* Description */}
-          {curProfile.description && <div style={{padding:"0 20px 16px"}}><p style={{fontSize:12,lineHeight:1.6,color:B.text,opacity:0.7}}>{curProfile.description}</p></div>}
         </div>
-        {/* Action buttons */}
-        <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:20,paddingBottom:10}}>
-          <button onClick={()=>handleSwipe("left")} style={{width:56,height:56,borderRadius:"50%",background:B.bgCard,border:`2px solid ${B.red||"#EF4444"}30`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 12px rgba(0,0,0,0.05)",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.1)";e.currentTarget.style.background=`${B.red||"#EF4444"}10`;}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.background=B.bgCard;}}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-          <button onClick={()=>handleSwipe("super")} disabled={credits<3} style={{width:48,height:48,borderRadius:"50%",background:B.bgCard,border:"2px solid #8B5CF630",cursor:credits<3?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:credits<3?0.4:1,boxShadow:"0 4px 12px rgba(0,0,0,0.05)",transition:"all .15s",alignSelf:"center"}} onMouseEnter={e=>{if(credits>=3){e.currentTarget.style.transform="scale(1.1)";e.currentTarget.style.background="#8B5CF610";}}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.background=B.bgCard;}} title="Super Match (3 créditos)">
-            <span style={{fontSize:20}}>⭐</span>
-          </button>
-          <button onClick={()=>handleSwipe("right")} disabled={credits<1} style={{width:56,height:56,borderRadius:"50%",background:B.bgCard,border:`2px solid ${B.green||"#22C55E"}30`,cursor:credits<1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:credits<1?0.4:1,boxShadow:"0 4px 12px rgba(0,0,0,0.05)",transition:"all .15s"}} onMouseEnter={e=>{if(credits>=1){e.currentTarget.style.transform="scale(1.1)";e.currentTarget.style.background=`${B.green||"#22C55E"}10`;}}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.background=B.bgCard;}}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.green||"#22C55E"} strokeWidth="2.5" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-          </button>
-        </div>
-        <div style={{display:"flex",justifyContent:"center",gap:20,fontSize:10,color:B.muted,paddingBottom:6}}>
-          <span>Passar</span><span style={{color:"#8B5CF6"}}>⭐ 3 créd</span><span style={{color:B.green}}>Interesse · 1 créd</span>
-        </div>
-      </div>}
+      : /* ── MOBILE: Centered card ── */
+        <div style={{maxWidth:400,margin:"0 auto"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><p style={{fontSize:12,color:B.muted}}>{profiles.length} empresas</p><div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:`${LIME}10`,border:`1px solid ${LIME}20`}}><span style={{fontSize:12}}>💰</span><span style={{fontSize:12,fontWeight:700,color:LIME}}>{credits}</span></div></div>
+          <div style={{borderRadius:24,overflow:"hidden",border:`1px solid ${B.border}`,background:B.bgCard,boxShadow:"0 8px 30px rgba(0,0,0,0.08)",transition:"transform .3s, opacity .3s",transform:swipeAnim==="left"?"translateX(-120%) rotate(-15deg)":swipeAnim==="right"?"translateX(120%) rotate(15deg)":swipeAnim==="super"?"translateY(-100px) scale(1.1)":"none",opacity:swipeAnim?0:1}}>
+            <div style={{height:180,background:`linear-gradient(135deg, ${LIME}20, ${B.bgCard})`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>{curProfile.logo_url?<img src={curProfile.logo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:80,height:80,borderRadius:"50%",background:`linear-gradient(135deg, ${LIME}40, ${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,fontWeight:900,color:LIME}}>{(curProfile.client_name||"?")[0]}</div>}{curProfile.segment&&<span style={{position:"absolute",top:12,right:12,padding:"4px 12px",borderRadius:8,background:"rgba(0,0,0,0.6)",fontSize:10,fontWeight:700,color:"#fff"}}>{curProfile.segment}</span>}</div>
+            <div style={{padding:"16px 20px"}}><h3 style={{fontSize:18,fontWeight:900,marginBottom:4}}>{curProfile.client_name}</h3>{curProfile.tagline&&<p style={{fontSize:12,color:B.muted,marginBottom:10}}>{curProfile.tagline}</p>}{(curProfile.offers||[]).length>0&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:4}}>Oferece</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{curProfile.offers.map((t,i)=><span key={i} style={{padding:"3px 10px",borderRadius:6,background:`${B.green}12`,fontSize:10,fontWeight:600,color:B.green}}>{t}</span>)}</div></div>}{(curProfile.seeks||[]).length>0&&<div><p style={{fontSize:9,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:4}}>Busca</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{curProfile.seeks.map((t,i)=><span key={i} style={{padding:"3px 10px",borderRadius:6,background:"#3B82F612",fontSize:10,fontWeight:600,color:"#3B82F6"}}>{t}</span>)}</div></div>}</div>
+          </div>
+          <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:20}}><button onClick={()=>handleSwipe("left")} style={{width:56,height:56,borderRadius:"50%",background:B.bgCard,border:`2px solid ${B.red||"#EF4444"}30`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 12px rgba(0,0,0,0.05)"}}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button><button onClick={()=>handleSwipe("super")} disabled={credits<3} style={{width:48,height:48,borderRadius:"50%",background:B.bgCard,border:"2px solid #8B5CF630",cursor:credits<3?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:credits<3?0.4:1,alignSelf:"center"}}><span style={{fontSize:20}}>⭐</span></button><button onClick={()=>handleSwipe("right")} disabled={credits<1} style={{width:56,height:56,borderRadius:"50%",background:B.bgCard,border:`2px solid ${B.green||"#22C55E"}30`,cursor:credits<1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:credits<1?0.4:1,boxShadow:"0 4px 12px rgba(0,0,0,0.05)"}}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.green||"#22C55E"} strokeWidth="2.5" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button></div>
+          <div style={{display:"flex",justifyContent:"center",gap:20,fontSize:10,color:B.muted,marginTop:8}}><span>Passar</span><span style={{color:"#8B5CF6"}}>⭐ 3 créd</span><span style={{color:B.green}}>💚 1 créd</span></div>
+        </div>}
     </>}
 
     {/* ═══ MATCHES TAB ═══ */}
     {tab === "matches" && <>
-      {matches.length === 0 ? <div style={{textAlign:"center",padding:50}}><span style={{fontSize:40,display:"block",marginBottom:8}}>💚</span><h3 style={{fontSize:16,fontWeight:800,marginBottom:6}}>Nenhum match ainda</h3><p style={{fontSize:13,color:B.muted}}>Explore empresas na aba "Descobrir" e mostre interesse!</p></div> :
+      {matches.length===0?<div style={{textAlign:"center",padding:50,background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`}}><span style={{fontSize:40,display:"block",marginBottom:8}}>💚</span><h3 style={{fontSize:16,fontWeight:800,marginBottom:6}}>Nenhum match ainda</h3><p style={{fontSize:13,color:B.muted}}>Explore empresas na aba "Descobrir"!</p></div>:
       <div style={{display:isDesktop?"grid":"flex",gridTemplateColumns:isDesktop?"1fr 1fr":"none",flexDirection:isDesktop?"unset":"column",gap:isDesktop?14:10}}>
-        {matches.map(m => {
-          const isA = m.client_a_id === myClientId;
-          const otherName = isA ? m.client_b_name : m.client_a_name;
-          const otherId = isA ? m.client_b_id : m.client_a_id;
-          return <Card key={m.id} onClick={()=>setChatMatch(m)} style={{cursor:"pointer",padding:"14px 16px"}}>
-            <div style={{display:"flex",alignItems:"center",gap:12}}>
-              <div style={{width:48,height:48,borderRadius:"50%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,color:LIME,flexShrink:0}}>{(otherName||"?")[0]}</div>
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}><p style={{fontSize:14,fontWeight:700}}>{otherName}</p>{m.is_super&&<span style={{fontSize:10}}>⭐</span>}{m.status==="deal_closed"&&<span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:6,background:`${B.green}12`,color:B.green}}>Negócio fechado</span>}</div>
-                <p style={{fontSize:11,color:B.muted,marginTop:2}}>Match em {new Date(m.matched_at).toLocaleDateString("pt-BR")}</p>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-            </div>
-          </Card>;
-        })}
+        {matches.map(m => { const isA=m.client_a_id===myClientId; const otherName=isA?m.client_b_name:m.client_a_name;
+          return <div key={m.id} onClick={()=>setChatMatch(m)} style={{background:B.bgCard,borderRadius:18,border:`1px solid ${B.border}`,padding:isDesktop?"20px":"14px 16px",cursor:"pointer",transition:"all .15s",display:"flex",alignItems:"center",gap:isDesktop?16:12}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.06)";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.boxShadow="none";}}>
+            <div style={{width:isDesktop?56:48,height:isDesktop?56:48,borderRadius:"50%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:isDesktop?20:18,fontWeight:900,color:LIME,flexShrink:0}}>{(otherName||"?")[0]}</div>
+            <div style={{flex:1,minWidth:0}}><div style={{display:"flex",alignItems:"center",gap:6}}><p style={{fontSize:isDesktop?15:14,fontWeight:700}}>{otherName}</p>{m.is_super&&<span style={{fontSize:10}}>⭐</span>}{m.status==="deal_closed"&&<span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:6,background:`${B.green}12`,color:B.green}}>Negócio fechado</span>}</div><p style={{fontSize:11,color:B.muted,marginTop:2}}>Match em {new Date(m.matched_at).toLocaleDateString("pt-BR")}</p></div>
+            <div style={{display:"flex",alignItems:"center",gap:6,color:LIME}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>{isDesktop&&<span style={{fontSize:12,fontWeight:600}}>Conversar</span>}</div>
+          </div>; })}
       </div>}
     </>}
 
     {/* ═══ PROFILE TAB ═══ */}
-    {tab === "profile" && <>
-      <Card style={{marginBottom:16}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-          <div style={{width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:LIME}}>{(myProfile?.client_name||"?")[0]}</div>
-          <div style={{flex:1}}><p style={{fontSize:16,fontWeight:800}}>{myProfile?.client_name}</p><p style={{fontSize:12,color:B.muted}}>{myProfile?.segment||"Sem segmento"}</p></div>
-          <button onClick={()=>setEditMode(!editMode)} style={{padding:"8px 16px",borderRadius:10,background:editMode?B.red+"12":LIME+"12",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:editMode?B.red:LIME}}>{editMode?"Cancelar":"Editar"}</button>
+    {tab === "profile" && <div style={{maxWidth:isDesktop?800:undefined,margin:isDesktop?"0 auto":undefined}}>
+      <div style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,padding:isDesktop?"24px 28px":"16px",marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16}}>
+          <div style={{width:64,height:64,borderRadius:18,background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:900,color:LIME}}>{(myProfile?.client_name||"?")[0]}</div>
+          <div style={{flex:1}}><p style={{fontSize:18,fontWeight:800}}>{myProfile?.client_name}</p><p style={{fontSize:12,color:B.muted}}>{myProfile?.segment||"Sem segmento"}</p></div>
+          <button onClick={()=>setEditMode(!editMode)} style={{padding:"10px 20px",borderRadius:12,background:editMode?`${B.red}12`:`${LIME}12`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:editMode?B.red:LIME}}>{editMode?"Cancelar":"Editar perfil"}</button>
         </div>
-      </Card>
-      {editMode ? <div>
+      </div>
+      {editMode ? <div style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,padding:isDesktop?"24px 28px":"16px"}}>
         <label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Tagline</label>
         <input value={editData.tagline||""} onChange={e=>setEditData(p=>({...p,tagline:e.target.value}))} className="tinput" placeholder="Ex: Especialista em confeitaria artesanal" style={{marginBottom:14}} />
-        <label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Descrição da empresa</label>
+        <label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Descrição</label>
         <textarea value={editData.description||""} onChange={e=>setEditData(p=>({...p,description:e.target.value}))} className="tinput" rows={3} placeholder="Conte sobre seu negócio..." style={{marginBottom:14,resize:"vertical"}} />
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Segmento</label><input value={editData.segment||""} onChange={e=>setEditData(p=>({...p,segment:e.target.value}))} className="tinput" placeholder="Ex: Alimentação" /></div>
-          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Cidade</label><input value={editData.city||""} onChange={e=>setEditData(p=>({...p,city:e.target.value}))} className="tinput" placeholder="Ex: Rio de Janeiro" /></div>
+        <div style={{display:"grid",gridTemplateColumns:isDesktop?"1fr 1fr":"1fr",gap:10,marginBottom:14}}>
+          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Segmento</label><input value={editData.segment||""} onChange={e=>setEditData(p=>({...p,segment:e.target.value}))} className="tinput" /></div>
+          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Cidade</label><input value={editData.city||""} onChange={e=>setEditData(p=>({...p,city:e.target.value}))} className="tinput" /></div>
         </div>
         <TagInput label="O que oferece" items={editData.offers||[]} setItems={v=>setEditData(p=>({...p,offers:v}))} placeholder="Ex: Bolos personalizados" />
         <TagInput label="O que busca" items={editData.seeks||[]} setItems={v=>setEditData(p=>({...p,seeks:v}))} placeholder="Ex: Embalagens sustentáveis" />
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:isDesktop?"1fr 1fr 1fr":"1fr",gap:10,marginBottom:14}}>
           <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Website</label><input value={editData.website||""} onChange={e=>setEditData(p=>({...p,website:e.target.value}))} className="tinput" placeholder="https://..." /></div>
           <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Instagram</label><input value={editData.instagram||""} onChange={e=>setEditData(p=>({...p,instagram:e.target.value}))} className="tinput" placeholder="@perfil" /></div>
-          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>LinkedIn</label><input value={editData.linkedin||""} onChange={e=>setEditData(p=>({...p,linkedin:e.target.value}))} className="tinput" placeholder="URL" /></div>
+          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>LinkedIn</label><input value={editData.linkedin||""} onChange={e=>setEditData(p=>({...p,linkedin:e.target.value}))} className="tinput" /></div>
         </div>
         <button onClick={saveProfile} style={{width:"100%",padding:14,borderRadius:14,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#0D0D0D"}}>Salvar Perfil</button>
-      </div> : <div>
-        {myProfile?.tagline && <Card style={{marginBottom:10}}><p style={{fontSize:13,fontStyle:"italic",color:B.muted}}>"{myProfile.tagline}"</p></Card>}
-        {myProfile?.description && <Card style={{marginBottom:10}}><p style={{fontSize:12,lineHeight:1.6}}>{myProfile.description}</p></Card>}
-        {(myProfile?.offers||[]).length>0 && <Card style={{marginBottom:10}}><p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:6}}>O que oferece</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{myProfile.offers.map((t,i)=><span key={i} style={{padding:"4px 12px",borderRadius:8,background:`${B.green}12`,fontSize:11,fontWeight:600,color:B.green}}>{t}</span>)}</div></Card>}
-        {(myProfile?.seeks||[]).length>0 && <Card style={{marginBottom:10}}><p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:6}}>O que busca</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{myProfile.seeks.map((t,i)=><span key={i} style={{padding:"4px 12px",borderRadius:8,background:"#3B82F612",fontSize:11,fontWeight:600,color:"#3B82F6"}}>{t}</span>)}</div></Card>}
-        {!myProfile?.description && !(myProfile?.offers||[]).length && <Card><p style={{fontSize:13,color:B.muted,textAlign:"center",padding:20}}>Seu perfil está vazio. Clique em "Editar" para completar e atrair mais matches!</p></Card>}
+      </div> : <div style={{display:isDesktop?"grid":"flex",gridTemplateColumns:isDesktop?"1fr 1fr":"none",flexDirection:isDesktop?"unset":"column",gap:14}}>
+        {myProfile?.tagline&&<div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 18px"}}><p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:6}}>Tagline</p><p style={{fontSize:14,fontStyle:"italic",color:B.text}}>"{myProfile.tagline}"</p></div>}
+        {myProfile?.description&&<div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 18px"}}><p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:6}}>Descrição</p><p style={{fontSize:13,lineHeight:1.6}}>{myProfile.description}</p></div>}
+        {(myProfile?.offers||[]).length>0&&<div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 18px"}}><p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:6}}>Oferece</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{myProfile.offers.map((t,i)=><span key={i} style={{padding:"5px 12px",borderRadius:8,background:`${B.green}12`,fontSize:11,fontWeight:600,color:B.green}}>{t}</span>)}</div></div>}
+        {(myProfile?.seeks||[]).length>0&&<div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"16px 18px"}}><p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:6}}>Busca</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{myProfile.seeks.map((t,i)=><span key={i} style={{padding:"5px 12px",borderRadius:8,background:"#3B82F612",fontSize:11,fontWeight:600,color:"#3B82F6"}}>{t}</span>)}</div></div>}
+        {!myProfile?.description&&!(myProfile?.offers||[]).length&&<div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,padding:"24px",textAlign:"center",gridColumn:isDesktop?"1 / -1":undefined}}><p style={{fontSize:13,color:B.muted}}>Seu perfil está vazio. Clique em "Editar perfil" para completar!</p></div>}
       </div>}
-    </>}
+    </div>}
 
     {/* ═══ CREDITS TAB ═══ */}
-    {tab === "credits" && <>
-      <Card style={{marginBottom:16,background:`linear-gradient(135deg, #0D0D0D, #1a1a2e)`,border:"none",padding:"24px 20px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><p style={{fontSize:12,color:"rgba(255,255,255,0.4)",fontWeight:600}}>Saldo atual</p><p style={{fontSize:36,fontWeight:900,color:LIME,marginTop:4}}>{credits}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.3)",marginTop:2}}>créditos disponíveis</p></div>
-          <div style={{width:60,height:60,borderRadius:"50%",background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28}}>💰</span></div>
-        </div>
-      </Card>
-      <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Comprar créditos</p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
-        {[{n:10,price:"R$ 29,90"},{n:30,price:"R$ 69,90"},{n:100,price:"R$ 199,90"}].map(p => <Card key={p.n} onClick={()=>showToast("Em breve! Compra de créditos será integrada ao Asaas.")} style={{cursor:"pointer",textAlign:"center",padding:"18px 10px"}}>
-          <p style={{fontSize:24,fontWeight:900,color:LIME}}>{p.n}</p>
-          <p style={{fontSize:10,color:B.muted,marginTop:2}}>créditos</p>
-          <p style={{fontSize:13,fontWeight:700,marginTop:8}}>{p.price}</p>
-        </Card>)}
+    {tab === "credits" && <div style={{maxWidth:isDesktop?800:undefined,margin:isDesktop?"0 auto":undefined}}>
+      <div style={{background:"linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",borderRadius:20,padding:isDesktop?"28px 32px":"24px 20px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div><p style={{fontSize:12,color:"rgba(255,255,255,0.4)",fontWeight:600}}>Saldo atual</p><p style={{fontSize:40,fontWeight:900,color:LIME,marginTop:4}}>{credits}</p><p style={{fontSize:12,color:"rgba(255,255,255,0.3)",marginTop:2}}>créditos disponíveis</p></div>
+        <div style={{width:70,height:70,borderRadius:20,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:32}}>💰</span></div>
       </div>
-      <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Histórico</p>
-      {creditHistory.length===0?<p style={{fontSize:12,color:B.muted,textAlign:"center",padding:20}}>Nenhuma movimentação ainda.</p>:
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        {creditHistory.map(c => <Card key={c.id} style={{padding:"10px 14px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div><p style={{fontSize:12,fontWeight:600}}>{c.description||c.type}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{new Date(c.created_at).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</p></div>
-            <span style={{fontSize:14,fontWeight:800,color:c.amount>0?B.green:(B.red||"#EF4444")}}>{c.amount>0?"+":""}{c.amount}</span>
-          </div>
-        </Card>)}
-      </div>}
-    </>}
+      <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Comprar créditos</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}}>
+        {[{n:10,price:"R$ 29,90",pop:false},{n:30,price:"R$ 69,90",pop:true},{n:100,price:"R$ 199,90",pop:false}].map(p => <div key={p.n} onClick={()=>showToast("Em breve! Compra será integrada ao Asaas.")} style={{background:B.bgCard,borderRadius:18,border:p.pop?`2px solid ${LIME}`:`1px solid ${B.border}`,padding:isDesktop?"24px 16px":"18px 10px",cursor:"pointer",textAlign:"center",position:"relative",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-3px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(0,0,0,0.08)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}>
+          {p.pop&&<span style={{position:"absolute",top:-10,left:"50%",transform:"translateX(-50%)",background:LIME,color:"#0D0D0D",fontSize:9,fontWeight:800,padding:"3px 10px",borderRadius:6}}>POPULAR</span>}
+          <p style={{fontSize:isDesktop?30:24,fontWeight:900,color:LIME}}>{p.n}</p>
+          <p style={{fontSize:11,color:B.muted,marginTop:2}}>créditos</p>
+          <p style={{fontSize:isDesktop?15:13,fontWeight:700,marginTop:10}}>{p.price}</p>
+        </div>)}
+      </div>
+      <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Histórico de movimentações</p>
+      <div style={{background:B.bgCard,borderRadius:16,border:`1px solid ${B.border}`,overflow:"hidden"}}>
+        {creditHistory.length===0?<p style={{fontSize:12,color:B.muted,textAlign:"center",padding:24}}>Nenhuma movimentação.</p>:
+        creditHistory.map((c,i) => <div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:isDesktop?"14px 20px":"10px 14px",borderTop:i?`1px solid ${B.border}`:"none"}}>
+          <div><p style={{fontSize:13,fontWeight:600}}>{c.description||c.type}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{new Date(c.created_at).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</p></div>
+          <span style={{fontSize:15,fontWeight:800,color:c.amount>0?(B.green||"#22C55E"):(B.red||"#EF4444")}}>{c.amount>0?"+":""}{c.amount}</span>
+        </div>)}
+      </div>
+    </div>}
   </div>;
 }
 
