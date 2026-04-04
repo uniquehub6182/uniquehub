@@ -22517,7 +22517,7 @@ function InboxPage({ onBack, clients: propClients, user, isClientView, forceMobi
     <div className={isInboxDesktop ? "content-wide" : ""} style={isInboxDesktop ? { paddingTop: 0, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30, overflow:"hidden" }}>
     <div style={{ flexShrink:0 }}><CollapseHeader icon={IC.inbox} label="Comunicação" title="Inbox" collapsed={headerC} onBack={onBack} /></div>
     {ToastEl}
-    <div style={{ display:"flex", flex:1, overflow:"hidden", minHeight:0, marginTop:isInboxDesktop?0:8, borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
+    <div style={{ display:"flex", flex:1, overflow:"hidden", minHeight:0, marginTop:isInboxDesktop?16:8, borderRadius:isInboxDesktop?20:0, border:isInboxDesktop?`1px solid ${B.border}`:"none", background:isInboxDesktop?B.bgCard:"transparent", boxShadow:isInboxDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none" }}>
       {isInboxDesktop ? (<>
         {ConvList()}
         {MsgThread()}
