@@ -24320,7 +24320,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
   const scanNow = async()=>{
     setScanning(true);
     try{
-      const res=await fetch(`${SUPA_URL}/functions/v1/comment-monitor`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_ANON}`},body:JSON.stringify({})});
+      const res=await fetch(`${SUPA_URL}/functions/v1/comment-monitor`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_KEY}`},body:JSON.stringify({})});
       const d=await res.json();
       showToast("Scan concluído!");
       await loadComments();
@@ -24330,7 +24330,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
 
   const approveReply = async(id,text)=>{
     try{
-      const res=await fetch(`${SUPA_URL}/functions/v1/comment-reply`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_ANON}`},body:JSON.stringify({reply_id:id,reply_text:text})});
+      const res=await fetch(`${SUPA_URL}/functions/v1/comment-reply`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_KEY}`},body:JSON.stringify({reply_id:id,reply_text:text})});
       const d=await res.json();
       if(d.success){setComments(p=>p.map(c=>c.id===id?{...c,status:"replied",approved_reply:text,replied_at:new Date().toISOString()}:c));showToast("Resposta enviada!");}
       else showToast(d.error||"Erro");
@@ -24352,7 +24352,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
   return <div className="content-wide" style={{paddingTop:TOP,minHeight:"100%"}}>
     {ToastEl}
     <CollapseHeader icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M8 9h8M8 13h4"/></svg>} label="Engajamento" title="Comentários IA" onBack={onBack} collapsed={false} />
-    <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+    <div style={{display:"flex",justifyContent:"flex-end",marginTop:16,marginBottom:12}}>
       <button onClick={scanNow} disabled={scanning} style={{padding:"10px 20px",borderRadius:12,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:scanning?.5:1,display:"flex",alignItems:"center",gap:6}}>
         {scanning?<div style={{width:14,height:14,border:"2px solid #0D0D0D",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>}
         {scanning?"Escaneando...":"Escanear comentários"}
