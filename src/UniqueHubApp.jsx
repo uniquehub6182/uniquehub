@@ -14459,7 +14459,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     );
     const accent = B.accent;
     return (
-      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      <div className="content-wide" style={{ paddingTop:0, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
         <CollapseHeader icon={IC.settings} label="Preferências" title="Configurações" onBack={onBack} collapsed={false} />
         <div style={{ display:"flex", height:"calc(100vh - 200px)", gap:14, marginTop:12 }}>
