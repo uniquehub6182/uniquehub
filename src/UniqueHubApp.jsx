@@ -28051,6 +28051,71 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               }
 
 
+              /* ── GROWTH SCORE WIDGET ── */
+              if (pk === "growth") {
+                const ZONES = [{name:"Estruturação",min:0,max:20,color:"#EF4444"},{name:"Crescimento",min:21,max:40,color:"#F59E0B"},{name:"Expansão",min:41,max:60,color:"#3B82F6"},{name:"Maturidade",min:61,max:80,color:"#10B981"},{name:"Referência",min:81,max:100,color:LIME}];
+                const curZone = ZONES.find(z => growthScore >= z.min && growthScore <= z.max) || ZONES[0];
+                const PILLARS = [{k:"execucao",n:"Execução",icon:"🎯"},{k:"estrategia",n:"Estratégia",icon:"📊"},{k:"educacao",n:"Educação",icon:"📚"},{k:"ecossistema",n:"Ecossistema",icon:"🌐"},{k:"crescimento",n:"Crescimento",icon:"📈"}];
+                return <div key={pk} style={{background:"#0D0D0D",borderRadius:20,overflow:"hidden",height:580,display:"flex",flexDirection:"column",color:"#fff"}}>
+                  <div style={{padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                    <span style={{fontSize:14,fontWeight:700,color:"#fff"}}>Growth Score</span>
+                    <span onClick={()=>setSub("gamify")} style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver detalhes <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                  </div>
+                  <div style={{padding:"10px 20px 20px",flexShrink:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:20}}>
+                      <div style={{width:90,height:90,borderRadius:"50%",border:`4px solid ${curZone.color}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        <span style={{fontSize:32,fontWeight:900,color:curZone.color}}>{growthScore}</span>
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><div style={{width:8,height:8,borderRadius:4,background:curZone.color}}/><span style={{fontSize:14,fontWeight:700,color:"#fff"}}>Zona {curZone.name}</span></div>
+                        <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.5}}>Índice de crescimento digital baseado em 5 pilares.</p>
+                        <div style={{marginTop:8,height:6,borderRadius:3,background:"rgba(255,255,255,0.08)",overflow:"hidden"}}><div style={{height:6,borderRadius:3,background:`linear-gradient(90deg, ${curZone.color}, ${LIME})`,width:`${growthScore}%`}}/></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{padding:"0 20px 16px",flexShrink:0}}>
+                    <p style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Pilares</p>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {PILLARS.map((p,pi) => { const val = Math.min(100, Math.round(growthScore * (0.6 + pi * 0.15))); return <div key={p.k} style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:14,width:22,textAlign:"center"}}>{p.icon}</span><span style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.6)",width:80}}>{p.n}</span><div style={{flex:1,height:6,borderRadius:3,background:"rgba(255,255,255,0.08)"}}><div style={{height:6,borderRadius:3,background:LIME,width:`${val}%`}}/></div><span style={{fontSize:10,fontWeight:700,color:LIME,width:24,textAlign:"right"}}>{val}</span></div>; })}
+                    </div>
+                  </div>
+                  <div style={{flex:1,overflowY:"auto",padding:"0 20px 16px",minHeight:0}}>
+                    <p style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Zonas</p>
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {ZONES.map(z => { const active = growthScore >= z.min && growthScore <= z.max; const done = growthScore > z.max; return <div key={z.name} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,background:active?"rgba(255,255,255,0.06)":"transparent",border:active?`1px solid ${z.color}30`:"1px solid transparent"}}><div style={{width:24,height:24,borderRadius:8,background:done?z.color:`${z.color}20`,display:"flex",alignItems:"center",justifyContent:"center"}}>{done?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:active?<div style={{width:8,height:8,borderRadius:4,background:z.color}}/>:<div style={{width:6,height:6,borderRadius:3,background:`${z.color}50`}}/>}</div><div style={{flex:1}}><span style={{fontSize:12,fontWeight:active?700:500,color:active||done?"#fff":"rgba(255,255,255,0.35)"}}>{z.name}</span><span style={{fontSize:9,color:"rgba(255,255,255,0.3)",marginLeft:8}}>{z.min}-{z.max} pts</span></div>{active&&<span style={{fontSize:10,fontWeight:700,color:z.color}}>{growthScore}/{z.max}</span>}</div>; })}
+                    </div>
+                  </div>
+                </div>;
+              }
+
+              /* ── MÉTRICAS WIDGET ── */
+              if (pk === "metricas") {
+                return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+                  <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.reports(LIME)}<span style={{fontSize:14,fontWeight:700}}>{"Métricas · "+monthNames[now.getMonth()]}</span></div>
+                    <span onClick={()=>setSub("reports")} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Relatório completo <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                  </div>
+                  <div style={{flex:1,overflowY:"auto",padding:"16px",minHeight:0}}>
+                    {metricsLoading&&<div style={{textAlign:"center",padding:40}}><div style={{width:24,height:24,border:`2.5px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto"}}/></div>}
+                    {!metricsLoading&&<>
+                      <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>{metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{padding:"7px 14px",borderRadius:10,border:metricsSlide===i?"none":`1.5px solid ${B.border}`,background:metricsSlide===i?LIME:"transparent",color:metricsSlide===i?"#0D0D0D":B.muted,fontSize:12,fontWeight:metricsSlide===i?700:500,cursor:"pointer",fontFamily:"inherit"}}>{md.network}</button>)}</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+                        {(metricsData[metricsSlide]?.metrics||[]).map((m,i) => <div key={i} style={{padding:"16px 14px",borderRadius:14,background:`${LIME}06`,border:`1px solid ${B.border}`}}>
+                          <span style={{fontSize:9,fontWeight:700,letterSpacing:0.5,color:B.muted,textTransform:"uppercase"}}>{m.l}</span>
+                          <div style={{display:"flex",alignItems:"baseline",gap:6,marginTop:8}}><span style={{fontSize:24,fontWeight:900,color:B.text}}>{m.v}</span>{m.d&&<span style={{fontSize:10,fontWeight:700,color:B.green,background:`${B.green}12`,padding:"2px 8px",borderRadius:6}}>{m.d}</span>}</div>
+                        </div>)}
+                      </div>
+                      <div style={{padding:"14px 16px",borderRadius:14,background:isDark?"#111":"#f8f9fa",border:`1px solid ${B.border}`}}>
+                        <p style={{fontSize:11,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:10}}>Resumo de Performance</p>
+                        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                          {[{l:"Melhor horário",v:"18h - 21h",icon:"🕐"},{l:"Dia mais ativo",v:"Terça-feira",icon:"📅"},{l:"Formato top",v:"Carrossel",icon:"🎨"},{l:"Engajamento médio",v:((metricsData[metricsSlide]?.metrics||[]).find(m=>(m.l||"").toLowerCase().includes("engaj"))?.v)||"2.4%",icon:"💬"}].map((item,i) => <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i?`1px solid ${B.border}`:"none"}}><span style={{fontSize:16}}>{item.icon}</span><span style={{flex:1,fontSize:12,color:B.muted}}>{item.l}</span><span style={{fontSize:12,fontWeight:700,color:B.text}}>{item.v}</span></div>)}
+                        </div>
+                      </div>
+                    </>}
+                  </div>
+                </div>;
+              }
+
               /* ── DEFAULT WIDGET (uses renderDashSection inside container) ── */
               return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
                 <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
@@ -28067,7 +28132,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           const C = { txt:B.text, mut:B.muted, card:B.bgCard, brd:B.border };
           const ec = editCfg || { cards:[...clientCards], pills:[...clientPills] };
           const toggle = (arr, key, max) => { const idx = ec[arr].indexOf(key); let n; if (idx>=0) n=ec[arr].filter(x=>x!==key); else if(!max||ec[arr].length<max) n=[...ec[arr],key]; else return; setEditCfg({...ec,[arr]:n}); };
-          const BLOCK_OPTIONS = [["content","Conteúdo / Aprovações"],["posts","Posts Recentes"],["growth","Growth Score"],["news","Comunicados"],["metricas","Métricas"],["agenda","Agenda"],["match","Match4Biz"],["ai","Assistente IA"]];
+          const BLOCK_OPTIONS = [["content","Conteúdo / Aprovações"],["growth","Growth Score"],["news","Comunicados"],["metricas","Métricas"],["agenda","Agenda"],["match","Match4Biz"],["ai","Assistente IA"]];
           const curBlocks = ec.blocks || [...clientBlocks];
           const toggleBlock = (k) => { const idx = curBlocks.indexOf(k); let n; if(idx>=0) n=curBlocks.filter(x=>x!==k); else if(curBlocks.length<6) n=[...curBlocks,k]; else return; setEditCfg({...ec,blocks:n}); };
           const Chip = ({on,label,onTap,disabled}) => <button onClick={onTap} disabled={disabled} style={{padding:"7px 14px",borderRadius:10,border:on?`2px solid ${LIME}`:`1.5px solid ${C.brd}`,background:on?`${LIME}15`:"transparent",fontSize:12,fontWeight:on?700:500,color:on?LIME:C.mut,cursor:disabled?"default":"pointer",fontFamily:"inherit",opacity:disabled?0.4:1}}>{label}</button>;
