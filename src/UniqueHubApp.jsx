@@ -27770,7 +27770,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           )}
         </div>
         {/* ── FUNCTIONAL PANELS (3 large, custom widgets) ── */}
-        <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
+        <div style={{maxWidth:1440,margin:"0 auto",padding:"20px 32px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(clientBlocks.length,3)},minmax(0,1fr))`,gap:16,alignItems:"stretch"}}>
             {clientBlocks.slice(0,6).map(pk => {
               const PLBL = {content:"Conteúdos",ai:"Assistente IA",reports:"Relatórios",growth:"Growth Score",news:"Comunicados",posts:"Posts Recentes",metricas:"Métricas",match:"Match4Biz",agenda:"Compromissos",academy:"Academy",library:"Biblioteca",ideas:"Comunique-se",financial:"Financeiro",calendar:"Agenda",help:"Suporte"};
