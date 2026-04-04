@@ -24644,7 +24644,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   const LIME = B.accent || "#BBF246";
 
   /* ── Resolve client ID ── */
-  const myClientId = useMemo(() => {
+  const myClientId = React.useMemo(() => {
     const email = (user?.email||"").toLowerCase();
     const cl = clients.find(c => c.id === user?.linked_client_id) || clients.find(c => (c.contact_email||"").toLowerCase() === email) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
     return cl?.id || cl?.supaId || null;
