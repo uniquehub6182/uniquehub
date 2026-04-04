@@ -23462,7 +23462,7 @@ function NotesPage({ onBack, user }) {
   );
 
   return (
-    <div className={isNotesDesktop ? "content-wide" : ""} style={isNotesDesktop ? { paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
+    <div className={isNotesDesktop ? "content-wide" : ""} style={isNotesDesktop ? { paddingTop:0, minHeight:"100%", display:"flex", flexDirection:"column" } : { position:"fixed", top:0, left:0, right:0, bottom:0, display:"flex", flexDirection:"column", background:B.bg, zIndex:30 }}>
       <CollapseHeader icon={(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>} label="Produtividade" title="Notas" onBack={onBack} />
       {ToastEl}
       <div style={{ display:"flex", flex:1, overflow:"hidden", borderRadius:isNotesDesktop?20:0, border:isNotesDesktop?`1px solid ${B.border}`:"none", background:isNotesDesktop?B.bgCard:"transparent", boxShadow:isNotesDesktop?"0 4px 20px rgba(0,0,0,0.06)":"none", marginTop:isNotesDesktop?16:0 }}>
