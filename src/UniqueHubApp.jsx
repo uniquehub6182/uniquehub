@@ -24392,8 +24392,8 @@ function CommentRepliesPage({ onBack, clients, user }) {
     showToast("Descartado");
   };
 
-  const filtered=comments.filter(c=>filter==="all"||(c.status||"new")===filter);
-  const stats={total:comments.length,novo:comments.filter(c=>!c.status||c.status==="new").length,pending:comments.filter(c=>c.status==="pending").length,replied:comments.filter(c=>c.status==="replied").length};
+  const filtered=comments.filter(c=>{const s=(!c.status||c.status==="no_reply")?"new":c.status;return filter==="all"||s===filter;});
+  const stats={total:comments.length,novo:comments.filter(c=>!c.status||c.status==="new"||c.status==="no_reply").length,pending:comments.filter(c=>c.status==="pending").length,replied:comments.filter(c=>c.status==="replied").length};
 
   return <div className="content-wide" style={{paddingTop:TOP,minHeight:"100%"}}>
     {ToastEl}
@@ -24455,7 +24455,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
     :<div style={{display:"flex",flexDirection:"column",gap:10}}>
       {filtered.map(c=>{
         const isEditing=editId===c.id;
-        const st=c.status||"new";
+        const st=(!c.status||c.status==="no_reply")?"new":c.status;
         const statusColor=st==="replied"?"#10B981":st==="pending"?"#3B82F6":st==="new"?"#F59E0B":B.muted;
         return <div key={c.id} style={{background:B.bgCard,borderRadius:16,border:"1px solid "+B.border,padding:"16px 18px",borderLeft:"3px solid "+statusColor}}>
           {/* Header */}
