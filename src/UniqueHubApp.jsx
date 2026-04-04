@@ -26567,7 +26567,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [clientDashSections, setClientDashSections] = useState(() => { try { const s = localStorage.getItem("uh_client_dash"); if(s) { const parsed = JSON.parse(s).filter(k => CLIENT_DASH_VALID_KEYS.includes(k)); return parsed.length ? parsed : CLIENT_DASH_DEFAULT_INIT; } return CLIENT_DASH_DEFAULT_INIT; } catch { return CLIENT_DASH_DEFAULT_INIT; } });
   const [showDashEdit, setShowDashEdit] = useState(false);
   const [clientQuickBlocks, setClientQuickBlocks] = useState(() => { try { const s = localStorage.getItem("uh_client_qblocks"); return s ? JSON.parse(s) : ["content","ai","reports"]; } catch { return ["content","ai","reports"]; } });
-  const [clientBlocks, setClientBlocks] = useState(() => { try { const s = localStorage.getItem("uh_client_blocks"); return s ? JSON.parse(s) : ["content","growth","news"]; } catch { return ["content","growth","news"]; } });
+  const VALID_BLOCKS = ["content","growth","news","metricas","agenda","match","ai"];
+  const [clientBlocks, setClientBlocks] = useState(() => { try { const s = localStorage.getItem("uh_client_blocks"); if(s) { const parsed = JSON.parse(s).filter(k => VALID_BLOCKS.includes(k)); return parsed.length ? parsed : ["content","growth","news"]; } return ["content","growth","news"]; } catch { return ["content","growth","news"]; } });
   const [editSections, setEditSections] = useState([]);
   const [editCfg, setEditCfg] = useState(null);
   const CLIENT_CARDS_MAP = { meta:{l:"Meta do Mês"}, aprovacoes:{l:"Aprovações"}, growth:{l:"Growth Score"}, match:{l:"Match4Biz"} };
@@ -28055,57 +28056,78 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               if (pk === "growth") {
                 const ZONES = [{name:"Estruturação",min:0,max:20,color:"#EF4444"},{name:"Crescimento",min:21,max:40,color:"#F59E0B"},{name:"Expansão",min:41,max:60,color:"#3B82F6"},{name:"Maturidade",min:61,max:80,color:"#10B981"},{name:"Referência",min:81,max:100,color:LIME}];
                 const curZone = ZONES.find(z => growthScore >= z.min && growthScore <= z.max) || ZONES[0];
-                const PILLARS = [{k:"execucao",n:"Execução",icon:"🎯"},{k:"estrategia",n:"Estratégia",icon:"📊"},{k:"educacao",n:"Educação",icon:"📚"},{k:"ecossistema",n:"Ecossistema",icon:"🌐"},{k:"crescimento",n:"Crescimento",icon:"📈"}];
-                const gBg = isDark?"#0D0D0D":B.bgCard; const gTxt = isDark?"#fff":B.text; const gSub = isDark?"rgba(255,255,255,0.4)":B.muted; const gBar = isDark?"rgba(255,255,255,0.08)":`${B.muted}15`; const gBrd = isDark?"transparent":B.border;
-                return <div key={pk} style={{background:gBg,borderRadius:20,overflow:"hidden",height:580,display:"flex",flexDirection:"column",color:gTxt,border:`1px solid ${gBrd}`}}>
-                  <div style={{padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,borderBottom:isDark?"none":`1px solid ${B.border}`}}>
-                    <span style={{fontSize:14,fontWeight:700,color:gTxt}}>Growth Score</span>
-                    <span onClick={()=>setSub("gamify")} style={{fontSize:11,fontWeight:600,color:gSub,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver detalhes <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={gSub} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                const pct = curZone ? ((growthScore - curZone.min) / (curZone.max - curZone.min) * 100) : 0;
+                const PILLARS = [{k:"execucao",n:"Execução",emoji:"🎯"},{k:"estrategia",n:"Estratégia",emoji:"📊"},{k:"educacao",n:"Educação",emoji:"📚"},{k:"ecossistema",n:"Ecossistema",emoji:"🌐"},{k:"crescimento",n:"Crescimento",emoji:"📈"}];
+                return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
+                  <div style={{padding:"14px 18px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.gamify(LIME)}<span style={{fontSize:14,fontWeight:700}}>Growth Score</span></div>
+                    <span onClick={()=>setSub("gamify")} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver detalhes <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
                   </div>
-                  <div style={{padding:"10px 20px 20px",flexShrink:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:20}}>
-                      <div style={{width:90,height:90,borderRadius:"50%",border:`4px solid ${curZone.color}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                        <span style={{fontSize:32,fontWeight:900,color:curZone.color}}>{growthScore}</span>
+                  <div style={{flex:1,overflowY:"auto",padding:"20px 18px",minHeight:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:20,marginBottom:24}}>
+                      <div style={{width:100,height:100,borderRadius:"50%",background:`conic-gradient(${curZone.color} ${growthScore*3.6}deg, ${B.border} ${growthScore*3.6}deg)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        <div style={{width:80,height:80,borderRadius:"50%",background:B.bgCard,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column"}}>
+                          <span style={{fontSize:28,fontWeight:900,color:curZone.color,lineHeight:1}}>{growthScore}</span>
+                          <span style={{fontSize:9,color:B.muted,fontWeight:600}}>/100 pts</span>
+                        </div>
                       </div>
                       <div style={{flex:1}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><div style={{width:8,height:8,borderRadius:4,background:curZone.color}}/><span style={{fontSize:14,fontWeight:700,color:gTxt}}>Zona {curZone.name}</span></div>
-                        <p style={{fontSize:11,color:gSub,lineHeight:1.5}}>Índice de crescimento digital baseado em 5 pilares.</p>
-                        <div style={{marginTop:8,height:6,borderRadius:3,background:gBar,overflow:"hidden"}}><div style={{height:6,borderRadius:3,background:`linear-gradient(90deg, ${curZone.color}, ${LIME})`,width:`${growthScore}%`}}/></div>
+                        <div style={{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 12px",borderRadius:8,background:`${curZone.color}12`,marginBottom:8}}><div style={{width:7,height:7,borderRadius:4,background:curZone.color}}/><span style={{fontSize:12,fontWeight:700,color:curZone.color}}>Zona {curZone.name}</span></div>
+                        <p style={{fontSize:12,color:B.muted,lineHeight:1.5}}>Progresso na zona: <strong style={{color:B.text}}>{Math.round(pct)}%</strong></p>
+                        <div style={{marginTop:6,height:8,borderRadius:4,background:`${B.muted}12`,overflow:"hidden"}}><div style={{height:8,borderRadius:4,background:curZone.color,width:`${pct}%`,transition:"width .5s"}}/></div>
                       </div>
                     </div>
-                  </div>
-                  <div style={{padding:"0 20px 16px",flexShrink:0}}>
-                    <p style={{fontSize:10,fontWeight:700,color:gSub,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Pilares</p>
-                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                      {PILLARS.map((p,pi) => { const val = Math.min(100, Math.round(growthScore * (0.6 + pi * 0.15))); return <div key={p.k} style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:14,width:22,textAlign:"center"}}>{p.icon}</span><span style={{fontSize:11,fontWeight:600,color:gSub,width:80}}>{p.n}</span><div style={{flex:1,height:6,borderRadius:3,background:gBar}}><div style={{height:6,borderRadius:3,background:LIME,width:`${val}%`}}/></div><span style={{fontSize:10,fontWeight:700,color:LIME,width:24,textAlign:"right"}}>{val}</span></div>; })}
+                    <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Pilares de Performance</p>
+                    <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+                      {PILLARS.map((p,pi) => { const val = Math.min(20, Math.round(growthScore/5 * (0.6 + pi*0.15))); return <div key={p.k} style={{display:"flex",alignItems:"center",gap:10}}>
+                        <span style={{fontSize:16,width:24,textAlign:"center"}}>{p.emoji}</span>
+                        <span style={{fontSize:12,fontWeight:600,color:B.text,width:90}}>{p.n}</span>
+                        <div style={{flex:1,height:8,borderRadius:4,background:`${B.muted}12`}}><div style={{height:8,borderRadius:4,background:LIME,width:`${val/20*100}%`}}/></div>
+                        <span style={{fontSize:11,fontWeight:700,color:LIME,width:28,textAlign:"right"}}>{val}/20</span>
+                      </div>; })}
                     </div>
-                  </div>
-                  <div style={{flex:1,overflowY:"auto",padding:"0 20px 16px",minHeight:0}}>
-                    <p style={{fontSize:10,fontWeight:700,color:gSub,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Zonas</p>
-                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                      {ZONES.map(z => { const active = growthScore >= z.min && growthScore <= z.max; const done = growthScore > z.max; return <div key={z.name} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,background:active?`${z.color}10`:"transparent",border:active?`1px solid ${z.color}30`:`1px solid transparent`}}><div style={{width:24,height:24,borderRadius:8,background:done?z.color:`${z.color}20`,display:"flex",alignItems:"center",justifyContent:"center"}}>{done?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:active?<div style={{width:8,height:8,borderRadius:4,background:z.color}}/>:<div style={{width:6,height:6,borderRadius:3,background:`${z.color}50`}}/>}</div><div style={{flex:1}}><span style={{fontSize:12,fontWeight:active?700:500,color:active||done?gTxt:gSub}}>{z.name}</span><span style={{fontSize:9,color:gSub,marginLeft:8}}>{z.min}-{z.max} pts</span></div>{active&&<span style={{fontSize:10,fontWeight:700,color:z.color}}>{growthScore}/{z.max}</span>}</div>; })}
-                    </div>
+                    <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Mapa das Zonas</p>
+                    {ZONES.map(z => { const active = growthScore>=z.min&&growthScore<=z.max; const done = growthScore>z.max; return <div key={z.name} onClick={()=>setSub("gamify")} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,marginBottom:6,background:active?`${z.color}08`:done?`${B.muted}04`:"transparent",border:active?`1.5px solid ${z.color}25`:"1.5px solid transparent",cursor:"pointer",transition:"all .15s"}}>
+                      <div style={{width:28,height:28,borderRadius:10,background:done?z.color:`${z.color}15`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                        {done?<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:active?<div style={{width:8,height:8,borderRadius:4,background:z.color}}/>:<div style={{width:6,height:6,borderRadius:3,background:`${z.color}40`}}/>}
+                      </div>
+                      <div style={{flex:1}}><span style={{fontSize:13,fontWeight:active?700:500,color:active||done?B.text:B.muted}}>{z.name}</span></div>
+                      <span style={{fontSize:10,fontWeight:600,color:active?z.color:B.muted}}>{z.min}-{z.max}</span>
+                      {active&&<span style={{fontSize:11,fontWeight:800,color:z.color}}>{growthScore}/{z.max}</span>}
+                    </div>; })}
                   </div>
                 </div>;
               }
 
               /* ── MÉTRICAS WIDGET ── */
               if (pk === "metricas") {
+                const curMetrics = metricsData[metricsSlide]?.metrics || [];
                 return <div key={pk} style={{background:B.bgCard,borderRadius:20,border:`1px solid ${B.border}`,overflow:"hidden",height:580,display:"flex",flexDirection:"column"}}>
-                  <div style={{padding:"10px 16px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+                  <div style={{padding:"14px 18px",borderBottom:`1px solid ${B.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>{IC.reports(LIME)}<span style={{fontSize:14,fontWeight:700}}>{"Métricas · "+monthNames[now.getMonth()]}</span></div>
                     <span onClick={()=>setSub("reports")} style={{fontSize:11,fontWeight:600,color:B.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Relatório completo <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
                   </div>
-                  <div style={{flex:1,overflowY:"auto",padding:"16px",minHeight:0}}>
+                  <div style={{flex:1,overflowY:"auto",padding:"16px 18px",minHeight:0}}>
                     {metricsLoading&&<div style={{textAlign:"center",padding:40}}><div style={{width:24,height:24,border:`2.5px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto"}}/></div>}
                     {!metricsLoading&&<>
                       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>{metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{padding:"7px 14px",borderRadius:10,border:metricsSlide===i?"none":`1.5px solid ${B.border}`,background:metricsSlide===i?LIME:"transparent",color:metricsSlide===i?"#0D0D0D":B.muted,fontSize:12,fontWeight:metricsSlide===i?700:500,cursor:"pointer",fontFamily:"inherit"}}>{md.network}</button>)}</div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                        {(metricsData[metricsSlide]?.metrics||[]).map((m,i) => <div key={i} style={{padding:"16px 14px",borderRadius:14,background:`${LIME}06`,border:`1px solid ${B.border}`}}>
-                          <span style={{fontSize:9,fontWeight:700,letterSpacing:0.5,color:B.muted,textTransform:"uppercase"}}>{m.l}</span>
-                          <div style={{display:"flex",alignItems:"baseline",gap:6,marginTop:8}}><span style={{fontSize:24,fontWeight:900,color:B.text}}>{m.v}</span>{m.d&&<span style={{fontSize:10,fontWeight:700,color:B.green,background:`${B.green}12`,padding:"2px 8px",borderRadius:6}}>{m.d}</span>}</div>
-                        </div>)}
-                      </div>
+                      {curMetrics.length > 0 ? <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                        {curMetrics.map((m,i) => {
+                          const numVal = parseInt(String(m.v).replace(/[^\d]/g,"")) || 0;
+                          const maxVal = Math.max(...curMetrics.map(x => parseInt(String(x.v).replace(/[^\d]/g,"")) || 0), 1);
+                          const barPct = Math.min(100, (numVal / maxVal) * 100);
+                          const colors = [LIME, "#3B82F6", "#8B5CF6", "#F59E0B", "#EC4899", "#10B981", "#EF4444", "#6366F1"];
+                          const color = colors[i % colors.length];
+                          return <div key={i} onClick={()=>setSub("reports")} style={{padding:"14px 16px",borderRadius:14,background:`${color}06`,border:`1px solid ${B.border}`,cursor:"pointer",transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${color}50`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+                              <span style={{fontSize:11,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:0.5}}>{m.l}</span>
+                              {m.d&&<span style={{fontSize:10,fontWeight:700,color:B.green,background:`${B.green}12`,padding:"2px 8px",borderRadius:6}}>{m.d}</span>}
+                            </div>
+                            <span style={{fontSize:22,fontWeight:900,color:B.text,display:"block",marginBottom:8}}>{m.v}</span>
+                            <div style={{height:6,borderRadius:3,background:`${B.muted}10`}}><div style={{height:6,borderRadius:3,background:color,width:`${barPct}%`,transition:"width .5s"}}/></div>
+                          </div>;
+                        })}
+                      </div> : <div style={{textAlign:"center",padding:40,color:B.muted}}><p style={{fontSize:13}}>Conecte suas redes sociais para ver métricas</p></div>}
                     </>}
                   </div>
                 </div>;
@@ -29613,7 +29635,7 @@ export default function App() {
             const _driveRaw = settingsMap["drive_config"];
             if (_driveRaw) { try { const dc = typeof _driveRaw === "string" ? JSON.parse(_driveRaw) : _driveRaw; localStorage.setItem("uh_drive_url", dc.url || ""); localStorage.setItem("uh_drive_type", dc.type || ""); } catch {} }
             const _cpRaw = settingsMap["client_portal_config"];
-            if (_cpRaw) { try { const cp = typeof _cpRaw === "string" ? JSON.parse(_cpRaw) : _cpRaw; if(cp.cards) localStorage.setItem("uh_client_cards", JSON.stringify(cp.cards)); if(cp.pills) localStorage.setItem("uh_client_pills", JSON.stringify(cp.pills)); if(cp.sections) localStorage.setItem("uh_client_dash", JSON.stringify(cp.sections)); if(cp.quickBlocks) localStorage.setItem("uh_client_qblocks", JSON.stringify(cp.quickBlocks)); if(cp.panels) localStorage.setItem("uh_client_blocks", JSON.stringify(cp.panels)); } catch {} }
+            if (_cpRaw) { try { const cp = typeof _cpRaw === "string" ? JSON.parse(_cpRaw) : _cpRaw; if(cp.cards) localStorage.setItem("uh_client_cards", JSON.stringify(cp.cards)); if(cp.pills) localStorage.setItem("uh_client_pills", JSON.stringify(cp.pills)); if(cp.sections) localStorage.setItem("uh_client_dash", JSON.stringify(cp.sections)); if(cp.quickBlocks) localStorage.setItem("uh_client_qblocks", JSON.stringify(cp.quickBlocks)); if(cp.panels||cp.blocks) { const bk = (cp.blocks||cp.panels).filter(k=>["content","growth","news","metricas","agenda","match","ai"].includes(k)); localStorage.setItem("uh_client_blocks", JSON.stringify(bk)); } } catch {} }
             const _eqRaw = settingsMap["equipments_config"];
             if (_eqRaw) { try { localStorage.setItem("uh_equipments", typeof _eqRaw === "string" ? _eqRaw : JSON.stringify(_eqRaw)); } catch {} }
           } catch(e) { console.warn("Agency visual configs load failed:", e); }
