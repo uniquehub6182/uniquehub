@@ -24306,6 +24306,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
   const [filter, setFilter] = useState("all");
   const [editId, setEditId] = useState(null);
   const [editText, setEditText] = useState("");
+  const [sendingId, setSendingId] = useState(null);
   const [selClient, setSelClient] = useState("");
   const [dateRange, setDateRange] = useState("7");
   const { showToast, ToastEl } = useToast();
@@ -24374,13 +24375,15 @@ function CommentRepliesPage({ onBack, clients, user }) {
 
   /* ── Approve / send reply ── */
   const approveReply = async(id,text)=>{
+    if(sendingId)return;
+    setSendingId(id);
     try{
       const res=await fetch(SUPA_URL+"/functions/v1/comment-reply",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+SUPA_KEY},body:JSON.stringify({reply_id:id,reply_text:text})});
       const d=await res.json();
       if(d.success){setComments(p=>p.map(c=>c.id===id?{...c,status:"replied",approved_reply:text,replied_at:new Date().toISOString()}:c));showToast("Resposta enviada!");}
       else showToast(d.error||"Erro ao enviar");
     }catch(e){showToast("Erro ao enviar");}
-    setEditId(null);
+    setSendingId(null);setEditId(null);
   };
 
   const dismissReply = async(id)=>{
@@ -24487,7 +24490,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
               <button onClick={()=>approveReply(c.id,editText)} style={{padding:"8px 16px",borderRadius:8,background:"#10B981",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Enviar resposta</button>
               <button onClick={()=>setEditId(null)} style={{padding:"8px 16px",borderRadius:8,background:"transparent",border:"1px solid "+B.border,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted}}>Cancelar</button>
             </>:<>
-              <button onClick={()=>approveReply(c.id,c.suggested_reply)} style={{padding:"8px 16px",borderRadius:8,background:"#10B981",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Aprovar e enviar</button>
+              <button onClick={()=>approveReply(c.id,c.suggested_reply)} disabled={sendingId===c.id} style={{padding:"8px 16px",borderRadius:8,background:"#10B981",border:"none",cursor:sendingId?"default":"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff",opacity:sendingId===c.id?.5:1}}>{sendingId===c.id?"Enviando...":"Aprovar e enviar"}</button>
               <button onClick={()=>{setEditId(c.id);setEditText(c.suggested_reply||"");}} style={{padding:"8px 16px",borderRadius:8,background:"transparent",border:"1px solid "+B.border,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.text}}>Editar</button>
               <button onClick={()=>generateAI(c.id)} style={{padding:"8px 16px",borderRadius:8,background:"transparent",border:"1px solid "+B.border,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.accent}}>Regenerar</button>
               <button onClick={()=>dismissReply(c.id)} style={{padding:"8px 16px",borderRadius:8,background:"transparent",border:"1px solid "+B.border,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted}}>Descartar</button>
