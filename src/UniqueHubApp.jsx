@@ -24643,7 +24643,6 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   const [touchStart, setTouchStart] = useState(null);
   const [touchDelta, setTouchDelta] = useState(0);
   const [photoIdx, setPhotoIdx] = useState(0);
-  const [vvH, setVvH] = useState(typeof window!=="undefined"?window.innerHeight:800);
   const chatMsgsRef = React.useRef(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const { showToast, ToastEl } = useToast();
@@ -24654,15 +24653,31 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
 
   const handleSwipe = async(dir)=>{ if(!profiles[currentIdx]||!myClientId)return; const t=profiles[currentIdx]; const cost=dir==="super"?3:dir==="right"?1:0; if(cost>0&&credits<cost){showToast("Créditos insuficientes!");return;} setSwipeAnim(dir); try{ await supabase.from("match4biz_swipes").insert({from_client_id:myClientId,to_client_id:t.client_id,direction:dir}); if(cost>0){await supabase.from("match4biz_credits").insert({client_id:myClientId,amount:-cost,type:"spend",description:dir==="super"?"Super Match":"Interesse",reference_id:t.client_id});setCredits(p=>p-cost);setCreditHistory(p=>[{id:Date.now(),client_id:myClientId,amount:-cost,type:"spend",description:dir==="super"?"Super Match":"Interesse",created_at:new Date().toISOString()},...p]);} if(dir==="right"||dir==="super"){const{data:rev}=await supabase.from("match4biz_swipes").select("*").eq("from_client_id",t.client_id).eq("to_client_id",myClientId).in("direction",["right","super"]).limit(1); if(rev?.length>0){const ids=[myClientId,t.client_id].sort();const mn=myProfile?.client_name||user?.name; const{data:nm}=await supabase.from("match4biz_matches").insert({client_a_id:ids[0],client_b_id:ids[1],client_a_name:ids[0]===myClientId?mn:t.client_name,client_b_name:ids[1]===myClientId?mn:t.client_name,is_super:dir==="super"}).select().single(); if(nm){setMatches(p=>[nm,...p]);setMatchPopup({profile:t,match:nm});await supabase.from("match4biz_credits").insert({client_id:myClientId,amount:10,type:"reward",description:"Match com "+t.client_name,reference_id:nm.id});setCredits(p=>p+10);}}} setTimeout(()=>{setSwipeAnim(null);setPhotoIdx(0);setProfiles(p=>p.filter((_,i)=>i!==currentIdx));if(currentIdx>=profiles.length-1)setCurrentIdx(0);},500); }catch(e){console.error("Swipe:",e);setSwipeAnim(null);showToast("Erro.");} };
   const sendMessage = async()=>{ if(!msgText.trim()||!chatMatch)return; const{data}=await supabase.from("match4biz_messages").insert({match_id:chatMatch.id,sender_client_id:myClientId,sender_name:myProfile?.client_name||user?.name,text:msgText.trim()}).select().single(); if(data)setMessages(p=>[...p,data]); setMsgText(""); };
-  /* ── Visual Viewport tracking for keyboard ── */
+  /* ── Body scroll lock + keyboard handling for chat ── */
   useEffect(()=>{
     if(!chatMatch) return;
-    const vv = window.visualViewport;
-    if(!vv) return;
-    const onResize = ()=>{ setVvH(vv.height); setTimeout(()=>{if(chatMsgsRef.current)chatMsgsRef.current.scrollTop=chatMsgsRef.current.scrollHeight;},50); };
-    vv.addEventListener("resize",onResize);
-    vv.addEventListener("scroll",onResize);
-    return()=>{vv.removeEventListener("resize",onResize);vv.removeEventListener("scroll",onResize);};
+    const scrollY = window.scrollY;
+    const bd = document.body;
+    const html = document.documentElement;
+    bd.style.overflow="hidden";
+    bd.style.position="fixed";
+    bd.style.top=`-${scrollY}px`;
+    bd.style.left="0";
+    bd.style.right="0";
+    html.style.overflow="hidden";
+    window.scrollTo(0,0);
+    /* Force scroll to 0 when keyboard opens */
+    const forceTop=()=>{window.scrollTo(0,0);html.scrollTop=0;bd.scrollTop=0;setTimeout(()=>{if(chatMsgsRef.current)chatMsgsRef.current.scrollTop=chatMsgsRef.current.scrollHeight;},80);};
+    const vv=window.visualViewport;
+    if(vv){vv.addEventListener("resize",forceTop);vv.addEventListener("scroll",forceTop);}
+    window.addEventListener("scroll",forceTop,{passive:true});
+    return()=>{
+      bd.style.overflow="";bd.style.position="";bd.style.top="";bd.style.left="";bd.style.right="";
+      html.style.overflow="";
+      window.scrollTo(0,scrollY);
+      if(vv){vv.removeEventListener("resize",forceTop);vv.removeEventListener("scroll",forceTop);}
+      window.removeEventListener("scroll",forceTop);
+    };
   },[chatMatch]);
   /* ── Auto-scroll on new message ── */
   useEffect(()=>{if(chatMsgsRef.current)setTimeout(()=>{chatMsgsRef.current.scrollTop=chatMsgsRef.current.scrollHeight;},100);},[messages.length]);
@@ -24749,7 +24764,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   </div>;
 
   /* Chat */
-  if(chatMatch){const otherName=chatMatch.client_a_id===myClientId?chatMatch.client_b_name:chatMatch.client_a_name; return <div style={{position:"fixed",top:0,left:0,right:0,height:vvH,zIndex:90,display:"flex",flexDirection:"column",background:B.bg,transition:"height .05s ease-out"}}>{ToastEl}
+  if(chatMatch){const otherName=chatMatch.client_a_id===myClientId?chatMatch.client_b_name:chatMatch.client_a_name; return <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:90,display:"flex",flexDirection:"column",background:B.bg,height:"100dvh",maxHeight:"-webkit-fill-available"}}>{ToastEl}
     {/* HEADER */}
     <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:B.bgCard,borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
       <button onClick={()=>setChatMatch(null)} style={{width:36,height:36,borderRadius:10,border:`1.5px solid ${B.border}`,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.back()}</button>
@@ -24763,7 +24778,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
     </div>
     {/* INPUT — always visible at bottom */}
     <div style={{display:"flex",gap:8,padding:"10px 16px",paddingBottom:"max(10px, env(safe-area-inset-bottom))",borderTop:`1px solid ${B.border}`,background:B.bgCard,flexShrink:0}}>
-      <input value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMessage();}} placeholder="Mensagem..." className="tinput" style={{flex:1}}/>
+      <input value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMessage();}} onFocus={()=>{setTimeout(()=>{window.scrollTo(0,0);document.body.scrollTop=0;document.documentElement.scrollTop=0;if(chatMsgsRef.current)chatMsgsRef.current.scrollTop=chatMsgsRef.current.scrollHeight;},300);}} placeholder="Mensagem..." className="tinput" style={{flex:1}} enterKeyHint="send"/>
       <button onClick={sendMessage} disabled={!msgText.trim()} style={{padding:"10px 20px",borderRadius:12,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:msgText.trim()?1:0.4}}>Enviar</button>
     </div>
   </div>;}
