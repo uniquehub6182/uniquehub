@@ -24623,959 +24623,317 @@ function Match4BizPage({ onBack, clients, user }) {
    CLIENT MATCH4BIZ — Tinder de negócios entre clientes
    ═══════════════════════════════════════════════════════════════════ */
 function ClientMatch4Biz({ onBack, user, clients, demands }) {
-  /* ── M4B LOCK: locked by default, unlock when all monthly challenges completed ── */
-  const [m4bMissions, setM4bMissions] = useState([
-    { id:1, title:"Aprovar todos os posts pendentes", icon:"✅", done: false },
-    { id:2, title:"Acessar os relatórios de performance", icon:"📈", done: false },
-    { id:3, title:"Completar 1 curso na Academy", icon:"🎓", done: false },
-    { id:4, title:"Responder um briefing de campanha", icon:"📝", done: false },
-    { id:5, title:"Avaliar o Growth Score do mês", icon:"🏆", done: false },
-  ]);
-  const [m4bUnlockFlag, setM4bUnlockFlag] = useState(false);
-  const [m4bLoading, setM4bLoading] = useState(false);
-  const resolvedClientId = (() => {
-    const rc = (clients||[]).find(c => (c.contact_email||"").toLowerCase() === (user?.email||"").toLowerCase())
-            || (clients||[]).find(c => (c.name||"").toLowerCase() === (user?.company||"").toLowerCase())
-            || (clients||[]).find(c => (c.name||"").toLowerCase() === (user?.name||"").toLowerCase());
-    return rc?.id || rc?.supaId || null;
-  })();
-  const currentMonth = new Date().toISOString().slice(0,7); /* YYYY-MM */
-  useEffect(() => {
-    if (!supabase) return;
-    (async () => {
-      try {
-        /* Single query for all needed keys */
-        const keys = ["gamify_missions", "m4b_unlocks"];
-        if (resolvedClientId) keys.push("m4b_progress_" + resolvedClientId);
-        const { data } = await supabase.from("app_settings").select("key,value").in("key", keys);
-        let missions = null, unlocks = null, progress = null;
-        (data||[]).forEach(d => {
-          try {
-            const v = typeof d.value === "string" ? JSON.parse(d.value) : d.value;
-            if (d.key === "gamify_missions") missions = v;
-            if (d.key === "m4b_unlocks") unlocks = v;
-            if (d.key === "m4b_progress_" + resolvedClientId) progress = v;
-          } catch {}
-        });
-        /* Check explicit unlock */
-        if (unlocks && resolvedClientId && unlocks[resolvedClientId + "_" + currentMonth]) setM4bUnlockFlag(true);
-        /* Build missions */
-        const pendingApprovals = (demands||[]).filter(d => d.steps?.client?.mode === "sent_to_client" && !d.steps?.client?.status).length;
-        const approvedThisMonth = (demands||[]).filter(d => d.steps?.client?.status === "approved").length;
-        const defaultM = [
-          { id:1, title:"Aprovar todos os posts pendentes", icon:"✅", done: pendingApprovals === 0 && approvedThisMonth > 0 },
-          { id:2, title:"Acessar os relatórios de performance", icon:"📈", done: false },
-          { id:3, title:"Completar 1 curso na Academy", icon:"🎓", done: false },
-          { id:4, title:"Responder um briefing de campanha", icon:"📝", done: false },
-          { id:5, title:"Avaliar o Growth Score do mês", icon:"🏆", done: false },
-        ];
-        let finalMissions = missions?.length ? missions.map((m,i) => ({ id:i+1, title:m.title, icon:m.icon||"⭐", done: false })) : defaultM;
-        /* Apply progress */
-        if (progress?.month === currentMonth && progress?.done) {
-          progress.done.forEach(doneId => { const m = finalMissions.find(mm => mm.id === doneId); if (m) m.done = true; });
-        }
-        setM4bMissions(finalMissions);
-      } catch(e) { console.error("M4B lock check:", e); }
-    })();
-  }, []);
-  const m4bCompleted = m4bMissions.filter(m => m.done).length;
-  const m4bTotal = m4bMissions.length || 1;
-  const m4bAllDone = m4bCompleted >= m4bTotal && m4bTotal > 0;
-  const m4bUnlocked = m4bUnlockFlag || m4bAllDone;
-
-
-
-  const [accepted, setAccepted] = useState(() => { try { return localStorage.getItem("uh_m4b_accepted") === "1"; } catch { return false; } });
+  const isDesktop = useIsDesktop();
   const [tab, setTab] = useState("discover");
-  const [credits, setCredits] = useState(0);
-  const [customPkgs, setCustomPkgs] = useState(null);
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.from("app_settings").select("value").eq("key","pay_credits").maybeSingle().then(({data}) => {
-      if (data?.value) { try { setCustomPkgs(typeof data.value === "string" ? JSON.parse(data.value) : data.value); } catch {} }
-    }).catch(() => {});
-  }, []);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [matches, setMatches] = useState([]);
-  const [allClients, setAllClients] = useState([]);
-  const [myClient, setMyClient] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [myProfile, setMyProfile] = useState(null);
+  const [profiles, setProfiles] = useState([]);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [swipes, setSwipes] = useState([]);
+  const [matches, setMatches] = useState([]);
+  const [credits, setCredits] = useState(0);
+  const [creditHistory, setCreditHistory] = useState([]);
+  const [chatMatch, setChatMatch] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [msgText, setMsgText] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [editData, setEditData] = useState({});
   const [swipeAnim, setSwipeAnim] = useState(null);
-  const [showBuy, setShowBuy] = useState(false);
-  const [showProfile, setShowProfile] = useState(null);
-  const [buyStep, setBuyStep] = useState("packages"); /* packages | payment */
-  const [selectedPkg, setSelectedPkg] = useState(null);
-  const [clientScores, setClientScores] = useState({});
-  const [clientRanks, setClientRanks] = useState({});
-  const [clientCovers, setClientCovers] = useState({});
-  const [clientM4bProfiles, setClientM4bProfiles] = useState({});
-  const [clientSeals, setClientSeals] = useState({});
+  const [matchPopup, setMatchPopup] = useState(null);
   const { showToast, ToastEl } = useToast();
+  const LIME = B.accent || "#BBF246";
 
-  /* ── Plan-based credits ── */
-  const getCreditsForPlan = (monthly) => {
-    const v = parseFloat(monthly) || 0;
-    if (v >= 4480) return 9999;
-    if (v >= 3480) return 30;
-    if (v >= 2480) return 20;
-    if (v >= 1480) return 10;
-    return 10;
-  };
+  /* ── Resolve client ID ── */
+  const myClientId = useMemo(() => {
+    const email = (user?.email||"").toLowerCase();
+    const cl = clients.find(c => c.id === user?.linked_client_id) || clients.find(c => (c.contact_email||"").toLowerCase() === email) || clients.find(c => (c.name||"").toLowerCase() === (user?.company||user?.name||"").toLowerCase());
+    return cl?.id || cl?.supaId || null;
+  }, [user, clients]);
 
-  /* ── Load clients + matches + scores from Supabase ── */
+  /* ── Load all data ── */
   useEffect(() => {
-    if (!supabase || !user?.email) { setLoading(false); return; }
+    if (!supabase || !myClientId) return;
     (async () => {
+      setLoading(true);
       try {
-        /* Try matching by contact_email first, then by name */
-        let cl = null;
-        const { data: byEmailArr } = await supabase.from("clients").select("*").eq("contact_email", user.email).limit(1);
-        const byEmail = byEmailArr?.[0] || null;
-        if (byEmail) { cl = byEmail; }
-        else if (user.name) {
-          const { data: byNameArr } = await supabase.from("clients").select("*").ilike("name", `%${user.name}%`).eq("status", "ativo").limit(1);
-          if (byNameArr?.[0]) cl = byNameArr[0];
-        }
-        if (!cl && user.company) {
-          const { data: byCompanyArr } = await supabase.from("clients").select("*").ilike("name", `%${user.company}%`).eq("status", "ativo").limit(1);
-          if (byCompanyArr?.[0]) cl = byCompanyArr[0];
-        }
-        if (!cl) { setLoading(false); return; }
-        setMyClient(cl);
-        const planCredits = getCreditsForPlan(cl.monthly_value);
-        try { const extra = parseInt(localStorage.getItem("uh_m4b_credits_" + cl.id) || "0"); setCredits(planCredits + extra); } catch { setCredits(planCredits); }
-        const { data: clients } = await supabase.from("clients").select("id, name, *, logo_url, contact_name, contact_email, notes, start_date").neq("id", cl.id).eq("status", "ativo");
-        if (clients) setAllClients(clients);
-        const { data: m4b } = await supabase.from("match4biz").select("*").or("client_a_id.eq." + cl.id + ",client_b_id.eq." + cl.id);
-        if (m4b) setMatches(m4b);
-        /* Load gamification scores for all clients */
-        try {
-          const { data: scores } = await supabase.from("client_scores").select("client_id, points");
-          if (scores) {
-            const byClient = {};
-            scores.forEach(s => { byClient[s.client_id] = (byClient[s.client_id] || 0) + Number(s.points); });
-            setClientScores(byClient);
-            const sorted = Object.entries(byClient).sort((a,b) => b[1] - a[1]);
-            const ranks = {};
-            sorted.forEach(([id], i) => { ranks[id] = i + 1; });
-            setClientRanks(ranks);
-          }
-        } catch {}
-        /* Load M4B covers for all clients */
-        try {
-          const { data: coverRows } = await supabase.from("app_settings").select("key, value").like("key", "client_m4b_cover_%");
-          if (coverRows) {
-            const byClient = {};
-            coverRows.forEach(c => { const id = c.key.replace("client_m4b_cover_", ""); byClient[id] = c.value; });
-            setClientCovers(byClient);
-          }
-        } catch {}
-        /* Load M4B profiles for all clients */
-        try {
-          const { data: profRows } = await supabase.from("app_settings").select("key, value").like("key", "client_m4b_profile_%");
-          if (profRows) {
-            const byClient = {};
-            profRows.forEach(r => { const id = r.key.replace("client_m4b_profile_", ""); try { byClient[id] = JSON.parse(r.value); } catch {} });
-            setClientM4bProfiles(byClient);
-          }
-        } catch {}
-        /* Load M4B seals */
-        try {
-          const { data: sealRows } = await supabase.from("app_settings").select("key, value").like("key", "client_m4b_seal_%");
-          if (sealRows) {
-            const byClient = {};
-            sealRows.forEach(r => { byClient[r.key.replace("client_m4b_seal_", "")] = r.value; });
-            setClientSeals(byClient);
-          }
-        } catch {}
-      } catch(e) { console.warn("[M4B]", e); }
+        /* My profile */
+        const { data: prof } = await supabase.from("match4biz_profiles").select("*").eq("client_id", myClientId).limit(1);
+        if (prof?.[0]) { setMyProfile(prof[0]); setEditData(prof[0]); }
+        /* My swipes */
+        const { data: sw } = await supabase.from("match4biz_swipes").select("*").eq("from_client_id", myClientId);
+        setSwipes(sw || []);
+        /* All visible profiles except mine */
+        const { data: allProf } = await supabase.from("match4biz_profiles").select("*").eq("visible", true).neq("client_id", myClientId);
+        const swipedIds = new Set((sw||[]).map(s => s.to_client_id));
+        setProfiles((allProf||[]).filter(p => !swipedIds.has(p.client_id)));
+        /* My matches */
+        const { data: ma } = await supabase.from("match4biz_matches").select("*").or(`client_a_id.eq.${myClientId},client_b_id.eq.${myClientId}`).order("matched_at", { ascending: false });
+        setMatches(ma || []);
+        /* Credits */
+        const { data: cr } = await supabase.from("match4biz_credits").select("*").eq("client_id", myClientId).order("created_at", { ascending: false });
+        setCreditHistory(cr || []);
+        const bal = (cr||[]).reduce((sum, c) => sum + c.amount, 0);
+        setCredits(bal);
+      } catch(e) { console.error("M4B load:", e); }
       setLoading(false);
     })();
-  }, [user?.email]);
+  }, [myClientId]);
 
-  const matchedIds = matches.map(m => m.client_a_id === myClient?.id ? m.client_b_id : m.client_a_id);
-  const available = allClients.filter(c => !matchedIds.includes(c.id)).sort((a, b) => {
-    const sealA = clientSeals[a.id] ? 1 : 0;
-    const sealB = clientSeals[b.id] ? 1 : 0;
-    return sealB - sealA;
-  });
-  const current = available[currentIdx % Math.max(available.length, 1)];
-  const isUnlimited = credits >= 9999;
-  const noCredits = !isUnlimited && credits < 10;
-
-  const doAccept = () => { setAccepted(true); try { localStorage.setItem("uh_m4b_accepted", "1"); } catch {} };
-
-  const handleLike = async () => {
-    if (!current || !myClient) return;
-    if (noCredits) { setShowBuy(true); setBuyStep("packages"); return; }
-    setSwipeAnim("like");
-    setTimeout(async () => {
-      try {
-        const existing = matches.find(m => (m.client_a_id === current.id && m.client_b_id === myClient.id) || (m.client_a_id === myClient.id && m.client_b_id === current.id));
-        if (existing) {
-          const myField = existing.client_a_id === myClient.id ? "client_a_confirmed" : "client_b_confirmed";
-          await supabase.from("match4biz").update({ [myField]: true, status: "mutual" }).eq("id", existing.id);
-          setMatches(prev => prev.map(m => m.id === existing.id ? { ...m, [myField]: true, status: "mutual" } : m));
-          setCelebration(current); setTimeout(() => setCelebration(null), 3500);
-        } else {
-          const newMatch = { client_a_id: myClient.id, client_a_name: myClient.name, client_b_id: current.id, client_b_name: current.name, status: "pending", messages: [], created_by: user?.name || "Cliente", client_a_confirmed: true, client_b_confirmed: false };
-          const saved = await supaCreateMatch(newMatch);
-          if (saved) { setMatches(prev => [...prev, saved]); showToast("Match enviado!"); }
-        }
-      } catch(e) { console.warn("[M4B] Match save:", e); }
-      if (!isUnlimited) {
-        const newCredits = credits - 10;
-        setCredits(newCredits);
-        try { localStorage.setItem("uh_m4b_credits_" + myClient.id, String(Math.max(0, newCredits - getCreditsForPlan(myClient.monthly_value)))); } catch {}
-      }
-      setCurrentIdx(i => i + 1);
-      setSwipeAnim(null);
-    }, 350);
-  };
-
-  const handlePass = () => {
-    if (!current) return;
-    setSwipeAnim("pass");
-    setTimeout(() => { setCurrentIdx(i => i + 1); setSwipeAnim(null); }, 300);
-  };
-
-  const getInitials = (name) => (name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-  const getColor = (name) => { const colors = ["#10B981","#3B82F6","#8B5CF6","#EC4899","#F59E0B","#EF4444","#06B6D4","#84CC16"]; let h = 0; for (let i = 0; i < (name||"").length; i++) h = ((h << 5) - h) + name.charCodeAt(i); return colors[Math.abs(h) % colors.length]; };
-  const getSince = (d) => { if (!d) return ""; const y = new Date(d).getFullYear(); return "Desde " + y; };
-  const getScore = (id) => Math.min(100, Math.round(clientScores[id] || 0));
-  const getRank = (id) => clientRanks[id] || "—";
-  const totalRanked = Object.keys(clientRanks).length || 1;
-
-  const [chatMatch, setChatMatch] = useState(null);
-  const [chatInput, setChatInput] = useState("");
-  const [touchStartX, setTouchStartX] = useState(null);
-  const [dragX, setDragX] = useState(0);
-  const [celebration, setCelebration] = useState(null);
-  const chatEndRef = useRef(null);
-  const chatFileRef = useRef(null);
-  const [vpH, setVpH] = useState(window.innerHeight);
-  const mutualMatches = matches.filter(m => m.client_a_confirmed && m.client_b_confirmed);
-
-  useEffect(() => { if (!chatMatch) return; const vv = window.visualViewport; if (!vv) return; const fn = () => { setVpH(vv.height); setTimeout(() => chatEndRef.current?.scrollIntoView({behavior:"smooth"}), 50); }; vv.addEventListener("resize", fn); return () => vv.removeEventListener("resize", fn); }, [chatMatch]);
-
-  const onTouchStart = (e) => setTouchStartX(e.touches[0].clientX);
-  const onTouchMove = (e) => { if (touchStartX === null) return; setDragX(e.touches[0].clientX - touchStartX); };
-  const onTouchEnd = () => { const dx = dragX; setDragX(0); setTouchStartX(null); if (Math.abs(dx) > 80) { dx > 0 ? handleLike() : handlePass(); } };
-
-  const sendChatMsg = async (text, type = "text") => { if (!chatMatch || (!text?.trim() && type === "text")) return; const msg = { from: myClient?.id, fromName: myClient?.name, text: text?.trim() || "", type, ts: new Date().toISOString() }; const msgs = [...(chatMatch.messages || []), msg]; try { await supabase.from("match4biz").update({ messages: msgs }).eq("id", chatMatch.id); } catch (e) {} setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, messages: msgs } : m)); setChatMatch(p => ({ ...p, messages: msgs })); setChatInput(""); setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100); };
-  const handleChatFile = async (e) => { const f = e.target.files?.[0]; if (!f || !supabase) return; const path = `m4b/${Date.now()}_${f.name}`; const { error } = await supabase.storage.from("demand-files").upload(path, f, { upsert: true }); if (error) { showToast("Erro no upload"); return; } const { data: u } = supabase.storage.from("demand-files").getPublicUrl(path); const isImg = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name); sendChatMsg(u.publicUrl, isImg ? "image" : "file"); e.target.value = ""; };
-  const dealAction = async (a) => { if (!chatMatch) return; const sm = { close: "deal_closed", noclose: "deal_rejected", help: "agency_help" }; const mm = { close: "\u{1F91D} Negócio fechado!", noclose: "\u274C Negócio não fechado", help: "\u{1F3E2} Pediu ajuda da agência" }; await sendChatMsg(mm[a], "system"); try { await supabase.from("match4biz").update({ status: sm[a] }).eq("id", chatMatch.id); } catch (e) {} setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, status: sm[a] } : m)); setChatMatch(p => ({ ...p, status: sm[a] })); if (a === "close" && myClient) { try { await supaSetSetting(`client_m4b_seal_${myClient.id}`, "deal_maker"); } catch {} } showToast(a === "close" ? "Parabéns! \u{1F389}" : a === "help" ? "Agência notificada" : "Atualizado"); };
-  const getPartner = (m) => { const pid = m.client_a_id === myClient?.id ? m.client_b_id : m.client_a_id; const pn = m.client_a_id === myClient?.id ? m.client_b_name : m.client_a_name; return { id: pid, name: pn, ...(allClients.find(c => c.id === pid) || {}) }; };
-
-  /* ═══ CONVERSION OVERLAY (Interrupção Estratégica) ═══ */
-  const [convOverlay, setConvOverlay] = useState(false);
-  const [convForm, setConvForm] = useState(false);
-  const [convDesc, setConvDesc] = useState("");
-  const [convValue, setConvValue] = useState("");
-  const [convSubmitting, setConvSubmitting] = useState(false);
-  const CONV_MSG_THRESHOLD = 10;
-  const CONV_HOURS_THRESHOLD = 48;
-  const CONV_DISMISS_KEY = "uh_m4b_conv_dismiss_";
-
-  const shouldShowConvOverlay = (match) => {
-    if (!match || !myClient) return false;
-    const st = match.status;
-    if (st === "deal_closed" || st === "deal_rejected") return false;
-    const msgs = (match.messages || []).filter(m => m.type !== "system");
-    const realMsgs = msgs.filter(m => m.from === myClient.id).length > 0 && msgs.filter(m => m.from !== myClient.id).length > 0;
-    const enoughMsgs = msgs.length >= CONV_MSG_THRESHOLD && realMsgs;
-    const firstMsg = msgs[0]?.ts;
-    const enoughTime = firstMsg && (Date.now() - new Date(firstMsg).getTime()) > CONV_HOURS_THRESHOLD * 3600000;
-    if (!enoughMsgs && !enoughTime) return false;
-    try { const dismissed = localStorage.getItem(CONV_DISMISS_KEY + match.id); if (dismissed && (Date.now() - parseInt(dismissed)) < 48 * 3600000) return false; } catch {}
-    return true;
-  };
-
-  useEffect(() => {
-    if (chatMatch && shouldShowConvOverlay(chatMatch)) {
-      const timer = setTimeout(() => setConvOverlay(true), 2000);
-      return () => clearTimeout(timer);
-    } else { setConvOverlay(false); }
-  }, [chatMatch?.id, chatMatch?.messages?.length]);
-
-  const dismissConvOverlay = () => {
-    setConvOverlay(false);
-    if (chatMatch) try { localStorage.setItem(CONV_DISMISS_KEY + chatMatch.id, String(Date.now())); } catch {}
-    showToast("Lembraremos novamente em 48h");
-  };
-
-  const submitDealProof = async () => {
-    if (!chatMatch || !convDesc.trim()) return;
-    setConvSubmitting(true);
-    await sendChatMsg("🤝 Negócio fechado! " + convDesc.trim() + (convValue ? " — Valor: " + convValue : ""), "system");
+  /* ── Swipe handler ── */
+  const handleSwipe = async (direction) => {
+    if (!profiles[currentIdx] || !myClientId) return;
+    const target = profiles[currentIdx];
+    const cost = direction === "super" ? 3 : direction === "right" ? 1 : 0;
+    if (cost > 0 && credits < cost) { showToast("Créditos insuficientes! Compre mais créditos."); return; }
+    setSwipeAnim(direction);
+    setTimeout(() => setSwipeAnim(null), 400);
     try {
-      await supabase.from("match4biz").update({ status: "deal_closed", deal_value: convValue || null, deal_description: convDesc.trim() }).eq("id", chatMatch.id);
-    } catch {}
-    setMatches(p => p.map(m => m.id === chatMatch.id ? { ...m, status: "deal_closed" } : m));
-    setChatMatch(p => ({ ...p, status: "deal_closed" }));
-    /* Award seal + credits */
-    try { await supaSetSetting(`client_m4b_seal_${myClient.id}`, "deal_maker"); } catch {}
-    if (!isUnlimited) {
-      const newCredits = credits + 5;
-      setCredits(newCredits);
-      try { localStorage.setItem("uh_m4b_credits_" + myClient.id, String(Math.max(0, newCredits - getCreditsForPlan(myClient.monthly_value)))); } catch {}
-    }
-    setConvSubmitting(false); setConvOverlay(false); setConvForm(false); setConvDesc(""); setConvValue("");
-    showToast("Parabéns! +5 créditos de bônus 🎉");
+      /* Record swipe */
+      await supabase.from("match4biz_swipes").insert({ from_client_id: myClientId, to_client_id: target.client_id, direction });
+      /* Deduct credits */
+      if (cost > 0) {
+        await supabase.from("match4biz_credits").insert({ client_id: myClientId, amount: -cost, type: "spend", description: direction === "super" ? "Super Match" : "Interesse enviado", reference_id: target.client_id });
+        setCredits(prev => prev - cost);
+        setCreditHistory(prev => [{ id: Date.now(), client_id: myClientId, amount: -cost, type: "spend", description: direction==="super"?"Super Match":"Interesse enviado", created_at: new Date().toISOString() }, ...prev]);
+      }
+      /* Check for match: did the other person already swipe right on us? */
+      if (direction === "right" || direction === "super") {
+        const { data: reverse } = await supabase.from("match4biz_swipes").select("*").eq("from_client_id", target.client_id).eq("to_client_id", myClientId).in("direction", ["right","super"]).limit(1);
+        if (reverse?.length > 0) {
+          /* MATCH! */
+          const ids = [myClientId, target.client_id].sort();
+          const myName = myProfile?.client_name || user?.name || "Cliente";
+          const { data: newMatch } = await supabase.from("match4biz_matches").insert({ client_a_id: ids[0], client_b_id: ids[1], client_a_name: ids[0]===myClientId?myName:target.client_name, client_b_name: ids[1]===myClientId?myName:target.client_name, is_super: direction==="super" }).select().single();
+          if (newMatch) {
+            setMatches(prev => [newMatch, ...prev]);
+            setMatchPopup({ profile: target, match: newMatch });
+            /* Give 10 credits reward for matching */
+            await supabase.from("match4biz_credits").insert({ client_id: myClientId, amount: 10, type: "reward", description: "Match com " + target.client_name, reference_id: newMatch.id });
+            setCredits(prev => prev + 10);
+          }
+        }
+      }
+      /* Move to next */
+      setTimeout(() => { setProfiles(prev => prev.filter((_,i) => i !== currentIdx)); if (currentIdx >= profiles.length - 1) setCurrentIdx(0); }, 300);
+    } catch(e) { console.error("Swipe error:", e); showToast("Erro ao processar. Tente novamente."); }
   };
 
-  /* ═══ MY PROFILE EDITING (client-side) ═══ */
-  const [showEditProfile, setShowEditProfile] = useState(false);
-  const [myM4bProfile, setMyM4bProfile] = useState({ mission:"", values:"", matchIdeal:"" });
-  const [myM4bProfileLoaded, setMyM4bProfileLoaded] = useState(false);
+  /* ── Send message ── */
+  const sendMessage = async () => {
+    if (!msgText.trim() || !chatMatch) return;
+    const msg = { match_id: chatMatch.id, sender_client_id: myClientId, sender_name: myProfile?.client_name || user?.name, text: msgText.trim() };
+    const { data } = await supabase.from("match4biz_messages").insert(msg).select().single();
+    if (data) setMessages(prev => [...prev, data]);
+    setMsgText("");
+  };
+
+  /* ── Load chat messages ── */
   useEffect(() => {
-    if (!myClient || !supabase) return;
-    supaGetSetting(`client_m4b_profile_${myClient.id}`).then(v => {
-      try { if (v) { const p = JSON.parse(v); setMyM4bProfile({ mission: p.mission||"", values: p.values||"", matchIdeal: p.matchIdeal||"" }); } } catch {}
-      setMyM4bProfileLoaded(true);
-    });
-  }, [myClient?.id]);
-  const saveMyM4bField = (field, val) => {
-    const updated = { ...myM4bProfile, [field]: val };
-    setMyM4bProfile(updated);
-    if (myClient) {
-      supaGetSetting(`client_m4b_profile_${myClient.id}`).then(existing => {
-        let full = {};
-        try { if (existing) full = JSON.parse(existing); } catch {}
-        full[field] = val;
-        supaSetSetting(`client_m4b_profile_${myClient.id}`, JSON.stringify(full));
-      });
-    }
+    if (!chatMatch || !supabase) return;
+    (async () => {
+      const { data } = await supabase.from("match4biz_messages").select("*").eq("match_id", chatMatch.id).order("created_at", { ascending: true });
+      setMessages(data || []);
+    })();
+    const channel = supabase.channel("m4b_chat_" + chatMatch.id).on("postgres_changes", { event: "INSERT", schema: "public", table: "match4biz_messages", filter: `match_id=eq.${chatMatch.id}` }, payload => { setMessages(prev => [...prev.filter(m => m.id !== payload.new.id), payload.new]); }).subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [chatMatch?.id]);
+
+  /* ── Save profile ── */
+  const saveProfile = async () => {
+    if (!myClientId) return;
+    const payload = { tagline: editData.tagline||"", description: editData.description||"", segment: editData.segment||"", city: editData.city||"", offers: editData.offers||[], seeks: editData.seeks||[], website: editData.website||"", instagram: editData.instagram||"", linkedin: editData.linkedin||"" };
+    await supabase.from("match4biz_profiles").update(payload).eq("client_id", myClientId);
+    setMyProfile(prev => ({ ...prev, ...payload }));
+    setEditMode(false);
+    showToast("Perfil atualizado ✓");
   };
-  const profileComplete = myM4bProfile.mission && myM4bProfile.matchIdeal;
 
-  /* ═══ M4B STYLES ═══ */
-  const m4bCSS = `
-    @keyframes m4b-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-    @keyframes m4b-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-    @keyframes m4b-shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-    @keyframes m4b-glow { 0%,100%{box-shadow:0 0 20px ${B.accent}30} 50%{box-shadow:0 0 40px ${B.accent}60} }
-    @keyframes m4b-confetti { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(400px) rotate(720deg);opacity:0} }
-    .m4b-card { border-radius:28px; overflow:hidden; position:relative; transition:all .4s cubic-bezier(0.34,1.56,0.64,1); }
-    .m4b-card:active { transform:scale(0.98) !important; }
-    .m4b-action-btn { transition:all .15s ease; }
-    .m4b-action-btn:active { transform:scale(0.85) !important; }
-    .m4b-score-ring { animation:m4b-glow 3s ease-in-out infinite; }
-    .m4b-tab { position:relative; overflow:hidden; }
-    .m4b-tab::after { content:''; position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:0; height:3px; background:${B.accent}; border-radius:3px; transition:width .3s ease; }
-    .m4b-tab[data-active="true"]::after { width:60%; }
-    .m4b-overlay-enter { animation:m4b-overlay-in .4s ease forwards; }
-    @keyframes m4b-overlay-in { from{opacity:0;backdrop-filter:blur(0)} to{opacity:1;backdrop-filter:blur(12px)} }
-    .m4b-pkg-card { transition:all .2s ease; border:2px solid transparent; }
-    .m4b-pkg-card:active { transform:scale(0.97); }
-    .m4b-pkg-card[data-sel="true"] { border-color:${B.accent}; background:${B.accent}0A; }
-  `;
+  /* ── Tag input helper ── */
+  const TagInput = ({ label, items, setItems, placeholder }) => {
+    const [v, setV] = useState("");
+    return <div style={{marginBottom:14}}>
+      <label style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,display:"block",marginBottom:4}}>{label}</label>
+      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:6}}>{(items||[]).map((t,i) => <span key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",borderRadius:8,background:`${LIME}12`,fontSize:11,fontWeight:600,color:LIME}}>{t}<button onClick={()=>setItems(items.filter((_,j)=>j!==i))} style={{background:"none",border:"none",cursor:"pointer",color:LIME,fontSize:14,padding:0,lineHeight:1}}>×</button></span>)}</div>
+      <div style={{display:"flex",gap:6}}><input value={v} onChange={e=>setV(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&v.trim()){e.preventDefault();setItems([...(items||[]),v.trim()]);setV("");}}} placeholder={placeholder} className="tinput" style={{flex:1,fontSize:13}} /><button onClick={()=>{if(v.trim()){setItems([...(items||[]),v.trim()]);setV("");}}} style={{padding:"8px 14px",borderRadius:10,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:"#0D0D0D"}}>+</button></div>
+    </div>;
+  };
 
-  /* ═══ CELEBRATION ═══ */
-  if (celebration) { const p = celebration; const cc = getColor(p.name); return (
-    <div style={{ position:"fixed", inset:0, zIndex:999, background:B.bg, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", color:B.text }}>
-      <style dangerouslySetInnerHTML={{__html: m4bCSS + `
-        .m4b-confetti-piece { position:absolute; width:8px; height:8px; border-radius:2px; animation:m4b-confetti 2.5s ease-out forwards; }
-      `}} />
-      {Array.from({length:30}).map((_,i) => <div key={i} className="m4b-confetti-piece" style={{ left:Math.random()*100+"%", top:-10, background:["#C8FF00","#10B981","#3B82F6","#EC4899","#F59E0B","#8B5CF6"][i%6], animationDelay:Math.random()*1.5+"s", animationDuration:(2+Math.random()*2)+"s", width:4+Math.random()*8, height:4+Math.random()*8 }} />)}
-      <div style={{ display:"flex", alignItems:"center", marginBottom:32 }}>
-        <div style={{ width:88, height:88, borderRadius:26, overflow:"hidden", border:"3px solid "+B.accent, zIndex:2, background:B.bgCard }}>{myClient?.logo_url ? <img src={myClient.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, fontWeight:900, color:"#0D0D0D" }}>{getInitials(myClient?.name)}</div>}</div>
-        <div style={{ width:88, height:88, borderRadius:26, overflow:"hidden", border:"3px solid "+cc, marginLeft:-18, background:B.bgCard }}>{p.logo_url ? <img src={p.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:cc, display:"flex", alignItems:"center", justifyContent:"center", fontSize:30, fontWeight:900, color:"#fff" }}>{getInitials(p.name)}</div>}</div>
-      </div>
-      <p style={{ fontSize:12, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:6, marginBottom:4 }}>É um</p>
-      <h1 style={{ fontSize:52, fontWeight:900, margin:"0 0 8px", background:"linear-gradient(135deg, "+B.accent+", #10B981)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent" }}>Match!</h1>
-      <p style={{ fontSize:14, color:B.muted, marginTop:8, textAlign:"center", padding:"0 30px" }}>Você e <strong style={{ color:B.text }}>{p.name}</strong> demonstraram interesse mútuo</p>
-      <button onClick={() => { setCelebration(null); setTab("matches"); }} style={{ marginTop:32, padding:"16px 48px", borderRadius:50, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#0D0D0D" }}>Conversar agora</button>
-      <button onClick={() => setCelebration(null)} style={{ marginTop:14, background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, color:B.muted, textDecoration:"underline" }}>Continuar descobrindo</button>
-    </div>
-  ); }
+  const curProfile = profiles[currentIdx];
+  const TABS = [{k:"discover",l:"Descobrir",ic:"🔍"},{k:"matches",l:"Matches",ic:"💚",badge:matches.length},{k:"profile",l:"Meu Perfil",ic:"👤"},{k:"credits",l:"Créditos",ic:"💰",badge:credits}];
 
-  /* ═══ CHAT ═══ */
-  if (chatMatch) { const p = getPartner(chatMatch); const cc = getColor(p.name); const msgs = chatMatch.messages || []; const closed = chatMatch.status === "deal_closed" || chatMatch.status === "deal_rejected"; return (
-    <div style={{ position:"fixed", top:0, left:0, right:0, height:vpH, display:"flex", flexDirection:"column", background:B.bg, color:B.text, zIndex:50 }}>
-      {ToastEl}<input ref={chatFileRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx,.heic,.heif" style={{ display:"none" }} onChange={handleChatFile} />
-      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", borderBottom:"1px solid "+B.border, flexShrink:0, background:B.bgCard }}>
-        <button onClick={() => setChatMatch(null)} className="ib" style={{ width:36, height:36 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-        {p.logo_url ? <img src={p.logo_url} style={{ width:36, height:36, borderRadius:12, objectFit:"cover" }} /> : <div style={{ width:36, height:36, borderRadius:12, background:cc+"20", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:800, color:cc }}>{getInitials(p.name)}</div>}
-        <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:14, fontWeight:700 }}>{p.name}</p><p style={{ fontSize:10, color:chatMatch.status==="deal_closed"?B.green:chatMatch.status==="agency_help"?"#6366F1":B.muted }}>{chatMatch.status==="deal_closed"?"Negócio fechado ✅":chatMatch.status==="agency_help"?"Agência participando":chatMatch.status==="deal_rejected"?"Não fechou":"Conectado"}</p></div>
-      </div>
-      {!closed && <div style={{ display:"flex", gap:6, padding:"8px 12px", borderBottom:"1px solid "+B.border, overflowX:"auto", scrollbarWidth:"none", flexShrink:0 }}>
-        <button onClick={() => dealAction("close")} style={{ padding:"6px 12px", borderRadius:20, border:"1.5px solid "+B.green+"40", background:B.green+"06", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:B.green, whiteSpace:"nowrap", flexShrink:0 }}>🤝 Fechar Negócio</button>
-        <button onClick={() => dealAction("noclose")} style={{ padding:"6px 12px", borderRadius:20, border:"1.5px solid #EF444440", background:"#EF444406", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:"#EF4444", whiteSpace:"nowrap", flexShrink:0 }}>❌ Não Fechar</button>
-        <button onClick={() => dealAction("help")} style={{ padding:"6px 12px", borderRadius:20, border:"1.5px solid #6366F140", background:"#6366F106", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:"#6366F1", whiteSpace:"nowrap", flexShrink:0 }}>🏢 Pedir Ajuda</button>
-      </div>}
-      <div style={{ flex:1, minHeight:0, overflowY:"auto", WebkitOverflowScrolling:"touch", padding:"12px 16px" }}>
-        {msgs.length === 0 && <div style={{ textAlign:"center", padding:"40px 20px" }}><p style={{ fontSize:15, fontWeight:700 }}>Match! 🎉</p><p style={{ fontSize:12, color:B.muted, marginTop:6, lineHeight:1.5 }}>Comecem a conversar sobre a parceria.</p></div>}
-        {msgs.map((m, i) => { const me = m.from === myClient?.id; const ag = m.from === "agency"; const sys = m.type === "system";
-          if (sys) return <div key={i} style={{ textAlign:"center", margin:"12px 0" }}><span style={{ fontSize:10, color:B.muted, background:B.bg, padding:"4px 14px", borderRadius:20, border:"1px solid "+B.border }}>{m.text}</span></div>;
-          return (<div key={i} style={{ marginBottom:8 }}>{ag && <p style={{ fontSize:9, fontWeight:700, color:"#6366F1", marginBottom:2 }}>🏢 {m.by || "Unique Marketing"}</p>}<div style={{ display:"flex", justifyContent:me?"flex-end":"flex-start" }}><div style={{ maxWidth:"78%", padding:m.type==="image"?"4px":"10px 14px", borderRadius:18, background:ag?"#6366F108":me?B.accent+"15":B.bgCard, border:"1px solid "+(ag?"#6366F120":me?B.accent+"25":B.border), borderBottomRightRadius:me?4:18, borderBottomLeftRadius:me?18:4 }}>
-            {m.type === "image" && <img src={m.text} style={{ maxWidth:"100%", maxHeight:200, borderRadius:14, display:"block" }} />}
-            {(m.type === "text" || !m.type) && <p style={{ fontSize:13, lineHeight:1.5, margin:0, wordBreak:"break-word" }}>{m.text}</p>}
-            {m.type === "file" && <a href={m.text} target="_blank" rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:6, color:B.accent, fontSize:12, fontWeight:600 }}>📎 Arquivo</a>}
-            <p style={{ fontSize:8, color:B.muted, marginTop:3, textAlign:"right" }}>{new Date(m.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
-          </div></div></div>); })}
-        <div ref={chatEndRef} />
-      </div>
-      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 14px 12px", borderTop:"1px solid "+B.border, background:B.bgCard, flexShrink:0 }}>
-        <button onClick={() => chatFileRef.current?.click()} className="ib" style={{ width:36, height:36 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg></button>
-        <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChatMsg(chatInput); } }} placeholder="Mensagem..." className="tinput" style={{ flex:1, padding:"10px 14px", fontSize:14 }} />
-        <button onClick={() => sendChatMsg(chatInput)} disabled={!chatInput.trim()} style={{ width:36, height:36, borderRadius:12, background:chatInput.trim()?B.accent:B.border, border:"none", cursor:chatInput.trim()?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={chatInput.trim()?"#0D0D0D":B.muted} strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg></button>
-      </div>
-      {/* ═══ CONVERSION OVERLAY ═══ */}
-      {convOverlay && <div style={{ position:"absolute", inset:0, zIndex:60, display:"flex", alignItems:"center", justifyContent:"center", background:B.bg+"E6", backdropFilter:"blur(12px)" }}>
-        <div style={{ width:"90%", maxWidth:340, textAlign:"center" }}>
-          {!convForm ? (<>
-            <div style={{ width:64, height:64, borderRadius:20, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
-            </div>
-            <h3 style={{ fontSize:20, fontWeight:900, color:B.text, marginBottom:6 }}>Como vai a parceria?</h3>
-            <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, marginBottom:24 }}>Vocês já fecharam algum negócio? Comprove e ganhe <strong style={{ color:B.accent }}>+5 créditos</strong> de bônus!</p>
-            <button onClick={() => setConvForm(true)} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D", marginBottom:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Sim, fechamos negócio!
-            </button>
-            <button onClick={dismissConvOverlay} style={{ width:"100%", padding:"12px 0", borderRadius:14, background:"transparent", border:"1.5px solid "+B.border, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Ainda não · Perguntar depois</button>
-          </>) : (<>
-            <h3 style={{ fontSize:18, fontWeight:900, color:B.text, marginBottom:4 }}>Comprove o negócio</h3>
-            <p style={{ fontSize:12, color:B.muted, lineHeight:1.5, marginBottom:16 }}>Descreva brevemente a parceria fechada para liberar seus créditos</p>
-            <input value={convDesc} onChange={e => setConvDesc(e.target.value)} placeholder="O que foi fechado? Ex: Contrato de fornecimento..." className="tinput" style={{ marginBottom:8, fontSize:13, textAlign:"left" }} />
-            <input value={convValue} onChange={e => setConvValue(e.target.value)} placeholder="Valor aproximado (opcional) Ex: R$ 5.000" className="tinput" style={{ marginBottom:16, fontSize:13, textAlign:"left" }} />
-            <button disabled={!convDesc.trim() || convSubmitting} onClick={submitDealProof} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:convDesc.trim() ? B.accent : B.border, border:"none", cursor:convDesc.trim()?"pointer":"default", fontFamily:"inherit", fontSize:14, fontWeight:700, color:convDesc.trim()?"#0D0D0D":B.muted, marginBottom:10 }}>
-              {convSubmitting ? "Enviando..." : "Confirmar e ganhar +5 créditos"}
-            </button>
-            <button onClick={() => setConvForm(false)} style={{ background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, color:B.muted }}>← Voltar</button>
-          </>)}
-        </div>
-      </div>}
-    </div>
-  ); }
+  if (loading) return <div className="pg" style={{paddingBottom:100}}><CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} /><div style={{textAlign:"center",padding:60}}><div style={{width:28,height:28,border:`3px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto"}}/><p style={{fontSize:13,color:B.muted,marginTop:12}}>Carregando Match4Biz...</p></div></div>;
 
-  /* ═══ EDIT MY PROFILE ═══ */
-  if (showEditProfile) return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
-      <CollapseHeader label="Seu perfil" title="Match4Biz" onBack={() => setShowEditProfile(false)} collapsed={false} />
-      <div className="content" style={{ padding:"0 16px" }}>
-        <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
-            {myClient?.logo_url ? <img src={myClient.logo_url} style={{ width:44, height:44, borderRadius:14, objectFit:"cover" }} /> : <Av name={myClient?.name} sz={44} fs={16} />}
-            <div><p style={{ fontSize:16, fontWeight:800 }}>{myClient?.name}</p>{myClient?.segment && <p style={{ fontSize:11, color:B.muted }}>{myClient.segment}</p>}</div>
-          </div>
-          <p style={{ fontSize:11, color:B.muted, lineHeight:1.5 }}>Complete seu perfil para que outras empresas te encontrem com mais facilidade e tenham mais confiança na parceria.</p>
-        </div>
-        <div style={{ background:B.bgCard, borderRadius:18, border:"1px solid "+B.border, padding:"16px", marginBottom:14 }}>
-          <label style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Missão da empresa *</label>
-          <textarea value={myM4bProfile.mission} onChange={e => saveMyM4bField("mission", e.target.value)} placeholder="O que sua empresa faz e qual problema resolve? Ex: Transformar a logística do Brasil com tecnologia acessível..." className="tinput" style={{ minHeight:70, resize:"vertical", fontSize:13, lineHeight:1.5, marginBottom:14 }} />
-          <label style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>Valores</label>
-          <textarea value={myM4bProfile.values} onChange={e => saveMyM4bField("values", e.target.value)} placeholder="Ex: Inovação, Transparência, Resultado, Parceria..." className="tinput" style={{ minHeight:50, resize:"vertical", fontSize:13, lineHeight:1.5, marginBottom:14 }} />
-          <label style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, display:"block", marginBottom:6 }}>O que você busca (Match Ideal) *</label>
-          <textarea value={myM4bProfile.matchIdeal} onChange={e => saveMyM4bField("matchIdeal", e.target.value)} placeholder="Descreva que tipo de parceria, fornecedor ou cliente você está buscando. Ex: Parceiros de distribuição no RJ, fornecedores de embalagem sustentável, clientes B2B do setor alimentício..." className="tinput" style={{ minHeight:80, resize:"vertical", fontSize:13, lineHeight:1.5 }} />
-        </div>
-        <button onClick={() => { setShowEditProfile(false); showToast("Perfil atualizado ✓"); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:profileComplete ? B.accent : B.border, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:profileComplete ? "#0D0D0D" : B.muted }}>{profileComplete ? "Salvar e voltar" : "Preencha missão e match ideal"}</button>
-        <div style={{ height:30 }} />
+  /* ── MATCH POPUP ── */
+  const matchPopupEl = matchPopup && <div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setMatchPopup(null)}>
+    <div onClick={e=>e.stopPropagation()} style={{background:"#0D0D0D",borderRadius:28,padding:"40px 36px",textAlign:"center",maxWidth:380,width:"90%",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:-40,left:"50%",transform:"translateX(-50%)",width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle, ${LIME}30, transparent 70%)`,filter:"blur(40px)"}}/>
+      <div style={{position:"relative",zIndex:1}}>
+        <span style={{fontSize:48}}>💚</span>
+        <h2 style={{fontSize:28,fontWeight:900,color:LIME,margin:"12px 0 4px"}}>Match!</h2>
+        <p style={{fontSize:14,color:"rgba(255,255,255,0.6)",marginBottom:24}}>Você e <strong style={{color:"#fff"}}>{matchPopup.profile.client_name}</strong> têm interesse mútuo!</p>
+        <p style={{fontSize:12,color:"rgba(255,255,255,0.4)",marginBottom:20}}>Vocês ganharam <strong style={{color:LIME}}>+10 créditos</strong> cada!</p>
+        <div style={{display:"flex",gap:10}}><button onClick={()=>{setChatMatch(matchPopup.match);setTab("matches");setMatchPopup(null);}} style={{flex:1,padding:"14px",borderRadius:14,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#0D0D0D"}}>Conversar</button><button onClick={()=>setMatchPopup(null)} style={{flex:1,padding:"14px",borderRadius:14,background:"rgba(255,255,255,0.1)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:600,color:"#fff"}}>Continuar</button></div>
       </div>
     </div>
-  );
+  </div>;
 
-  /* ═══ LOADING SCREEN ═══ */
-  if (loading) return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
-      <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ display:"flex", alignItems:"center", justifyContent:"center", padding:40 }}>
-        <div style={{ textAlign:"center" }}>
-          <div style={{ width:40, height:40, border:`3px solid ${B.border}`, borderTopColor:B.accent, borderRadius:"50%", animation:"spin 1s linear infinite", margin:"0 auto 16px" }} />
-          <p style={{ fontSize:13, color:B.muted }}>Carregando...</p>
-          <style dangerouslySetInnerHTML={{__html:`@keyframes spin{to{transform:rotate(360deg)}}`}} />
-        </div>
-      </div>
-    </div>
-  );
-
-  /* ═══ NOT FOUND SCREEN ═══ */
-  if (!loading && !myClient) return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
-      <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
-      <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ padding:"40px 20px", textAlign:"center" }}>
-        <div style={{ width:72, height:72, borderRadius:22, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        </div>
-        <h3 style={{ fontSize:18, fontWeight:800, marginBottom:8 }}>Perfil não encontrado</h3>
-        <p style={{ fontSize:13, color:B.muted, lineHeight:1.6, maxWidth:300, margin:"0 auto 20px" }}>
-          Não conseguimos vincular seu login a um cliente cadastrado. Verifique com a agência se o e-mail <strong>{user?.email}</strong> está registrado no seu perfil de cliente.
-        </p>
-        <button onClick={onBack} style={{ padding:"12px 28px", borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:"#0D0D0D" }}>Voltar</button>
-      </div>
-    </div>
-  );
-
-  /* ═══ TERMS SCREEN ═══ */
-  /* ── Lock Screen ── */
-  if (!m4bLoading && !m4bUnlocked) {
-    const pct = Math.round((m4bCompleted / m4bTotal) * 100);
-    return (
-      <div style={{ position:"fixed", top:0, left:0, right:0, bottom:0, background:B.bg, zIndex:50, display:"flex", flexDirection:"column", fontFamily:"'Figtree',sans-serif" }}>
-        {/* Header */}
-        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"calc(env(safe-area-inset-top,0px) + 16px) 20px 12px" }}>
-          <button onClick={onBack} style={{ width:38, height:38, borderRadius:"50%", background:B.card, border:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          </button>
-          <span style={{ fontWeight:700, fontSize:17, color:B.text }}>Match4Biz</span>
-        </div>
-        {/* Lock Content */}
-        <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"0 24px 100px", textAlign:"center" }}>
-          {/* Lock Icon */}
-          <div style={{ width:80, height:80, borderRadius:24, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          </div>
-          <h2 style={{ fontSize:22, fontWeight:800, color:B.text, margin:"0 0 8px", letterSpacing:"-0.5px" }}>Match4Biz Bloqueado</h2>
-          <p style={{ fontSize:14, color:B.muted, margin:"0 0 28px", lineHeight:1.6, maxWidth:320 }}>
-            Complete todos os desafios do mês para desbloquear o Match4Biz e conectar com outros clientes da agência.
-          </p>
-          {/* Progress */}
-          <div style={{ width:"100%", maxWidth:360, marginBottom:24 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:B.muted }}>Progresso do mês</span>
-              <span style={{ fontSize:12, fontWeight:800, color:B.accent }}>{m4bCompleted}/{m4bTotal}</span>
-            </div>
-            <div style={{ height:10, borderRadius:5, background:B.border, overflow:"hidden" }}>
-              <div style={{ height:"100%", width:`${pct}%`, borderRadius:5, background:`linear-gradient(90deg, ${B.accent}, #10B981)`, transition:"width .5s ease" }} />
-            </div>
-          </div>
-          {/* Challenges List */}
-          <div style={{ width:"100%", maxWidth:360 }}>
-            {m4bMissions.map(m => (
-              <div key={m.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, background:B.card, border:`1px solid ${m.done ? B.accent+"30" : B.border}`, marginBottom:8 }}>
-                <span style={{ fontSize:22, flexShrink:0 }}>{m.icon}</span>
-                <span style={{ flex:1, fontSize:13, fontWeight:600, color:B.text, textAlign:"left" }}>{m.title}</span>
-                <div style={{ width:24, height:24, borderRadius:"50%", background:m.done ? B.accent : B.border, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                  {m.done ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg> : <span style={{ fontSize:10, color:B.muted }}>—</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* CTA to go to challenges */}
-          <button onClick={() => { onBack(); setTimeout(() => { try { document.querySelector('[data-sub="gamify"]')?.click(); } catch {} }, 200); }} style={{ marginTop:20, padding:"14px 28px", borderRadius:14, background:B.accent, color:"#0D0D0D", fontWeight:700, fontSize:14, border:"none", cursor:"pointer", fontFamily:"inherit" }}>
-            Ver meus desafios
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-    if (!accepted) return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
-      <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
-      <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ padding:"0 16px 120px" }}>
-        <div style={{ textAlign:"center", padding:"24px 0 20px" }}>
-          <div style={{ width:72, height:72, borderRadius:22, background:B.accent, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", animation:"m4b-float 3s ease-in-out infinite" }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-          </div>
-          <h2 style={{ fontSize:24, fontWeight:900, marginBottom:6, letterSpacing:"-0.5px" }}>Match4Biz</h2>
-          <p style={{ fontSize:13, color:B.muted, lineHeight:1.5, maxWidth:280, margin:"0 auto" }}>Conecte-se com outros negócios e crie parcerias que geram resultados reais</p>
-        </div>
-
-        <div style={{ background:B.bgCard, borderRadius:20, padding:"20px", marginBottom:12, border:"1px solid "+B.border }}>
-          <p style={{ fontSize:14, fontWeight:700, marginBottom:14 }}>Como funciona</p>
-          {[
-            { ic:"🔍", t:"Descubra", d:"Veja perfis reais de empresas parceiras" },
-            { ic:"💚", t:"Dê Match", d:"Use créditos para demonstrar interesse" },
-            { ic:"🤝", t:"Conecte-se", d:"Match mútuo = chat liberado" },
-            { ic:"💰", t:"Negocie", d:"Toda parceria acontece dentro da plataforma" },
-          ].map((s,i) => (
-            <div key={i} style={{ display:"flex", gap:14, padding:"12px 0", borderBottom:i<3?"1px solid "+B.border:"none" }}>
-              <span style={{ fontSize:20, flexShrink:0, width:32, height:32, borderRadius:10, background:B.bg, display:"flex", alignItems:"center", justifyContent:"center" }}>{s.ic}</span>
-              <div><p style={{ fontSize:13, fontWeight:700, marginBottom:2 }}>{s.t}</p><p style={{ fontSize:11, color:B.muted, lineHeight:1.4 }}>{s.d}</p></div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background:B.bgCard, borderRadius:20, padding:"20px", marginBottom:12, border:"1px solid "+B.accent+"25" }}>
-          <p style={{ fontSize:13, fontWeight:700, color:B.accent, marginBottom:10, display:"flex", alignItems:"center", gap:6 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={B.accent} stroke="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            Créditos por Plano
-          </p>
-          {[
-            { plan:"Starter", credits:"10", matches:"1 match" },
-            { plan:"Growth", credits:"20", matches:"2 matches" },
-            { plan:"Scale", credits:"30", matches:"3 matches" },
-            { plan:"Enterprise", credits:"∞", matches:"Ilimitado" },
-          ].map((p,i) => (
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:i<3?"1px solid "+B.border:"none" }}>
-              <span style={{ fontSize:12, fontWeight:600, color:B.text }}>{p.plan}</span>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:13, fontWeight:800, color:B.accent }}>{p.credits}</span>
-                <span style={{ fontSize:10, color:B.muted, background:B.bg, padding:"2px 8px", borderRadius:6 }}>{p.matches}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ background:B.bgCard, borderRadius:20, padding:"20px", marginBottom:16, border:"1px solid #F59E0B25" }}>
-          <p style={{ fontSize:13, fontWeight:700, color:"#F59E0B", marginBottom:8 }}>⚠️ Termos de Uso</p>
-          <ul style={{ fontSize:11, color:B.muted, lineHeight:1.8, paddingLeft:16, margin:0 }}>
-            <li>Toda negociação deve acontecer <strong style={{color:B.text}}>dentro da plataforma</strong></li>
-            <li>Taxa de <strong style={{color:B.text}}>5% a 10%</strong> sobre parcerias fechadas</li>
-            <li>A Unique Marketing atua como facilitadora</li>
-            <li>Informações são confidenciais</li>
-          </ul>
-        </div>
-
-        <button onClick={doAccept} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#0D0D0D", marginBottom:100 }}>Aceitar e Começar</button>
-      </div>
-    </div>
-  );
-
-  /* ═══ PROFILE DETAIL ═══ */
-  if (showProfile) {
-    const p = showProfile;
-    const col = getColor(p.name);
-    const sc = getScore(p.id);
-    const rk = getRank(p.id);
-    const circumference = 2 * Math.PI * 42;
-    const offset = circumference - (sc / 100) * circumference;
-    return (
-      <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
-        <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
-        <Head title="" onBack={() => setShowProfile(null)} />
-        <div className="content" style={{ padding:"0 16px" }}>
-          {/* Hero area */}
-          <div style={{ textAlign:"center", padding:"8px 0 20px", position:"relative" }}>
-            {/* Score ring around avatar */}
-            <div style={{ position:"relative", width:110, height:110, margin:"0 auto 14px" }}>
-              <svg width="110" height="110" viewBox="0 0 110 110" style={{ position:"absolute", top:0, left:0, transform:"rotate(-90deg)" }}>
-                <circle cx="55" cy="55" r="42" fill="none" stroke={B.border} strokeWidth="4" />
-                <circle cx="55" cy="55" r="42" fill="none" stroke={B.accent} strokeWidth="4" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" style={{ transition:"stroke-dashoffset 1s ease" }} />
-              </svg>
-              <div style={{ position:"absolute", top:9, left:9, width:92, height:92, borderRadius:28, overflow:"hidden", background:B.bgCard }}>
-                {p.logo_url ? <img src={p.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+col+", "+col+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:34, fontWeight:900, color:"#fff" }}>{getInitials(p.name)}</div>}
-              </div>
-              {/* Score badge */}
-              <div style={{ position:"absolute", bottom:-4, right:-4, background:B.accent, color:"#0D0D0D", fontSize:12, fontWeight:900, padding:"4px 10px", borderRadius:12, boxShadow:"0 2px 8px rgba(0,0,0,.4)" }}>{sc}</div>
-            </div>
-            <h2 style={{ fontSize:22, fontWeight:900, marginBottom:4, letterSpacing:"-0.5px" }}>{p.name}</h2>
-            <p style={{ fontSize:12, color:col, fontWeight:600 }}>{p.plan ? "Plano " + (p.plan.charAt(0).toUpperCase() + p.plan.slice(1)) : "Cliente Unique"} · {getSince(p.start_date)}</p>
-
-            {/* Rank + Stats row */}
-            <div style={{ display:"flex", justifyContent:"center", gap:20, marginTop:16 }}>
-              <div style={{ textAlign:"center" }}>
-                <p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{rk}º</p>
-                <p style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Ranking</p>
-              </div>
-              <div style={{ width:1, height:36, background:B.accent+"15" }} />
-              <div style={{ textAlign:"center" }}>
-                <p style={{ fontSize:22, fontWeight:900, color:B.text }}>{sc}</p>
-                <p style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Growth Score</p>
-              </div>
-              <div style={{ width:1, height:36, background:B.accent+"15" }} />
-              <div style={{ textAlign:"center" }}>
-                <p style={{ fontSize:22, fontWeight:900, color:B.text }}>{getSince(p.start_date).replace("Desde ","")}</p>
-                <p style={{ fontSize:10, color:B.muted, fontWeight:600 }}>Membro desde</p>
-              </div>
-            </div>
-          </div>
-
-          {/* About */}
-          {p.notes && <div style={{ background:B.bgCard, borderRadius:18, padding:"16px 18px", marginBottom:12, border:"1px solid "+B.border }}>
-            <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Sobre a empresa</p>
-            <p style={{ fontSize:13, lineHeight:1.7, color:B.text }}>{p.notes}</p>
-          </div>}
-
-          {/* Contact */}
-          {p.contact_name && <div style={{ background:B.bgCard, borderRadius:18, padding:"16px 18px", marginBottom:16, border:"1px solid "+B.border }}>
-            <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Responsável</p>
-            <p style={{ fontSize:14, fontWeight:600, color:B.text }}>{p.contact_name}</p>
-          </div>}
-
-          {/* Actions */}
-          <div style={{ display:"flex", gap:10, marginBottom:30 }}>
-            <button onClick={() => { setShowProfile(null); handlePass(); }} style={{ flex:1, padding:"15px 0", borderRadius:16, border:"2px solid "+B.border, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:B.muted }}>Pular</button>
-            <button onClick={() => { setShowProfile(null); handleLike(); }} style={{ flex:1.2, padding:"15px 0", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#0D0D0D" }}>💚 Dar Match</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ═══ BUY CREDITS MODAL ═══ */
-  const PACKAGES = customPkgs ? customPkgs.map((p,i) => ({
-    id:i+1, n:p.credits||10, price:`R$ ${p.price||"0"}`, raw:parseFloat(p.price)||0,
-    desc:p.name||`${p.credits} créditos`, popular:i===1, save:i>0?`${Math.round((1-(parseFloat(p.price)/(parseFloat(customPkgs[0]?.price||1)*(p.credits/(customPkgs[0]?.credits||1)))))*100)}%`:""
-  })) : [
-    { id:1, n:10, price:"R$ 100", raw:100, desc:"1 match", popular:false },
-    { id:2, n:30, price:"R$ 250", raw:250, desc:"3 matches", save:"17%", popular:true },
-    { id:3, n:50, price:"R$ 400", raw:400, desc:"5 matches", save:"20%", popular:false },
-  ];
-
-  const BuyOverlay = showBuy ? (
-    <div className="m4b-overlay-enter" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", backdropFilter:"blur(12px)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }} onClick={() => { setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }}>
-      <div onClick={e => e.stopPropagation()} style={{ width:"100%", maxWidth:430, background:B.bgCard, borderRadius:"28px 28px 0 0", padding:"20px 20px calc(90px + env(safe-area-inset-bottom,0px))", maxHeight:"90vh", overflowY:"auto" }}>
-        <div style={{ width:40, height:4, borderRadius:2, background:B.border, margin:"0 auto 18px" }} />
-
-        {buyStep === "packages" ? (<>
-          <h3 style={{ fontSize:20, fontWeight:900, marginBottom:4, color:B.text }}>Comprar Créditos</h3>
-          <p style={{ fontSize:12, color:B.muted, marginBottom:20 }}>Cada 10 créditos = 1 match com outra empresa</p>
-
-          <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:20 }}>
-            {PACKAGES.map(pkg => (
-              <button key={pkg.id} className="m4b-pkg-card" data-sel={selectedPkg?.id === pkg.id ? "true" : "false"} onClick={() => setSelectedPkg(pkg)} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", width:"100%", padding:"16px 18px", borderRadius:18, background:selectedPkg?.id===pkg.id ? B.accent+"0A" : B.bg, border:selectedPkg?.id===pkg.id ? "2px solid "+B.accent : "2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
-                <div>
-                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                    <p style={{ fontSize:16, fontWeight:800, color:B.text }}>{pkg.n} créditos</p>
-                    {pkg.popular && <span style={{ fontSize:9, fontWeight:700, background:B.accent, color:"#0D0D0D", padding:"2px 8px", borderRadius:8, textTransform:"uppercase" }}>Popular</span>}
-                  </div>
-                  <p style={{ fontSize:11, color:B.muted, marginTop:2 }}>{pkg.desc}{pkg.save ? " · Economize "+pkg.save : ""}</p>
-                </div>
-                <p style={{ fontSize:18, fontWeight:900, color:B.accent }}>{pkg.price}</p>
-              </button>
-            ))}
-          </div>
-
-          <button disabled={!selectedPkg} onClick={() => setBuyStep("payment")} style={{ width:"100%", padding:"16px 0", borderRadius:16, background:selectedPkg ? B.accent : B.border, border:"none", cursor:selectedPkg?"pointer":"default", fontFamily:"inherit", fontSize:15, fontWeight:700, color:selectedPkg?"#0D0D0D":B.muted }}>Continuar</button>
-          <button onClick={() => { setShowBuy(false); setBuyStep("packages"); }} style={{ width:"100%", padding:"12px 0", marginTop:8, background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, color:B.muted }}>Aguardar próximo ciclo</button>
-        </>) : (<>
-
-          {/* Payment step */}
-          <button onClick={() => setBuyStep("packages")} style={{ display:"flex", alignItems:"center", gap:6, background:"transparent", border:"none", cursor:"pointer", fontFamily:"inherit", color:B.muted, fontSize:13, marginBottom:16, padding:0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg> Voltar
-          </button>
-          <h3 style={{ fontSize:20, fontWeight:900, marginBottom:4, color:B.text }}>Método de Pagamento</h3>
-          <p style={{ fontSize:12, color:B.muted, marginBottom:6 }}>{selectedPkg?.n} créditos · <strong style={{ color:B.accent }}>{selectedPkg?.price}</strong></p>
-          <div style={{ background:B.bg, borderRadius:14, padding:"12px 16px", marginBottom:20, border:"1px solid "+B.border }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span style={{ fontSize:12, color:B.muted }}>{selectedPkg?.desc}</span>
-              <span style={{ fontSize:14, fontWeight:800, color:B.text }}>{selectedPkg?.price}</span>
-            </div>
-          </div>
-
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {/* PIX */}
-            <button onClick={() => { showToast("Gerando QR Code PIX..."); setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }} style={{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"16px 18px", borderRadius:18, background:B.bg, border:"2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
-              <div style={{ width:44, height:44, borderRadius:14, background:"#00B88620", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00B886" strokeWidth="2"><path d="M13.17 6l-3.63 3.63a1 1 0 000 1.41l3.63 3.63"/><path d="M10.83 18l3.63-3.63a1 1 0 000-1.41L10.83 9.33"/><rect x="2" y="2" width="20" height="20" rx="2"/></svg>
-              </div>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>PIX</p>
-                <p style={{ fontSize:11, color:B.muted }}>Aprovação instantânea</p>
-              </div>
-              <div style={{ background:"#00B88615", padding:"3px 10px", borderRadius:8 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:"#00B886" }}>Recomendado</span>
-              </div>
-            </button>
-
-            {/* Boleto */}
-            <button onClick={() => { showToast("Gerando boleto bancário..."); setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }} style={{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"16px 18px", borderRadius:18, background:B.bg, border:"2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
-              <div style={{ width:44, height:44, borderRadius:14, background:"#3B82F620", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="15" x2="7" y2="15.01"/><line x1="11" y1="15" x2="17" y2="15"/></svg>
-              </div>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Boleto Bancário</p>
-                <p style={{ fontSize:11, color:B.muted }}>Compensação em 1-3 dias úteis</p>
-              </div>
-            </button>
-
-            {/* Cartão */}
-            <button onClick={() => { showToast("Redirecionando para pagamento..."); setShowBuy(false); setBuyStep("packages"); setSelectedPkg(null); }} style={{ display:"flex", alignItems:"center", gap:14, width:"100%", padding:"16px 18px", borderRadius:18, background:B.bg, border:"2px solid "+B.border, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
-              <div style={{ width:44, height:44, borderRadius:14, background:"#8B5CF620", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-              </div>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:700, color:B.text }}>Cartão de Crédito</p>
-                <p style={{ fontSize:11, color:B.muted }}>Visa, Mastercard, Elo</p>
-              </div>
-            </button>
-          </div>
-
-          <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:16, lineHeight:1.5 }}>Pagamento processado com segurança pela Asaas.<br/>Seus dados estão protegidos.</p>
-        </>)}
-      </div>
-    </div>
-  ) : null;
-
-  /* ═══ MAIN VIEW ═══ */
-  return (
-    <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
-      <style dangerouslySetInnerHTML={{__html: m4bCSS}} />
+  /* ── CHAT VIEW ── */
+  if (chatMatch) {
+    const otherName = chatMatch.client_a_id === myClientId ? chatMatch.client_b_name : chatMatch.client_a_name;
+    return <div className="pg" style={{paddingBottom:100,display:"flex",flexDirection:"column",height:"100%"}}>
       {ToastEl}
-      {BuyOverlay}
-      <CollapseHeader label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
-      <div className="content" style={{ padding:"0 16px 120px" }}>
-        {/* Tabs + actions row */}
-        <div style={{ display:"flex", gap:6, marginBottom:14, alignItems:"center" }}>
-          <div style={{ flex:1, display:"flex", gap:0, background:B.bgCard, borderRadius:14, padding:3, border:"1px solid "+B.border }}>
-            {[{k:"discover",l:"Descobrir"},{k:"matches",l:"Conexões ("+mutualMatches.length+")"}].map(t => (
-              <button key={t.k} onClick={() => setTab(t.k)} style={{ flex:1, padding:"10px 0", borderRadius:11, border:"none", background:tab===t.k?B.accent+"15":"transparent", color:tab===t.k?B.text:B.muted, fontSize:12, fontWeight:tab===t.k?700:500, cursor:"pointer", fontFamily:"inherit", transition:"all .2s ease" }}>{t.l}</button>
-            ))}
+      <Head title={otherName || "Chat"} onBack={()=>setChatMatch(null)} />
+      <div style={{flex:1,overflowY:"auto",padding:"10px 0",display:"flex",flexDirection:"column",gap:6}}>
+        {messages.length===0&&<p style={{textAlign:"center",color:B.muted,fontSize:13,padding:30}}>Nenhuma mensagem ainda. Diga olá!</p>}
+        {messages.map(m => { const mine = m.sender_client_id === myClientId; return <div key={m.id} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start",padding:"0 4px"}}><div style={{maxWidth:"75%",padding:"10px 14px",borderRadius:mine?"16px 16px 4px 16px":"16px 16px 16px 4px",background:mine?LIME:`${B.muted}12`,color:mine?"#0D0D0D":B.text}}><p style={{fontSize:13,lineHeight:1.5}}>{m.text}</p><p style={{fontSize:9,color:mine?"rgba(0,0,0,0.4)":B.muted,marginTop:4,textAlign:"right"}}>{new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p></div></div>; })}
+      </div>
+      <div style={{display:"flex",gap:8,padding:"8px 0",flexShrink:0}}>
+        <input value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMessage();}} placeholder="Digite sua mensagem..." className="tinput" style={{flex:1}} />
+        <button onClick={sendMessage} disabled={!msgText.trim()} style={{padding:"10px 18px",borderRadius:12,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:msgText.trim()?1:0.4}}>Enviar</button>
+      </div>
+    </div>;
+  }
+
+  return <div className="pg" style={{paddingBottom:100}}>
+    {ToastEl}{matchPopupEl}
+    <CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false} />
+    {/* Tab bar */}
+    <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",scrollbarWidth:"none"}}>
+      {TABS.map(t => <button key={t.k} onClick={()=>setTab(t.k)} style={{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:12,border:tab===t.k?"none":`1.5px solid ${B.border}`,background:tab===t.k?LIME:"transparent",color:tab===t.k?"#0D0D0D":B.muted,fontSize:12,fontWeight:tab===t.k?700:500,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}><span>{t.ic}</span>{t.l}{t.badge>0&&<span style={{fontSize:9,fontWeight:800,padding:"2px 6px",borderRadius:6,background:tab===t.k?"rgba(0,0,0,0.15)":`${LIME}20`,color:tab===t.k?"#0D0D0D":LIME}}>{t.badge}</span>}</button>)}
+    </div>
+
+    {/* ═══ DISCOVER TAB ═══ */}
+    {tab === "discover" && <>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <p style={{fontSize:12,color:B.muted}}>{profiles.length} {profiles.length===1?"empresa":"empresas"} para descobrir</p>
+        <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,background:`${LIME}10`,border:`1px solid ${LIME}20`}}><span style={{fontSize:12}}>💰</span><span style={{fontSize:12,fontWeight:700,color:LIME}}>{credits} créditos</span></div>
+      </div>
+      {!curProfile ? <div style={{textAlign:"center",padding:60}}>
+        <span style={{fontSize:48,display:"block",marginBottom:12}}>🎉</span>
+        <h3 style={{fontSize:18,fontWeight:800,marginBottom:6}}>Você viu todas as empresas!</h3>
+        <p style={{fontSize:13,color:B.muted}}>Novos perfis aparecerão quando novos clientes entrarem na plataforma.</p>
+      </div> : <div style={{maxWidth:400,margin:"0 auto"}}>
+        {/* Card */}
+        <div style={{borderRadius:24,overflow:"hidden",border:`1px solid ${B.border}`,background:B.bgCard,boxShadow:"0 8px 30px rgba(0,0,0,0.08)",transition:"transform .3s, opacity .3s",transform:swipeAnim==="left"?"translateX(-120%) rotate(-15deg)":swipeAnim==="right"?"translateX(120%) rotate(15deg)":swipeAnim==="super"?"translateY(-100px) scale(1.1)":"none",opacity:swipeAnim?0:1}}>
+          {/* Logo / Avatar */}
+          <div style={{height:200,background:`linear-gradient(135deg, ${LIME}20, ${B.bgCard})`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+            {curProfile.logo_url ? <img src={curProfile.logo_url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : <div style={{width:100,height:100,borderRadius:"50%",background:`linear-gradient(135deg, ${LIME}40, ${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,fontWeight:900,color:LIME}}>{(curProfile.client_name||"?")[0]}</div>}
+            {curProfile.segment && <span style={{position:"absolute",top:12,right:12,padding:"4px 12px",borderRadius:8,background:"rgba(0,0,0,0.6)",backdropFilter:"blur(10px)",fontSize:10,fontWeight:700,color:"#fff"}}>{curProfile.segment}</span>}
           </div>
-          <button onClick={() => setShowEditProfile(true)} style={{ height:38, padding:"0 14px", borderRadius:12, background:profileComplete?"#10B98115":"linear-gradient(135deg,#F59E0B,#EF4444)", border:profileComplete?"1.5px solid #10B98130":"none", cursor:"pointer", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:profileComplete?"none":"0 2px 8px rgba(245,158,11,0.4)", animation:profileComplete?"none":"skPulse 2s ease infinite" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={profileComplete?"#10B981":"#fff"} strokeWidth="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span style={{ fontSize:11, fontWeight:700, color:profileComplete?"#10B981":"#fff" }}>{profileComplete?"Perfil":"Perfil!"}</span>
+          {/* Info */}
+          <div style={{padding:"20px 20px 16px"}}>
+            <h3 style={{fontSize:20,fontWeight:900,marginBottom:4}}>{curProfile.client_name}</h3>
+            {curProfile.tagline && <p style={{fontSize:13,color:B.muted,marginBottom:12}}>{curProfile.tagline}</p>}
+            {curProfile.city && <p style={{fontSize:11,color:B.muted,display:"flex",alignItems:"center",gap:4,marginBottom:10}}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>{curProfile.city}</p>}
+            {(curProfile.offers||[]).length > 0 && <div style={{marginBottom:10}}><p style={{fontSize:9,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Oferece</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{curProfile.offers.map((t,i) => <span key={i} style={{padding:"3px 10px",borderRadius:6,background:`${B.green}12`,fontSize:10,fontWeight:600,color:B.green}}>{t}</span>)}</div></div>}
+            {(curProfile.seeks||[]).length > 0 && <div><p style={{fontSize:9,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:.5,marginBottom:4}}>Busca</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{curProfile.seeks.map((t,i) => <span key={i} style={{padding:"3px 10px",borderRadius:6,background:`#3B82F612`,fontSize:10,fontWeight:600,color:"#3B82F6"}}>{t}</span>)}</div></div>}
+          </div>
+          {/* Description */}
+          {curProfile.description && <div style={{padding:"0 20px 16px"}}><p style={{fontSize:12,lineHeight:1.6,color:B.text,opacity:0.7}}>{curProfile.description}</p></div>}
+        </div>
+        {/* Action buttons */}
+        <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:20,paddingBottom:10}}>
+          <button onClick={()=>handleSwipe("left")} style={{width:56,height:56,borderRadius:"50%",background:B.bgCard,border:`2px solid ${B.red||"#EF4444"}30`,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 12px rgba(0,0,0,0.05)",transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.1)";e.currentTarget.style.background=`${B.red||"#EF4444"}10`;}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.background=B.bgCard;}}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ height:38, padding:"0 14px", borderRadius:12, background:noCredits?"linear-gradient(135deg,#EF4444,#DC2626)":"linear-gradient(135deg,#6366F1,#8B5CF6)", border:"none", cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, flexShrink:0, boxShadow:noCredits?"0 2px 8px rgba(239,68,68,0.3)":"0 2px 8px rgba(99,102,241,0.3)" }}>
-            <span style={{ fontSize:14 }}>{noCredits?"🔥":"💎"}</span>
-            <span style={{ fontSize:11, fontWeight:800, color:"#fff" }}>{isUnlimited ? "∞" : credits} créditos</span>
+          <button onClick={()=>handleSwipe("super")} disabled={credits<3} style={{width:48,height:48,borderRadius:"50%",background:B.bgCard,border:"2px solid #8B5CF630",cursor:credits<3?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:credits<3?0.4:1,boxShadow:"0 4px 12px rgba(0,0,0,0.05)",transition:"all .15s",alignSelf:"center"}} onMouseEnter={e=>{if(credits>=3){e.currentTarget.style.transform="scale(1.1)";e.currentTarget.style.background="#8B5CF610";}}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.background=B.bgCard;}} title="Super Match (3 créditos)">
+            <span style={{fontSize:20}}>⭐</span>
+          </button>
+          <button onClick={()=>handleSwipe("right")} disabled={credits<1} style={{width:56,height:56,borderRadius:"50%",background:B.bgCard,border:`2px solid ${B.green||"#22C55E"}30`,cursor:credits<1?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",opacity:credits<1?0.4:1,boxShadow:"0 4px 12px rgba(0,0,0,0.05)",transition:"all .15s"}} onMouseEnter={e=>{if(credits>=1){e.currentTarget.style.transform="scale(1.1)";e.currentTarget.style.background=`${B.green||"#22C55E"}10`;}}} onMouseLeave={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.background=B.bgCard;}}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={B.green||"#22C55E"} strokeWidth="2.5" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
           </button>
         </div>
+        <div style={{display:"flex",justifyContent:"center",gap:20,fontSize:10,color:B.muted,paddingBottom:6}}>
+          <span>Passar</span><span style={{color:"#8B5CF6"}}>⭐ 3 créd</span><span style={{color:B.green}}>Interesse · 1 créd</span>
+        </div>
+      </div>}
+    </>}
 
-
-        {loading ? (
-          <div style={{ textAlign:"center", padding:60 }}>
-            <div style={{ width:40, height:40, border:"3px solid #222", borderTopColor:B.accent, borderRadius:"50%", animation:"spin .8s linear infinite", margin:"0 auto 14px" }} />
-            <p style={{ fontSize:13, color:B.muted }}>Buscando empresas...</p>
-          </div>
-        ) : tab === "discover" ? (<>
-          {available.length > 0 && current ? (
-            <div style={{ position:"relative", overflow:"hidden", borderRadius:24 }}>
-              {/* ═══ THE CARD ═══ */}
-              <div className="m4b-card" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{
-                background:B.bgCard, border:"1px solid "+B.border, display:"flex", flexDirection:"column",
-                transform: swipeAnim==="like" ? "translateX(110%) rotate(6deg)" : swipeAnim==="pass" ? "translateX(-110%) rotate(-6deg)" : dragX ? `translateX(${dragX}px) rotate(${dragX*0.03}deg)` : "none",
-                opacity: swipeAnim ? 0 : 1,
-                transition: swipeAnim ? "all .35s ease-in" : !dragX ? "all .3s ease" : "none",
-              }}>
-                {/* Swipe indicator overlays */}
-                {dragX > 40 && <div style={{ position:"absolute", top:20, left:20, background:B.accent+"20", border:"2px solid "+B.accent, borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(-12deg)" }}><span style={{ fontSize:14, fontWeight:900, color:B.accent }}>MATCH 💚</span></div>}
-                {dragX < -40 && <div style={{ position:"absolute", top:20, right:20, background:"#EF444420", border:"2px solid #EF4444", borderRadius:12, padding:"6px 16px", zIndex:5, transform:"rotate(12deg)" }}><span style={{ fontSize:14, fontWeight:900, color:"#EF4444" }}>PULAR ✕</span></div>}
-
-                {/* Top cover/gradient */}
-                <div style={{ height:clientCovers[current.id]?140:70, background:clientCovers[current.id]?"none":"linear-gradient(180deg, "+getColor(current.name)+"12, "+B.bgCard+")", flexShrink:0, overflow:"hidden", position:"relative" }}>
-                  {clientCovers[current.id] && <img src={clientCovers[current.id]} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
-                </div>
-
-                {/* Profile photo */}
-                <div style={{ display:"flex", justifyContent:"center", marginTop:-40, position:"relative", zIndex:2 }}>
-                  <div style={{ position:"relative" }}>
-                    <div style={{ width:80, height:80, borderRadius:24, overflow:"hidden", background:B.bg, border:"3px solid "+B.bgCard, boxShadow:"0 4px 16px rgba(0,0,0,0.08)" }}>
-                      {current.logo_url ? <img src={current.logo_url} style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <div style={{ width:"100%", height:"100%", background:"linear-gradient(135deg, "+getColor(current.name)+", "+getColor(current.name)+"80)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, fontWeight:900, color:"#fff" }}>{getInitials(current.name)}</div>}
-                    </div>
-                    <div style={{ position:"absolute", bottom:-4, right:-4, background:B.accent, color:"#0D0D0D", fontSize:10, fontWeight:900, padding:"3px 8px", borderRadius:10, boxShadow:"0 2px 6px rgba(0,0,0,0.12)", minWidth:22, textAlign:"center" }}>{getScore(current.id)}</div>
-                  </div>
-                </div>
-
-                {/* Name + info */}
-                <div style={{ textAlign:"center", padding:"12px 20px 6px", display:"flex", flexDirection:"column" }}>
-                  <h3 style={{ fontSize:20, fontWeight:900, marginBottom:1, color:B.text, letterSpacing:"-0.3px" }}>{current.name} {clientSeals[current.id] && <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:9, fontWeight:700, background:B.accent+"15", color:B.accent, padding:"2px 8px", borderRadius:8, verticalAlign:"middle", marginLeft:4 }}>🤝 Gerador de Negócio</span>}</h3>
-                  <p style={{ fontSize:11, color:getColor(current.name), fontWeight:600, marginTop:3 }}>{current.plan ? "Plano " + (current.plan.charAt(0).toUpperCase() + current.plan.slice(1)) : "Cliente Unique"} · {getSince(current.start_date)}</p>
-
-                  {/* Stats pills */}
-                  <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:10 }}>
-                    <div style={{ padding:"4px 12px", borderRadius:16, background:B.accent+"12", display:"flex", alignItems:"center", gap:4 }}>
-                      <span style={{ fontSize:12, fontWeight:800, color:B.accent }}>{getScore(current.id)}</span>
-                      <span style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Score</span>
-                    </div>
-                    <div style={{ padding:"4px 12px", borderRadius:16, background:B.bg, display:"flex", alignItems:"center", gap:4 }}>
-                      <span style={{ fontSize:12, fontWeight:800, color:B.text }}>{getRank(current.id)}º</span>
-                      <span style={{ fontSize:9, color:B.muted, fontWeight:600 }}>Rank</span>
-                    </div>
-                    {current.contact_name && <div style={{ padding:"4px 12px", borderRadius:16, background:B.bg, display:"flex", alignItems:"center", gap:4 }}>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                      <span style={{ fontSize:9, color:B.muted, fontWeight:600 }}>{current.contact_name.split(" ")[0]}</span>
-                    </div>}
-                  </div>
-
-                  {/* Bio + M4B Profile */}
-                  {(() => { const prof = clientM4bProfiles[current.id] || {}; const hasBio = current.notes || prof.mission; return (
-                  <div style={{ marginTop:10 }}>
-                    {current.notes && <>
-                      <p style={{ fontSize:9, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, marginBottom:4 }}>Sobre</p>
-                      <p style={{ fontSize:12, color:B.text, lineHeight:1.6, opacity:0.75, marginBottom:8 }}>{current.notes.length > 150 ? current.notes.substring(0,150)+"..." : current.notes}</p>
-                    </>}
-                    {current.segment && <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:6 }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-                      <span style={{ fontSize:11, color:B.muted }}><strong style={{ color:B.text, fontWeight:600 }}>Segmento:</strong> {current.segment}</span>
-                    </div>}
-                    {prof.mission && <div style={{ display:"flex", alignItems:"flex-start", gap:5, marginBottom:6 }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" style={{ marginTop:2, flexShrink:0 }}><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                      <span style={{ fontSize:11, color:B.muted }}><strong style={{ color:B.text, fontWeight:600 }}>Missão:</strong> {prof.mission.length > 80 ? prof.mission.substring(0,80)+"..." : prof.mission}</span>
-                    </div>}
-                    {prof.matchIdeal && <div style={{ background:B.accent+"08", border:"1px solid "+B.accent+"15", borderRadius:10, padding:"8px 10px", marginBottom:6 }}>
-                      <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", letterSpacing:1, marginBottom:3 }}>Busca</p>
-                      <p style={{ fontSize:11, color:B.text, lineHeight:1.5 }}>{prof.matchIdeal.length > 100 ? prof.matchIdeal.substring(0,100)+"..." : prof.matchIdeal}</p>
-                    </div>}
-                    {(prof.website || prof.instagram || prof.linkedin) && <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                      {prof.website && <a href={prof.website.startsWith("http")?prof.website:"https://"+prof.website} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:B.muted, display:"flex", alignItems:"center", gap:3, textDecoration:"none" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg> Site</a>}
-                      {prof.instagram && <a href={"https://instagram.com/"+(prof.instagram.replace("@",""))} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#E1306C", display:"flex", alignItems:"center", gap:3, textDecoration:"none" }}>📷 {prof.instagram}</a>}
-                      {prof.linkedin && <a href={prof.linkedin.startsWith("http")?prof.linkedin:"https://"+prof.linkedin} target="_blank" rel="noopener noreferrer" style={{ fontSize:10, color:"#0A66C2", display:"flex", alignItems:"center", gap:3, textDecoration:"none" }}>💼 LinkedIn</a>}
-                    </div>}
-                    {!hasBio && <p style={{ fontSize:11, color:B.muted, lineHeight:1.5, fontStyle:"italic", marginTop:4 }}>Sem descrição disponível</p>}
-                  </div>
-                  ); })()}
-                </div>
-
-                {/* Action buttons - at bottom */}
-                <div style={{ padding:"8px 20px 8px", flexShrink:0 }}>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:20 }}>
-                    <button onClick={handlePass} className="m4b-action-btn" style={{ width:50, height:50, borderRadius:"50%", background:B.bg, border:"2px solid "+(B.red||"#EF4444")+"25", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                    <button onClick={handleLike} className="m4b-action-btn" style={{ width:56, height:56, borderRadius:"50%", background:B.accent, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px "+B.accent+"40" }}>
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="#0D0D0D" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-                    </button>
-                  </div>
-                  <p style={{ textAlign:"center", fontSize:10, color:B.muted, marginTop:8 }}>{available.length} empresa{available.length > 1 ? "s" : ""} · {isUnlimited ? "∞" : credits} créditos</p>
-                  <p style={{ textAlign:"center", fontSize:9, color:B.muted, paddingBottom:6, opacity:0.4, marginTop:4 }}>← pular · match →</p>
-                </div>
+    {/* ═══ MATCHES TAB ═══ */}
+    {tab === "matches" && <>
+      {matches.length === 0 ? <div style={{textAlign:"center",padding:50}}><span style={{fontSize:40,display:"block",marginBottom:8}}>💚</span><h3 style={{fontSize:16,fontWeight:800,marginBottom:6}}>Nenhum match ainda</h3><p style={{fontSize:13,color:B.muted}}>Explore empresas na aba "Descobrir" e mostre interesse!</p></div> :
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {matches.map(m => {
+          const isA = m.client_a_id === myClientId;
+          const otherName = isA ? m.client_b_name : m.client_a_name;
+          const otherId = isA ? m.client_b_id : m.client_a_id;
+          return <Card key={m.id} onClick={()=>setChatMatch(m)} style={{cursor:"pointer",padding:"14px 16px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:48,height:48,borderRadius:"50%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:900,color:LIME,flexShrink:0}}>{(otherName||"?")[0]}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:6}}><p style={{fontSize:14,fontWeight:700}}>{otherName}</p>{m.is_super&&<span style={{fontSize:10}}>⭐</span>}{m.status==="deal_closed"&&<span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:6,background:`${B.green}12`,color:B.green}}>Negócio fechado</span>}</div>
+                <p style={{fontSize:11,color:B.muted,marginTop:2}}>Match em {new Date(m.matched_at).toLocaleDateString("pt-BR")}</p>
               </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+          </Card>;
+        })}
+      </div>}
+    </>}
 
-              {/* ═══ NO CREDITS FULL OVERLAY ═══ */}
-              {noCredits && (
-                <div style={{ position:"absolute", inset:0, background:B.bg+"E8", backdropFilter:"blur(10px)", borderRadius:24, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", zIndex:10, padding:24 }}>
-                  <div style={{ width:60, height:60, borderRadius:20, background:B.bgCard, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:18, border:"2px solid "+B.border, boxShadow:"0 4px 16px rgba(0,0,0,0.06)" }}>
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-                  </div>
-                  <h4 style={{ fontSize:20, fontWeight:900, color:B.text, marginBottom:6 }}>Créditos esgotados</h4>
-                  <p style={{ fontSize:13, color:B.muted, textAlign:"center", lineHeight:1.6, marginBottom:24, maxWidth:260 }}>Compre mais créditos ou aguarde o próximo ciclo de pagamento para renovar</p>
-                  <button onClick={() => { setShowBuy(true); setBuyStep("packages"); }} style={{ padding:"15px 44px", borderRadius:16, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#0D0D0D", boxShadow:"0 4px 16px "+B.accent+"40" }}>Comprar créditos</button>
-                  <button onClick={() => showToast("Créditos renovam no próximo ciclo")} style={{ padding:"12px 24px", marginTop:12, background:"transparent", border:"1.5px solid "+B.border, borderRadius:14, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:600, color:B.muted }}>Aguardar renovação</button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div style={{ textAlign:"center", padding:40 }}>
-              <div style={{ width:64, height:64, borderRadius:20, background:B.bgCard, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px", border:"1px solid "+B.border }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-              </div>
-              <p style={{ fontSize:17, fontWeight:800, marginBottom:6, color:B.text }}>{allClients.length === 0 ? "Nenhuma empresa" : "Você já viu todos!"}</p>
-              <p style={{ fontSize:13, color:B.muted, lineHeight:1.5 }}>{allClients.length === 0 ? "Novas empresas aparecerão em breve." : "Confira seus matches ou aguarde novas empresas."}</p>
-            </div>
-          )}
-        </>) : (<>
+    {/* ═══ PROFILE TAB ═══ */}
+    {tab === "profile" && <>
+      <Card style={{marginBottom:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <div style={{width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${LIME}40,${LIME}10)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:900,color:LIME}}>{(myProfile?.client_name||"?")[0]}</div>
+          <div style={{flex:1}}><p style={{fontSize:16,fontWeight:800}}>{myProfile?.client_name}</p><p style={{fontSize:12,color:B.muted}}>{myProfile?.segment||"Sem segmento"}</p></div>
+          <button onClick={()=>setEditMode(!editMode)} style={{padding:"8px 16px",borderRadius:10,background:editMode?B.red+"12":LIME+"12",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:editMode?B.red:LIME}}>{editMode?"Cancelar":"Editar"}</button>
+        </div>
+      </Card>
+      {editMode ? <div>
+        <label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Tagline</label>
+        <input value={editData.tagline||""} onChange={e=>setEditData(p=>({...p,tagline:e.target.value}))} className="tinput" placeholder="Ex: Especialista em confeitaria artesanal" style={{marginBottom:14}} />
+        <label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Descrição da empresa</label>
+        <textarea value={editData.description||""} onChange={e=>setEditData(p=>({...p,description:e.target.value}))} className="tinput" rows={3} placeholder="Conte sobre seu negócio..." style={{marginBottom:14,resize:"vertical"}} />
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Segmento</label><input value={editData.segment||""} onChange={e=>setEditData(p=>({...p,segment:e.target.value}))} className="tinput" placeholder="Ex: Alimentação" /></div>
+          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Cidade</label><input value={editData.city||""} onChange={e=>setEditData(p=>({...p,city:e.target.value}))} className="tinput" placeholder="Ex: Rio de Janeiro" /></div>
+        </div>
+        <TagInput label="O que oferece" items={editData.offers||[]} setItems={v=>setEditData(p=>({...p,offers:v}))} placeholder="Ex: Bolos personalizados" />
+        <TagInput label="O que busca" items={editData.seeks||[]} setItems={v=>setEditData(p=>({...p,seeks:v}))} placeholder="Ex: Embalagens sustentáveis" />
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
+          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Website</label><input value={editData.website||""} onChange={e=>setEditData(p=>({...p,website:e.target.value}))} className="tinput" placeholder="https://..." /></div>
+          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>Instagram</label><input value={editData.instagram||""} onChange={e=>setEditData(p=>({...p,instagram:e.target.value}))} className="tinput" placeholder="@perfil" /></div>
+          <div><label style={{fontSize:10,fontWeight:700,color:B.muted,display:"block",marginBottom:3}}>LinkedIn</label><input value={editData.linkedin||""} onChange={e=>setEditData(p=>({...p,linkedin:e.target.value}))} className="tinput" placeholder="URL" /></div>
+        </div>
+        <button onClick={saveProfile} style={{width:"100%",padding:14,borderRadius:14,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,color:"#0D0D0D"}}>Salvar Perfil</button>
+      </div> : <div>
+        {myProfile?.tagline && <Card style={{marginBottom:10}}><p style={{fontSize:13,fontStyle:"italic",color:B.muted}}>"{myProfile.tagline}"</p></Card>}
+        {myProfile?.description && <Card style={{marginBottom:10}}><p style={{fontSize:12,lineHeight:1.6}}>{myProfile.description}</p></Card>}
+        {(myProfile?.offers||[]).length>0 && <Card style={{marginBottom:10}}><p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:6}}>O que oferece</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{myProfile.offers.map((t,i)=><span key={i} style={{padding:"4px 12px",borderRadius:8,background:`${B.green}12`,fontSize:11,fontWeight:600,color:B.green}}>{t}</span>)}</div></Card>}
+        {(myProfile?.seeks||[]).length>0 && <Card style={{marginBottom:10}}><p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",marginBottom:6}}>O que busca</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{myProfile.seeks.map((t,i)=><span key={i} style={{padding:"4px 12px",borderRadius:8,background:"#3B82F612",fontSize:11,fontWeight:600,color:"#3B82F6"}}>{t}</span>)}</div></Card>}
+        {!myProfile?.description && !(myProfile?.offers||[]).length && <Card><p style={{fontSize:13,color:B.muted,textAlign:"center",padding:20}}>Seu perfil está vazio. Clique em "Editar" para completar e atrair mais matches!</p></Card>}
+      </div>}
+    </>}
 
-          {/* ═══ CONNECTIONS TAB ═══ */}
-          {matches.length === 0 ? (
-            <div style={{ textAlign:"center", padding:40 }}>
-              <p style={{ fontSize:15, fontWeight:700, marginBottom:4 }}>Nenhum match ainda</p>
-              <p style={{ fontSize:12, color:B.muted }}>Explore perfis na aba Descobrir!</p>
-            </div>
-          ) : (<>
-            {mutualMatches.length > 0 && <>
-              <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, marginBottom:10 }}>Chat disponível</p>
-              {mutualMatches.map(m => { const p = getPartner(m); const cc = getColor(p.name); const last = (m.messages||[]).filter(x=>x.type!=="system").slice(-1)[0]; return (
-                <div key={m.id} onClick={() => setChatMatch(m)} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderRadius:18, background:B.bgCard, border:"1px solid "+B.border, marginBottom:8, cursor:"pointer" }}>
-                  {p.logo_url ? <img src={p.logo_url} style={{ width:48, height:48, borderRadius:16, objectFit:"cover" }} /> : <div style={{ width:48, height:48, borderRadius:16, background:"linear-gradient(135deg, "+cc+", "+cc+"70)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:900, color:B.text, flexShrink:0 }}>{getInitials(p.name)}</div>}
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:3 }}>
-                      <p style={{ fontSize:14, fontWeight:700 }}>{p.name}{clientSeals[p.id] && <span style={{ fontSize:8, color:B.accent, marginLeft:4 }}>🤝</span>}</p>
-                      <span style={{ fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:8, background:m.status==="deal_closed"?B.green+"15":m.status==="agency_help"?"#6366F115":B.accent+"15", color:m.status==="deal_closed"?B.green:m.status==="agency_help"?"#6366F1":B.accent }}>{m.status==="deal_closed"?"Fechado ✅":m.status==="agency_help"?"Agência":"Ativo"}</span>
-                    </div>
-                    <p style={{ fontSize:11, color:B.muted, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{last?(last.from===myClient?.id?"Você: ":"")+last.text.substring(0,40):"Toque para conversar"}</p>
-                  </div>
-                </div>); })}
-            </>}
-            {matches.filter(m=>!m.client_a_confirmed||!m.client_b_confirmed).length > 0 && <>
-              <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:1.5, marginBottom:10, marginTop:mutualMatches.length>0?18:0 }}>Aguardando match</p>
-              {matches.filter(m=>!m.client_a_confirmed||!m.client_b_confirmed).map(m => { const p = getPartner(m); const cc = getColor(p.name); return (
-                <div key={m.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:18, background:B.bgCard, border:"1px solid "+B.border, marginBottom:8, opacity:0.5 }}>
-                  <div style={{ width:44, height:44, borderRadius:14, background:cc+"20", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:900, color:cc }}>{getInitials(p.name)}</div>
-                  <div><p style={{ fontSize:13, fontWeight:600 }}>{p.name}</p><p style={{ fontSize:10, color:B.muted }}>Aguardando resposta...</p></div>
-                </div>); })}
-            </>}
-          </>)}
-        </>)}
-        <div style={{ height:30 }} />
+    {/* ═══ CREDITS TAB ═══ */}
+    {tab === "credits" && <>
+      <Card style={{marginBottom:16,background:`linear-gradient(135deg, #0D0D0D, #1a1a2e)`,border:"none",padding:"24px 20px"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div><p style={{fontSize:12,color:"rgba(255,255,255,0.4)",fontWeight:600}}>Saldo atual</p><p style={{fontSize:36,fontWeight:900,color:LIME,marginTop:4}}>{credits}</p><p style={{fontSize:11,color:"rgba(255,255,255,0.3)",marginTop:2}}>créditos disponíveis</p></div>
+          <div style={{width:60,height:60,borderRadius:"50%",background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:28}}>💰</span></div>
+        </div>
+      </Card>
+      <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Comprar créditos</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
+        {[{n:10,price:"R$ 29,90"},{n:30,price:"R$ 69,90"},{n:100,price:"R$ 199,90"}].map(p => <Card key={p.n} onClick={()=>showToast("Em breve! Compra de créditos será integrada ao Asaas.")} style={{cursor:"pointer",textAlign:"center",padding:"18px 10px"}}>
+          <p style={{fontSize:24,fontWeight:900,color:LIME}}>{p.n}</p>
+          <p style={{fontSize:10,color:B.muted,marginTop:2}}>créditos</p>
+          <p style={{fontSize:13,fontWeight:700,marginTop:8}}>{p.price}</p>
+        </Card>)}
       </div>
-    </div>
-  );
+      <p style={{fontSize:10,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Histórico</p>
+      {creditHistory.length===0?<p style={{fontSize:12,color:B.muted,textAlign:"center",padding:20}}>Nenhuma movimentação ainda.</p>:
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {creditHistory.map(c => <Card key={c.id} style={{padding:"10px 14px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div><p style={{fontSize:12,fontWeight:600}}>{c.description||c.type}</p><p style={{fontSize:10,color:B.muted,marginTop:2}}>{new Date(c.created_at).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})}</p></div>
+            <span style={{fontSize:14,fontWeight:800,color:c.amount>0?B.green:(B.red||"#EF4444")}}>{c.amount>0?"+":""}{c.amount}</span>
+          </div>
+        </Card>)}
+      </div>}
+    </>}
+  </div>;
 }
 
 
