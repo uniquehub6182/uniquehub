@@ -24311,19 +24311,29 @@ function CommentRepliesPage({ onBack, clients, user }) {
   const { showToast, ToastEl } = useToast();
   const CDATA = clients || [];
 
-  /* ── Get clients with Meta tokens ── */
+  /* ── Get clients with Meta tokens + names ── */
   const [metaClients, setMetaClients] = useState([]);
+  const [clientNames, setClientNames] = useState({});
   useEffect(()=>{
     if(!supabase)return;
     (async()=>{
       const{data}=await supabase.from("app_settings").select("key").like("key","meta_token_%");
       const ids=(data||[]).map(t=>t.key.replace("meta_token_",""));
-      setMetaClients(ids);
-      if(ids.length===1)setSelClient(ids[0]);
+      /* Load names from clients table */
+      const{data:cls}=await supabase.from("clients").select("id,name");
+      const nm={};
+      (cls||[]).forEach(c=>{nm[c.id]=c.name;});
+      /* Also check CDATA */
+      CDATA.forEach(c=>{if(c.supaId)nm[c.supaId]=c.name;if(c.id)nm[c.id]=c.name;});
+      setClientNames(nm);
+      /* Filter: only show clients whose name we can resolve */
+      const valid=ids.filter(id=>nm[id]);
+      setMetaClients(valid.length>0?valid:ids);
+      if(valid.length===1)setSelClient(valid[0]);
     })();
   },[]);
 
-  const getClientName=(cid)=>{const c=CDATA.find(x=>(x.supaId||x.id)===cid);return c?.name||cid;};
+  const getClientName=(cid)=>clientNames[cid]||CDATA.find(x=>(x.supaId||x.id)===cid)?.name||cid;
 
   /* ── Load comments for selected client ── */
   const loadComments = async(cid)=>{
