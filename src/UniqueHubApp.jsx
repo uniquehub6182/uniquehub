@@ -863,10 +863,10 @@ const supaUpdateInvoice = async (id, upd) => { if (!supabase) return null; try {
 const supaDeleteInvoice = async (id) => { if (!supabase) return; await supabase.from("invoices").delete().eq("id", id); };
 
 /* ── Match4Biz Supabase ── */
-const supaLoadMatches = async () => { if (!supabase) return []; try { const { data } = await supabase.from("match4biz").select("*").order("created_at", { ascending: false }); return data || []; } catch { return []; } };
-const supaCreateMatch = async (m) => { if (!supabase) return null; try { const { data, error } = await supabase.from("match4biz").insert(m).select().single(); if (error) console.error("[Match]", error.message); return data; } catch { return null; } };
-const supaUpdateMatch = async (id, upd) => { if (!supabase) return null; try { const { data } = await supabase.from("match4biz").update({ ...upd, updated_at: new Date().toISOString() }).eq("id", id).select().single(); return data; } catch { return null; } };
-const supaDeleteMatch = async (id) => { if (!supabase) return; await supabase.from("match4biz").delete().eq("id", id); };
+const supaLoadMatches = async () => { if (!supabase) return []; try { const { data } = await supabase.from("match4biz_matches").select("*").order("matched_at", { ascending: false }); return data || []; } catch { return []; } };
+const supaCreateMatch = async (m) => { if (!supabase) return null; try { const { data, error } = await supabase.from("match4biz_matches").insert(m).select().single(); if (error) console.error("[Match]", error.message); return data; } catch { return null; } };
+const supaUpdateMatch = async (id, upd) => { if (!supabase) return null; try { const { data } = await supabase.from("match4biz_matches").update({ ...upd, updated_at: new Date().toISOString() }).eq("id", id).select().single(); return data; } catch { return null; } };
+const supaDeleteMatch = async (id) => { if (!supabase) return; await supabase.from("match4biz_matches").delete().eq("id", id); };
 
 /* ── Expenses (despesas) ── */
 const supaLoadExpenses = async () => { if (!supabase) return []; try { const { data } = await supabase.from("expenses").select("*").order("date", { ascending: false }); return data || []; } catch { return []; } };
@@ -24304,40 +24304,51 @@ function Match4BizPage({ onBack, clients, user }) {
 
   const [matches, setMatches] = useState([]);
   const [matchesLoaded, setMatchesLoaded] = useState(false);
-  useEffect(() => { if (!matchesLoaded) { supaLoadMatches().then(d => { setMatches(d||[]); setMatchesLoaded(true); }); } }, [matchesLoaded]);
+  const [agencyMsgs, setAgencyMsgs] = useState([]);
+  const [swipeStats, setSwipeStats] = useState({total:0,today:0});
+  useEffect(() => { if (!matchesLoaded && supabase) { supaLoadMatches().then(d => { setMatches(d||[]); setMatchesLoaded(true); });
+    /* Load swipe stats */
+    supabase.from("match4biz_swipes").select("id,created_at",{count:"exact"}).then(({count})=>setSwipeStats(p=>({...p,total:count||0})));
+  } }, [matchesLoaded]);
+  /* Load messages for selected match */
+  useEffect(()=>{
+    if(!selMatch||!supabase)return;
+    (async()=>{
+      const{data}=await supabase.from("match4biz_messages").select("*").eq("match_id",selMatch.id).order("created_at",{ascending:true});
+      setAgencyMsgs(data||[]);
+    })();
+    const ch=supabase.channel("m4b_agency_"+selMatch.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"match4biz_messages",filter:`match_id=eq.${selMatch.id}`},p=>{setAgencyMsgs(prev=>[...prev.filter(m=>m.id!==p.new.id),p.new]);}).subscribe();
+    return()=>supabase.removeChannel(ch);
+  },[selMatch?.id]);
 
   /* ── Unified status config ── */
   const ST = {
-    pending:  { l:"Aguardando Match", c:"#F59E0B", ic:"⏳" },
-    mutual:   { l:"Match Mútuo", c:"#10B981", ic:"🤝" },
-    deal_closed:  { l:"Negócio Fechado", c:"#10B981", ic:"✅" },
-    deal_rejected:{ l:"Não Fechou", c:"#EF4444", ic:"❌" },
-    agency_help:  { l:"Ajuda Solicitada", c:"#6366F1", ic:"🏢" },
+    mutual:   { l:"Match Ativo", c:"#10B981", ic:"✓" },
+    deal_closed:  { l:"Negócio Fechado", c:"#10B981", ic:"✓" },
+    deal_rejected:{ l:"Não Fechou", c:"#EF4444", ic:"✕" },
+    agency_help:  { l:"Ajuda Solicitada", c:"#6366F1", ic:"!" },
   };
-  const getSt = (s) => ST[s] || ST.pending;
+  const getSt = (s) => ST[s] || ST.mutual;
 
   /* ── Stats ── */
   const total = matches.length;
-  const mutual = matches.filter(m => m.status === "mutual" || m.status === "agency_help").length;
+  const mutual = matches.filter(m => !m.status || m.status === "mutual" || m.status === "agency_help").length;
   const closed = matches.filter(m => m.status === "deal_closed").length;
   const needsHelp = matches.filter(m => m.status === "agency_help").length;
-  const pending = matches.filter(m => m.status === "pending").length;
-  const filtered = filter === "all" ? matches : matches.filter(m => m.status === filter);
+  const pending = 0;
+  const filtered = filter === "all" ? matches : matches.filter(m => (m.status||"mutual") === filter);
 
   /* ── Helpers ── */
   const getClient = (id, name) => { const c = CDATA.find(x=>(x.supaId||x.id)===id)||CDATA.find(x=>x.name===name); return { name:c?.name||name||"?", logo:c?.photo||c?.avatar||c?.logo||c?.logo_url||null, segment:c?.segment||"", plan:c?.plan||"" }; };
   const getPartnerNames = (m) => ({ a: getClient(m.client_a_id, m.client_a_name), b: getClient(m.client_b_id, m.client_b_name) });
-  const lastMsg = (m) => { const msgs = (m.messages||[]).filter(x => x.from === "agency" || x.type === "system"); return msgs.length > 0 ? msgs[msgs.length-1] : null; };
+  const lastMsg = (m) => null; /* Messages now come from match4biz_messages table */
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}) : "";
 
-  /* ── Send agency message (visible to clients) ── */
-  const sendMsg = () => {
-    if (!msgInput.trim() || !selMatch) return;
-    const msg = { from:"agency", fromName:"Unique Marketing", text:msgInput.trim(), type:"text", ts:new Date().toISOString(), by:user?.name||"Admin" };
-    const msgs = [...(selMatch.messages||[]), msg];
-    setMatches(prev => prev.map(x => x.id === selMatch.id ? {...x, messages:msgs} : x));
-    setSelMatch(prev => ({...prev, messages:msgs}));
-    supaUpdateMatch(selMatch.id, { messages: msgs });
+  /* ── Send agency message (visible to clients via match4biz_messages table) ── */
+  const sendMsg = async() => {
+    if (!msgInput.trim() || !selMatch || !supabase) return;
+    const{data}=await supabase.from("match4biz_messages").insert({match_id:selMatch.id,sender_client_id:"agency",sender_name:user?.name||"Unique Marketing",text:msgInput.trim()}).select().single();
+    if(data)setAgencyMsgs(p=>[...p,data]);
     setMsgInput("");
   };
 
@@ -24363,7 +24374,7 @@ function Match4BizPage({ onBack, clients, user }) {
     const m = matches.find(x=>x.id===selMatch.id)||selMatch;
     const p = getPartnerNames(m);
     const st = getSt(m.status);
-    const msgs = (m.messages || []).filter(msg => msg.from === "agency" || msg.type === "system");
+    const msgs = agencyMsgs;
     return (
       <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{background:B.transparent?"transparent":B.bg,color:B.text}}>
         {ToastEl}
@@ -24383,30 +24394,29 @@ function Match4BizPage({ onBack, clients, user }) {
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 16px",borderBottom:"1px solid "+B.border}}>
           <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}>
             <Av name={p.a.name} src={p.a.logo} sz={36} fs={13}/>
-            <div><p style={{fontSize:12,fontWeight:700}}>{p.a.name}</p><p style={{fontSize:9,color:B.muted}}>{m.client_a_confirmed?"✓ Deu match":"Pendente"}</p></div>
+            <div><p style={{fontSize:12,fontWeight:700}}>{p.a.name}</p><p style={{fontSize:9,color:B.muted}}>{"✓ Confirmado"}</p></div>
           </div>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
           <div style={{flex:1,display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}}>
-            <div style={{textAlign:"right"}}><p style={{fontSize:12,fontWeight:700}}>{p.b.name}</p><p style={{fontSize:9,color:B.muted}}>{m.client_b_confirmed?"✓ Deu match":"Pendente"}</p></div>
+            <div style={{textAlign:"right"}}><p style={{fontSize:12,fontWeight:700}}>{p.b.name}</p><p style={{fontSize:9,color:B.muted}}>{"✓ Confirmado"}</p></div>
             <Av name={p.b.name} src={p.b.logo} sz={36} fs={13}/>
           </div>
         </div>
         {/* Messages */}
         <div className="content" style={{flex:1,overflowY:"auto",padding:"12px 16px"}}>
-          {msgs.length === 0 && <p style={{textAlign:"center",color:B.muted,fontSize:12,padding:20}}>Nenhuma interação da agência. Conversas entre clientes são privadas (LGPD).</p>}
+          {msgs.length === 0 && <p style={{textAlign:"center",color:B.muted,fontSize:12,padding:20}}>Nenhuma mensagem ainda. Conversas entre clientes são privadas (LGPD).</p>}
           {msgs.map((msg,i) => {
-            const isAgency = msg.from === "agency";
-            const isSys = msg.type === "system";
-            const senderName = isAgency ? (msg.by||"Agência") : msg.fromName || "Cliente";
-            if (isSys) return <div key={i} style={{textAlign:"center",margin:"10px 0"}}><span style={{fontSize:10,color:B.muted,background:B.bg,padding:"3px 12px",borderRadius:20,border:"1px solid "+B.border}}>{msg.text}</span></div>;
+            const isAgency = msg.sender_client_id === "agency";
             return (
-              <div key={i} style={{marginBottom:8}}>
-                <p style={{fontSize:9,color:isAgency?"#6366F1":B.muted,fontWeight:600,marginBottom:2,textAlign:isAgency?"right":"left"}}>{senderName}</p>
+              <div key={msg.id||i} style={{marginBottom:8}}>
+                <p style={{fontSize:9,color:isAgency?"#6366F1":B.muted,fontWeight:600,marginBottom:2,textAlign:isAgency?"right":"left"}}>{isAgency?"Agência":msg.sender_name||"Cliente"}</p>
                 <div style={{display:"flex",justifyContent:isAgency?"flex-end":"flex-start"}}>
-                  <div style={{maxWidth:"80%",padding:"10px 14px",borderRadius:14,background:isAgency?"#6366F115":B.bgCard,border:"1px solid "+(isAgency?"#6366F130":B.border)}}>
-                    {msg.type==="image"?<img src={msg.text} alt="" style={{maxWidth:"100%",maxHeight:180,borderRadius:10}}/>:null}
-                    {(msg.type==="text"||!msg.type)&&<p style={{fontSize:13,lineHeight:1.5,margin:0,wordBreak:"break-word"}}>{msg.text}</p>}
-                    <p style={{fontSize:8,color:B.muted,marginTop:3,textAlign:"right"}}>{new Date(msg.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
+                  <div style={{maxWidth:"80%",padding:msg.file_url&&msg.file_type==="image"?"4px":"10px 14px",borderRadius:14,background:isAgency?"#6366F115":B.bgCard,border:"1px solid "+(isAgency?"#6366F130":B.border),overflow:"hidden"}}>
+                    {msg.file_url&&msg.file_type==="image"&&<img src={msg.file_url} alt="" style={{maxWidth:"100%",maxHeight:180,borderRadius:10,display:"block",marginBottom:4}}/>}
+                    {msg.file_url&&msg.file_type==="video"&&<video src={msg.file_url} controls style={{maxWidth:"100%",maxHeight:180,borderRadius:10,display:"block",marginBottom:4}}/>}
+                    {msg.file_url&&msg.file_type==="file"&&<a href={msg.file_url} target="_blank" rel="noopener" style={{color:"inherit",textDecoration:"underline",fontSize:12,display:"block",marginBottom:4}}>{msg.text||"Arquivo"}</a>}
+                    {msg.text&&<p style={{fontSize:13,lineHeight:1.5,margin:0,wordBreak:"break-word",padding:msg.file_url?"4px 8px":"0"}}>{msg.text}</p>}
+                    <p style={{fontSize:8,color:B.muted,marginTop:3,textAlign:"right"}}>{new Date(msg.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
                   </div>
                 </div>
               </div>
@@ -24433,7 +24443,7 @@ function Match4BizPage({ onBack, clients, user }) {
     const m = selMatch ? (matches.find(x=>x.id===selMatch.id)||selMatch) : null;
     const mSt = m ? getSt(m.status) : null;
     const mP = m ? getPartnerNames(m) : null;
-    const mMsgs = m ? (m.messages||[]).filter(msg => msg.from === "agency" || msg.type === "system") : [];
+    const mMsgs = m ? agencyMsgs : [];
 
     return (
       <div className="content-wide" style={{paddingTop:TOP,minHeight:"100%",display:"flex",flexDirection:"column"}}>
@@ -24446,7 +24456,7 @@ function Match4BizPage({ onBack, clients, user }) {
             {l:"Total",v:total,c:B.accent,bg:B.accent+"10"},
             {l:"Matches Mútuos",v:mutual,c:"#10B981",bg:"#10B98110"},
             {l:"Fechados",v:closed,c:"#10B981",bg:"#10B98110"},
-            {l:"Pendentes",v:pending,c:"#F59E0B",bg:"#F59E0B10"},
+            {l:"Swipes Total",v:swipeStats.total,c:"#F59E0B",bg:"#F59E0B10"},
             {l:"Pedem Ajuda",v:needsHelp,c:"#6366F1",bg:"#6366F110"},
           ].map((s,i) => (
             <div key={i} style={{background:B.bgCard,borderRadius:16,border:"1px solid "+B.border,padding:"14px 16px",textAlign:"center"}}>
@@ -24461,7 +24471,7 @@ function Match4BizPage({ onBack, clients, user }) {
           <div style={{width:360,flexShrink:0,background:B.bgCard,borderRadius:20,border:"1px solid "+B.border,display:"flex",flexDirection:"column",overflow:"hidden"}}>
             {/* Filter tabs */}
             <div style={{display:"flex",gap:4,padding:"12px 12px 8px",overflowX:"auto",scrollbarWidth:"none",flexShrink:0}}>
-              {[{k:"all",l:"Todos ("+total+")"},{k:"agency_help",l:"🏢 Ajuda ("+needsHelp+")"},{k:"mutual",l:"🤝 Mútuos"},{k:"pending",l:"⏳ Pendentes"},{k:"deal_closed",l:"✅ Fechados"},{k:"deal_rejected",l:"❌ Não fechou"}].map(f=>(
+              {[{k:"all",l:"Todos ("+total+")"},{k:"mutual",l:"Ativos ("+mutual+")"},{k:"agency_help",l:"Ajuda ("+needsHelp+")"},{k:"deal_closed",l:"Fechados ("+closed+")"},{k:"deal_rejected",l:"Não fechou"}].map(f=>(
                 <button key={f.k} onClick={()=>setFilter(f.k)} style={{padding:"6px 12px",borderRadius:8,border:filter===f.k?"none":"1px solid "+B.border,background:filter===f.k?B.accent:"transparent",color:filter===f.k?"#0D0D0D":B.muted,fontSize:10,fontWeight:filter===f.k?700:500,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}>{f.l}</button>
               ))}
             </div>
@@ -24528,19 +24538,18 @@ function Match4BizPage({ onBack, clients, user }) {
               </div>
               {/* Messages area */}
               <div style={{flex:1,overflowY:"auto",padding:"16px 20px",minHeight:0}}>
-                {mMsgs.length===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><p style={{fontSize:13,color:B.muted}}>Nenhuma interação da agência ainda.</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>As conversas entre clientes são privadas (LGPD). Envie uma mensagem quando necessário.</p></div>}
+                {mMsgs.length===0&&<div style={{textAlign:"center",padding:"40px 20px"}}><p style={{fontSize:13,color:B.muted}}>Nenhuma mensagem ainda.</p><p style={{fontSize:11,color:B.muted,marginTop:4}}>As conversas privadas entre clientes não são exibidas (LGPD). A agência pode enviar mensagens quando necessário.</p></div>}
                 {mMsgs.map((msg,i) => {
-                  const isAgency = msg.from === "agency";
-                  const isSys = msg.type === "system";
-                  const senderName = isAgency ? "🏢 "+(msg.by||"Agência") : (msg.fromName||"Cliente");
-                  if (isSys) return <div key={i} style={{textAlign:"center",margin:"10px 0"}}><span style={{fontSize:10,color:B.muted,background:B.bg,padding:"3px 12px",borderRadius:20,border:"1px solid "+B.border}}>{msg.text}</span></div>;
+                  const isAgency = msg.sender_client_id === "agency";
                   return (
-                    <div key={i} style={{marginBottom:10}}>
-                      <p style={{fontSize:9,fontWeight:700,color:isAgency?"#6366F1":B.muted,marginBottom:2}}>{senderName}</p>
-                      <div style={{maxWidth:"85%",padding:"10px 14px",borderRadius:14,background:isAgency?"#6366F110":B.bg,border:"1px solid "+(isAgency?"#6366F125":B.border)}}>
-                        {msg.type==="image"?<img src={msg.text} alt="" style={{maxWidth:"100%",maxHeight:180,borderRadius:10}}/>:null}
-                        {(msg.type==="text"||!msg.type)&&<p style={{fontSize:13,lineHeight:1.5,margin:0}}>{msg.text}</p>}
-                        <p style={{fontSize:8,color:B.muted,marginTop:3}}>{new Date(msg.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
+                    <div key={msg.id||i} style={{marginBottom:10}}>
+                      <p style={{fontSize:9,fontWeight:700,color:isAgency?"#6366F1":B.muted,marginBottom:2}}>{isAgency?"Agência":msg.sender_name||"Cliente"}</p>
+                      <div style={{maxWidth:"85%",padding:msg.file_url&&msg.file_type==="image"?"4px":"10px 14px",borderRadius:14,background:isAgency?"#6366F110":B.bg,border:"1px solid "+(isAgency?"#6366F125":B.border),overflow:"hidden"}}>
+                        {msg.file_url&&msg.file_type==="image"&&<img src={msg.file_url} alt="" style={{maxWidth:"100%",maxHeight:220,borderRadius:10,display:"block",marginBottom:4}}/>}
+                        {msg.file_url&&msg.file_type==="video"&&<video src={msg.file_url} controls style={{maxWidth:"100%",maxHeight:220,borderRadius:10,display:"block",marginBottom:4}}/>}
+                        {msg.file_url&&msg.file_type==="file"&&<a href={msg.file_url} target="_blank" rel="noopener" style={{color:"inherit",textDecoration:"underline",fontSize:12,display:"block",marginBottom:4}}>{msg.text||"Arquivo"}</a>}
+                        {msg.text&&<p style={{fontSize:13,lineHeight:1.5,margin:0,padding:msg.file_url?"4px 8px":"0"}}>{msg.text}</p>}
+                        <p style={{fontSize:8,color:B.muted,marginTop:3}}>{new Date(msg.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
                       </div>
                     </div>
                   );
@@ -24575,7 +24584,7 @@ function Match4BizPage({ onBack, clients, user }) {
         </div>
         {/* Filters */}
         <div style={{display:"flex",gap:4,marginBottom:12,overflowX:"auto",scrollbarWidth:"none"}}>
-          {[{k:"all",l:"Todos"},{k:"agency_help",l:"🏢 Ajuda"},{k:"mutual",l:"🤝 Mútuos"},{k:"pending",l:"⏳ Pendentes"},{k:"deal_closed",l:"✅ Fechados"}].map(f=>(
+          {[{k:"all",l:"Todos"},{k:"mutual",l:"Ativos"},{k:"agency_help",l:"Ajuda"},{k:"deal_closed",l:"Fechados"},{k:"deal_rejected",l:"Não fechou"}].map(f=>(
             <button key={f.k} onClick={()=>setFilter(f.k)} className={`htab${filter===f.k?" a":""}`} style={{fontSize:10,whiteSpace:"nowrap",flexShrink:0}}>{f.l}</button>
           ))}
         </div>
