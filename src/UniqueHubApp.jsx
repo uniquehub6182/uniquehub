@@ -24659,8 +24659,15 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
         const { data: sw } = await supabase.from("match4biz_swipes").select("*").eq("from_client_id", myClientId);
         setSwipes(sw || []);
         const { data: allProf } = await supabase.from("match4biz_profiles").select("*").eq("visible", true).neq("client_id", myClientId);
+        /* Enrich profiles with client logos from app_settings */
+        const allClientIds = (allProf||[]).map(p => p.client_id);
+        const logoKeys = allClientIds.map(id => `client_logo_${id}`);
+        const { data: logoSettings } = await supabase.from("app_settings").select("key, value").in("key", logoKeys);
+        const logoMap = {};
+        (logoSettings||[]).forEach(s => { const cid = s.key.replace("client_logo_", ""); logoMap[cid] = s.value; });
+        const enriched = (allProf||[]).map(p => ({ ...p, logo_url: logoMap[p.client_id] || p.logo_url || null }));
         const swipedIds = new Set((sw||[]).map(s => s.to_client_id));
-        setProfiles((allProf||[]).filter(p => !swipedIds.has(p.client_id)));
+        setProfiles(enriched.filter(p => !swipedIds.has(p.client_id)));
         const { data: ma } = await supabase.from("match4biz_matches").select("*").or(`client_a_id.eq.${myClientId},client_b_id.eq.${myClientId}`).order("matched_at", { ascending: false });
         setMatches(ma || []);
         const { data: cr } = await supabase.from("match4biz_credits").select("*").eq("client_id", myClientId).order("created_at", { ascending: false });
