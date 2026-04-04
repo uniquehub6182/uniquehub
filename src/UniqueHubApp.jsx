@@ -14432,10 +14432,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"gamifyedit", l:"Gamificação do Cliente", desc:"Missões, zonas e pódio" }]:[]),
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"servicosedit", l:"Catálogo de Serviços", desc:"Serviços extras oferecidos" }]:[]),
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"payments", l:"Pagamentos", desc:"Pacotes, créditos, cursos pagos" }]:[]),
-    ...(!isClientView ? [{ k:"aparencia", l:"Aparência", desc:"Temas, cores, navbar, cards" }] : []),
+    { k:"aparencia", l:"Aparência", desc:"Tema, cores, cards e densidade" },
     { k:"notifs", l:"Notificações", desc:"Sons, alertas por categoria" },
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
-    ...(!isClientView ? [{ k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" }] : []),
+    { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
     { k:"about", l:"Sobre", desc:"Versão e informações" },
   ];
 
@@ -14473,7 +14473,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               {SET_ITEMS.map(s => {
                 const isSel = sub === s.k;
                 return (
-                  <button key={s.k} onClick={()=>{if(s.k==="navmenu"){if(isSetDesktop){setSub("navmenu");}else{onNavEdit&&onNavEdit();}return;}setSub(s.k);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12.5, fontWeight:isSel?700:500, background:isSel?`${accent}10`:"transparent", color:isSel?accent:B.text, borderRadius:10, textAlign:"left", marginBottom:1, transition:"all .12s" }}
+                  <button key={s.k} onClick={()=>{if(s.k==="navmenu"){if(isSetDesktop&&navPicks){setSub("navmenu");}else{onNavEdit&&onNavEdit();}return;}setSub(s.k);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12.5, fontWeight:isSel?700:500, background:isSel?`${accent}10`:"transparent", color:isSel?accent:B.text, borderRadius:10, textAlign:"left", marginBottom:1, transition:"all .12s" }}
                     onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${accent}06`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
                     <span style={{ display:"flex", flexShrink:0, color:isSel?accent:B.muted }}>{setIcon(s.k, isSel?accent:B.muted)}</span>
                     <span style={{ flex:1 }}>{s.l}</span>
