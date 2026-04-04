@@ -24643,6 +24643,8 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   const [touchStart, setTouchStart] = useState(null);
   const [touchDelta, setTouchDelta] = useState(0);
   const [photoIdx, setPhotoIdx] = useState(0);
+  const [vvH, setVvH] = useState(typeof window!=="undefined"?window.innerHeight:800);
+  const chatMsgsRef = React.useRef(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const { showToast, ToastEl } = useToast();
   const LIME = B.accent || "#BBF246";
@@ -24652,6 +24654,18 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
 
   const handleSwipe = async(dir)=>{ if(!profiles[currentIdx]||!myClientId)return; const t=profiles[currentIdx]; const cost=dir==="super"?3:dir==="right"?1:0; if(cost>0&&credits<cost){showToast("Créditos insuficientes!");return;} setSwipeAnim(dir); try{ await supabase.from("match4biz_swipes").insert({from_client_id:myClientId,to_client_id:t.client_id,direction:dir}); if(cost>0){await supabase.from("match4biz_credits").insert({client_id:myClientId,amount:-cost,type:"spend",description:dir==="super"?"Super Match":"Interesse",reference_id:t.client_id});setCredits(p=>p-cost);setCreditHistory(p=>[{id:Date.now(),client_id:myClientId,amount:-cost,type:"spend",description:dir==="super"?"Super Match":"Interesse",created_at:new Date().toISOString()},...p]);} if(dir==="right"||dir==="super"){const{data:rev}=await supabase.from("match4biz_swipes").select("*").eq("from_client_id",t.client_id).eq("to_client_id",myClientId).in("direction",["right","super"]).limit(1); if(rev?.length>0){const ids=[myClientId,t.client_id].sort();const mn=myProfile?.client_name||user?.name; const{data:nm}=await supabase.from("match4biz_matches").insert({client_a_id:ids[0],client_b_id:ids[1],client_a_name:ids[0]===myClientId?mn:t.client_name,client_b_name:ids[1]===myClientId?mn:t.client_name,is_super:dir==="super"}).select().single(); if(nm){setMatches(p=>[nm,...p]);setMatchPopup({profile:t,match:nm});await supabase.from("match4biz_credits").insert({client_id:myClientId,amount:10,type:"reward",description:"Match com "+t.client_name,reference_id:nm.id});setCredits(p=>p+10);}}} setTimeout(()=>{setSwipeAnim(null);setPhotoIdx(0);setProfiles(p=>p.filter((_,i)=>i!==currentIdx));if(currentIdx>=profiles.length-1)setCurrentIdx(0);},500); }catch(e){console.error("Swipe:",e);setSwipeAnim(null);showToast("Erro.");} };
   const sendMessage = async()=>{ if(!msgText.trim()||!chatMatch)return; const{data}=await supabase.from("match4biz_messages").insert({match_id:chatMatch.id,sender_client_id:myClientId,sender_name:myProfile?.client_name||user?.name,text:msgText.trim()}).select().single(); if(data)setMessages(p=>[...p,data]); setMsgText(""); };
+  /* ── Visual Viewport tracking for keyboard ── */
+  useEffect(()=>{
+    if(!chatMatch) return;
+    const vv = window.visualViewport;
+    if(!vv) return;
+    const onResize = ()=>{ setVvH(vv.height); setTimeout(()=>{if(chatMsgsRef.current)chatMsgsRef.current.scrollTop=chatMsgsRef.current.scrollHeight;},50); };
+    vv.addEventListener("resize",onResize);
+    vv.addEventListener("scroll",onResize);
+    return()=>{vv.removeEventListener("resize",onResize);vv.removeEventListener("scroll",onResize);};
+  },[chatMatch]);
+  /* ── Auto-scroll on new message ── */
+  useEffect(()=>{if(chatMsgsRef.current)setTimeout(()=>{chatMsgsRef.current.scrollTop=chatMsgsRef.current.scrollHeight;},100);},[messages.length]);
   useEffect(()=>{ if(!chatMatch||!supabase)return; (async()=>{const{data}=await supabase.from("match4biz_messages").select("*").eq("match_id",chatMatch.id).order("created_at",{ascending:true});setMessages(data||[]);})(); const ch=supabase.channel("m4b_"+chatMatch.id).on("postgres_changes",{event:"INSERT",schema:"public",table:"match4biz_messages",filter:`match_id=eq.${chatMatch.id}`},p=>{setMessages(prev=>[...prev.filter(m=>m.id!==p.new.id),p.new]);}).subscribe(); return()=>supabase.removeChannel(ch); },[chatMatch?.id]);
   const saveProfile = async()=>{ if(!myClientId)return; const pl={tagline:editData.tagline||"",description:editData.description||"",segment:editData.segment||"",city:editData.city||"",offers:editData.offers||[],seeks:editData.seeks||[],website:editData.website||"",instagram:editData.instagram||"",linkedin:editData.linkedin||""}; await supabase.from("match4biz_profiles").update(pl).eq("client_id",myClientId); setMyProfile(p=>({...p,...pl})); setEditMode(false); showToast("Perfil atualizado ✓"); };
 
@@ -24734,7 +24748,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   </div>;
 
   /* Chat */
-  if(chatMatch){const otherName=chatMatch.client_a_id===myClientId?chatMatch.client_b_name:chatMatch.client_a_name; return <div style={{position:"fixed",inset:0,zIndex:90,display:"flex",flexDirection:"column",background:B.bg}}>{ToastEl}
+  if(chatMatch){const otherName=chatMatch.client_a_id===myClientId?chatMatch.client_b_name:chatMatch.client_a_name; return <div style={{position:"fixed",top:0,left:0,right:0,height:vvH,zIndex:90,display:"flex",flexDirection:"column",background:B.bg,transition:"height .05s ease-out"}}>{ToastEl}
     {/* HEADER */}
     <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:B.bgCard,borderBottom:`1px solid ${B.border}`,flexShrink:0}}>
       <button onClick={()=>setChatMatch(null)} style={{width:36,height:36,borderRadius:10,border:`1.5px solid ${B.border}`,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{IC.back()}</button>
@@ -24742,7 +24756,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
       <div style={{flex:1,minWidth:0}}><p style={{fontSize:15,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{otherName}</p><p style={{fontSize:11,color:B.muted}}>{chatMatch.is_super?"⭐ Super Match":"Match"} · {new Date(chatMatch.matched_at).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"})}</p></div>
     </div>
     {/* MESSAGES */}
-    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"16px",display:"flex",flexDirection:"column",gap:6}}>
+    <div ref={chatMsgsRef} style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"16px",display:"flex",flexDirection:"column",gap:6}}>
       {messages.length===0&&<div style={{textAlign:"center",padding:40}}><span style={{fontSize:40}}>👋</span><p style={{fontSize:14,fontWeight:700,marginTop:8}}>Diga olá!</p><p style={{fontSize:12,color:B.muted,marginTop:4}}>Comece a conversa sobre a parceria.</p></div>}
       {messages.map(m=>{const mine=m.sender_client_id===myClientId;return<div key={m.id} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start"}}><div style={{maxWidth:"75%",padding:"10px 14px",borderRadius:mine?"18px 18px 4px 18px":"18px 18px 18px 4px",background:mine?LIME:`${B.muted}12`,color:mine?"#0D0D0D":B.text}}><p style={{fontSize:13,lineHeight:1.5}}>{m.text}</p><p style={{fontSize:9,color:mine?"rgba(0,0,0,0.35)":B.muted,marginTop:4,textAlign:"right"}}>{new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p></div></div>;})}
     </div>
