@@ -26568,7 +26568,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [showDashEdit, setShowDashEdit] = useState(false);
   const [clientQuickBlocks, setClientQuickBlocks] = useState(() => { try { const s = localStorage.getItem("uh_client_qblocks"); return s ? JSON.parse(s) : ["content","ai","reports"]; } catch { return ["content","ai","reports"]; } });
   const VALID_BLOCKS = ["content","growth","news","metricas","agenda","match","ai"];
-  const [clientBlocks, setClientBlocks] = useState(() => { try { const s = localStorage.getItem("uh_client_blocks"); if(s) { const parsed = JSON.parse(s).filter(k => VALID_BLOCKS.includes(k)); return parsed.length ? parsed : ["content","growth","news"]; } return ["content","growth","news"]; } catch { return ["content","growth","news"]; } });
+  const CLIENT_BLOCKS_DEFAULT = ["content","news","growth","metricas","agenda","ai"];
+  const [clientBlocks, setClientBlocks] = useState(() => { try { const s = localStorage.getItem("uh_client_blocks"); if(s) { const parsed = JSON.parse(s).filter(k => VALID_BLOCKS.includes(k)); return parsed.length ? parsed : CLIENT_BLOCKS_DEFAULT; } return CLIENT_BLOCKS_DEFAULT; } catch { return CLIENT_BLOCKS_DEFAULT; } });
   const [editSections, setEditSections] = useState([]);
   const [editCfg, setEditCfg] = useState(null);
   const CLIENT_CARDS_MAP = { meta:{l:"Meta do Mês"}, aprovacoes:{l:"Aprovações"}, growth:{l:"Growth Score"}, match:{l:"Match4Biz"} };
@@ -26713,6 +26714,22 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     const interval = setInterval(() => { if (document.visibilityState === "visible" && !subRef.current) refetch(); }, 120000);
     return () => { document.removeEventListener("visibilitychange", refetch); clearInterval(interval); };
   }, [user?.id, user?.email]);
+
+  /* ── Refresh resolvedClient website on mount + interval (independent of sub-pages) ── */
+  useEffect(() => {
+    if (!supabase || !resolvedClient?.id) return;
+    const refreshClient = async () => {
+      try {
+        const { data } = await supabase.from("clients").select("id, name, contact_email, website").eq("id", resolvedClient.id).limit(1);
+        if (data?.[0] && (data[0].website !== resolvedClient.website || data[0].name !== resolvedClient.name)) {
+          setResolvedClient(prev => ({ ...prev, website: data[0].website, name: data[0].name }));
+        }
+      } catch {}
+    };
+    refreshClient();
+    const iv = setInterval(refreshClient, 60000);
+    return () => clearInterval(iv);
+  }, [resolvedClient?.id]);
 
   /* Load articles */
   useEffect(() => {
@@ -28192,7 +28209,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
             {BLOCK_OPTIONS.filter(([k])=>!curBlocks.includes(k)).length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:22}}>
               {BLOCK_OPTIONS.filter(([k])=>!curBlocks.includes(k)).map(([k,l])=><Chip key={k} on={false} label={"+ "+l} onTap={()=>toggleBlock(k)} disabled={curBlocks.length>=6} />)}
             </div>}
-            <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],blocks:["content","growth","news"]});}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
+            <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],blocks:[...CLIENT_BLOCKS_DEFAULT]});}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
           </div></>;
         })()}
       </div>
