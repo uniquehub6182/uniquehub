@@ -27009,7 +27009,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       });
 
       if (_plDk) return (
-        <div className="content-wide" style={{ paddingTop:60, minHeight:"100vh", display:"flex", flexDirection:"column" }}>
+        <div className="content-wide" style={{ paddingTop:0, minHeight:"100vh", display:"flex", flexDirection:"column" }}>
           <div style={{ maxWidth:1440, margin:"0 auto", width:"100%", padding:"0 32px" }}>
             <CollapseHeader label="Planos" title="Nossos Planos" onBack={() => setFinView("main")} collapsed={false} />
             <div style={{ display:"grid", gridTemplateColumns:"300px 1fr", gap:20, padding:"16px 0 80px" }}>
