@@ -27768,7 +27768,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
               </div>}
             </div>
           )}
-        </div>
         {/* ── FUNCTIONAL PANELS (3 large, custom widgets) ── */}
         <div style={{maxWidth:1440,margin:"0 auto",padding:"0 32px 0"}}>
           <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(clientBlocks.length,3)},minmax(0,1fr))`,gap:16,alignItems:"stretch"}}>
@@ -28210,7 +28209,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
         {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:6,marginBottom:16}}>
           {Object.keys(CLIENT_SECTIONS).filter(k=>!ec.sections.includes(k)).map(sk => <button key={sk} onClick={()=>{const s=[...ec.sections,sk];setEditCfg({...ec,sections:s});setEditSections(s);}} style={{padding:"7px 14px",borderRadius:10,border:`1.5px dashed ${C.brd}`,background:"transparent",fontSize:12,fontWeight:500,color:C.mut,cursor:"pointer",fontFamily:"inherit"}}>+ {CLIENT_SECTIONS[sk]}</button>)}
         </div>}
-        <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT],quickBlocks:["content","ai","reports"],panels:["content","growth","news"]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
+        <button onClick={()=>{setEditCfg({cards:["meta","aprovacoes","growth","match"],pills:["conteudo","relatorios","suporte"],sections:[...CLIENT_DASH_DEFAULT],quickBlocks:["content","ai","reports"],panels:["growth","news","posts"]});setEditSections([...CLIENT_DASH_DEFAULT]);}} style={{width:"100%",padding:"11px",borderRadius:12,background:`${C.mut}08`,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:C.mut}}>Restaurar padrão</button>
       </div></>;
     })()}
   </>; }
