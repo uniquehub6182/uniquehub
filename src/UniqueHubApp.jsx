@@ -24653,6 +24653,35 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
 
   const handleSwipe = async(dir)=>{ if(!profiles[currentIdx]||!myClientId)return; const t=profiles[currentIdx]; const cost=dir==="super"?3:dir==="right"?1:0; if(cost>0&&credits<cost){showToast("Créditos insuficientes!");return;} setSwipeAnim(dir); try{ await supabase.from("match4biz_swipes").insert({from_client_id:myClientId,to_client_id:t.client_id,direction:dir}); if(cost>0){await supabase.from("match4biz_credits").insert({client_id:myClientId,amount:-cost,type:"spend",description:dir==="super"?"Super Match":"Interesse",reference_id:t.client_id});setCredits(p=>p-cost);setCreditHistory(p=>[{id:Date.now(),client_id:myClientId,amount:-cost,type:"spend",description:dir==="super"?"Super Match":"Interesse",created_at:new Date().toISOString()},...p]);} if(dir==="right"||dir==="super"){const{data:rev}=await supabase.from("match4biz_swipes").select("*").eq("from_client_id",t.client_id).eq("to_client_id",myClientId).in("direction",["right","super"]).limit(1); if(rev?.length>0){const ids=[myClientId,t.client_id].sort();const mn=myProfile?.client_name||user?.name; const{data:nm}=await supabase.from("match4biz_matches").insert({client_a_id:ids[0],client_b_id:ids[1],client_a_name:ids[0]===myClientId?mn:t.client_name,client_b_name:ids[1]===myClientId?mn:t.client_name,is_super:dir==="super"}).select().single(); if(nm){setMatches(p=>[nm,...p]);setMatchPopup({profile:t,match:nm});await supabase.from("match4biz_credits").insert({client_id:myClientId,amount:10,type:"reward",description:"Match com "+t.client_name,reference_id:nm.id});setCredits(p=>p+10);}}} setTimeout(()=>{setSwipeAnim(null);setPhotoIdx(0);setProfiles(p=>p.filter((_,i)=>i!==currentIdx));if(currentIdx>=profiles.length-1)setCurrentIdx(0);},500); }catch(e){console.error("Swipe:",e);setSwipeAnim(null);showToast("Erro.");} };
   const sendMessage = async()=>{ if(!msgText.trim()||!chatMatch)return; const{data}=await supabase.from("match4biz_messages").insert({match_id:chatMatch.id,sender_client_id:myClientId,sender_name:myProfile?.client_name||user?.name,text:msgText.trim()}).select().single(); if(data)setMessages(p=>[...p,data]); setMsgText(""); };
+  const [m4bUploading, setM4bUploading] = useState(false);
+  const m4bFileRef = React.useRef(null);
+  const sendFile = async(file)=>{
+    if(!chatMatch||!file) return;
+    setM4bUploading(true);
+    try{
+      const isImg = file.type?.startsWith("image/");
+      const isVid = file.type?.startsWith("video/");
+      const processed = isImg ? await compressImage(file, 1200, 0.8) : file;
+      const ext = file.name?.split(".").pop()||"bin";
+      const fname = `match4biz/chat/${chatMatch.id}/${Date.now()}.${ext}`;
+      const{error}=await supabase.storage.from("demand-files").upload(fname,processed,{upsert:true,cacheControl:"3600",contentType:processed.type||file.type||"application/octet-stream"});
+      if(error)throw error;
+      const{data:pub}=supabase.storage.from("demand-files").getPublicUrl(fname);
+      const url=pub.publicUrl;
+      const ftype=isImg?"image":isVid?"video":"file";
+      const{data}=await supabase.from("match4biz_messages").insert({match_id:chatMatch.id,sender_client_id:myClientId,sender_name:myProfile?.client_name||user?.name,text:file.name||"Arquivo",file_url:url,file_type:ftype}).select().single();
+      if(data)setMessages(p=>[...p,data]);
+    }catch(e){console.error("M4B file:",e);showToast("Erro no envio");}
+    setM4bUploading(false);
+  };
+  /* ── Linkify text helper ── */
+  const linkifyText=(text)=>{
+    if(!text)return text;
+    const urlRx=/(https?:\/\/[^\s<]+)/g;
+    const parts=text.split(urlRx);
+    if(parts.length===1)return text;
+    return parts.map((p,i)=>urlRx.test(p)?React.createElement("a",{key:i,href:p,target:"_blank",rel:"noopener noreferrer",style:{color:"inherit",textDecoration:"underline",wordBreak:"break-all"},onClick:e=>e.stopPropagation()},p.length>50?p.substring(0,47)+"...":p):p);
+  };
   /* ── Chat keyboard handling via visualViewport ── */
   const [chatH, setChatH] = useState(typeof window!=="undefined"?window.innerHeight:800);
   const [chatTop, setChatTop] = useState(0);
@@ -24762,12 +24791,24 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
     {/* MESSAGES */}
     <div ref={chatMsgsRef} style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",padding:"16px",display:"flex",flexDirection:"column",gap:6}}>
       {messages.length===0&&<div style={{textAlign:"center",padding:40}}><div style={{color:LIME,marginBottom:8}}>{M4BIc.chat}</div><p style={{fontSize:14,fontWeight:700,marginTop:8}}>Diga olá!</p><p style={{fontSize:12,color:B.muted,marginTop:4}}>Comece a conversa sobre a parceria.</p></div>}
-      {messages.map(m=>{const mine=m.sender_client_id===myClientId;return<div key={m.id} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start"}}><div style={{maxWidth:"75%",padding:"10px 14px",borderRadius:mine?"18px 18px 4px 18px":"18px 18px 18px 4px",background:mine?LIME:`${B.muted}12`,color:mine?"#0D0D0D":B.text}}><p style={{fontSize:13,lineHeight:1.5}}>{m.text}</p><p style={{fontSize:9,color:mine?"rgba(0,0,0,0.35)":B.muted,marginTop:4,textAlign:"right"}}>{new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p></div></div>;})}
+      {messages.map(m=>{const mine=m.sender_client_id===myClientId;return<div key={m.id} style={{display:"flex",justifyContent:mine?"flex-end":"flex-start"}}><div style={{maxWidth:"75%",padding:m.file_url&&m.file_type==="image"?"4px 4px 6px":"10px 14px",borderRadius:mine?"18px 18px 4px 18px":"18px 18px 18px 4px",background:mine?LIME:`${B.muted}12`,color:mine?"#0D0D0D":B.text,overflow:"hidden"}}>
+        {m.file_url&&m.file_type==="image"&&<img src={m.file_url} style={{width:"100%",maxWidth:260,borderRadius:14,display:"block",marginBottom:4}} onClick={()=>window.open(m.file_url,"_blank")}/>}
+        {m.file_url&&m.file_type==="video"&&<video src={m.file_url} controls style={{width:"100%",maxWidth:260,borderRadius:14,display:"block",marginBottom:4}}/>}
+        {m.file_url&&m.file_type==="file"&&<a href={m.file_url} target="_blank" rel="noopener" style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",color:"inherit",textDecoration:"none"}} onClick={e=>e.stopPropagation()}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style={{fontSize:12,fontWeight:600,textDecoration:"underline"}}>{m.text||"Arquivo"}</span></a>}
+        {(!m.file_url||m.file_type!=="file")&&m.text&&<p style={{fontSize:13,lineHeight:1.5,padding:m.file_url?"0 8px":"0"}}>{linkifyText(m.text)}</p>}
+        <p style={{fontSize:9,color:mine?"rgba(0,0,0,0.35)":B.muted,marginTop:4,textAlign:"right",padding:m.file_url?"0 8px 2px":"0"}}>{new Date(m.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
+      </div></div>;})}
     </div>
     {/* INPUT — always visible at bottom */}
-    <div style={{display:"flex",gap:8,padding:"10px 16px",paddingBottom:"max(10px, env(safe-area-inset-bottom))",borderTop:`1px solid ${B.border}`,background:B.bgCard,flexShrink:0}}>
+    <div style={{display:"flex",gap:8,padding:"10px 16px",paddingBottom:"max(10px, env(safe-area-inset-bottom))",borderTop:`1px solid ${B.border}`,background:B.bgCard,flexShrink:0,alignItems:"center"}}>
+      <input ref={m4bFileRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx" style={{display:"none"}} onChange={e=>{if(e.target.files?.[0])sendFile(e.target.files[0]);e.target.value="";}}/>
+      <button onClick={()=>m4bFileRef.current?.click()} disabled={m4bUploading} style={{width:36,height:36,borderRadius:10,border:`1.5px solid ${B.border}`,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,opacity:m4bUploading?0.3:0.6}}>
+        {m4bUploading?<div style={{width:16,height:16,border:`2px solid ${LIME}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="1.5" strokeLinecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>}
+      </button>
       <input value={msgText} onChange={e=>setMsgText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")sendMessage();}} placeholder="Mensagem..." className="tinput" style={{flex:1}} enterKeyHint="send"/>
-      <button onClick={sendMessage} disabled={!msgText.trim()} style={{padding:"10px 20px",borderRadius:12,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:msgText.trim()?1:0.4}}>Enviar</button>
+      <button onClick={sendMessage} disabled={!msgText.trim()} style={{padding:"10px 16px",borderRadius:12,background:LIME,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:"#0D0D0D",opacity:msgText.trim()?1:0.4}}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
     </div>
   </div>;}
 
