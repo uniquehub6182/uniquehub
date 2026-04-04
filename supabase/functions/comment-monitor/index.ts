@@ -13,110 +13,103 @@ serve(async (req) => {
 
   try {
     const body = req.method === "POST" ? await req.json().catch(()=>({})) : {};
-    const targetClient = body.client_id; // optional: monitor specific client only
+    const action = body.action || "scan";
 
-    /* ── Get Gemini key for AI replies ── */
-    let geminiKey = "";
-    try {
-      const { data } = await sb.from("app_settings").select("value").eq("key","gemini_key").single();
-      geminiKey = data?.value || "";
-    } catch {}
+    /* ═══ ACTION: GENERATE AI REPLY for a single comment ═══ */
+    if (action === "generate_reply") {
+      const { comment_id } = body;
+      if (!comment_id) return json({ error: "Missing comment_id" });
 
-    /* ── Get all clients with Meta tokens ── */
+      const { data: comment } = await sb.from("comment_replies").select("*").eq("id", comment_id).single();
+      if (!comment) return json({ error: "Comment not found" });
+
+      let geminiKey = "";
+      try { const { data } = await sb.from("app_settings").select("value").eq("key","gemini_key").single(); geminiKey = data?.value || ""; } catch {}
+      if (!geminiKey) return json({ error: "Gemini key not configured" });
+
+      /* Get client name */
+      let clientName = "";
+      try { const { data: cl } = await sb.from("clients").select("name").eq("id", comment.client_id).single(); clientName = cl?.name || ""; } catch {}
+
+      const prompt = `Você é o social media da empresa "${clientName}". Gere UMA resposta curta, simpática e profissional para este comentário no Instagram. A resposta deve ter no máximo 2 frases. Não use hashtags. Seja natural e humano.\n\nComentário de @${comment.comment_author}: "${comment.comment_text}"\n\nResponda APENAS com o texto da resposta, sem aspas nem explicações:`;
+
+      const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 150, temperature: 0.7 } }),
+      });
+      const aiData = await aiRes.json();
+      const suggestion = aiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+
+      if (suggestion) {
+        await sb.from("comment_replies").update({ suggested_reply: suggestion, status: "pending" }).eq("id", comment_id);
+        return json({ success: true, suggestion });
+      }
+      return json({ error: "AI did not generate a reply" });
+    }
+
+    /* ═══ ACTION: SCAN — collect comments (NO AI, fast) ═══ */
+    const targetClient = body.client_id;
+
     const { data: settings } = await sb.from("app_settings").select("key,value").like("key","meta_token_%");
     if (!settings?.length) return json({ message: "No Meta tokens found", results: [] });
 
-    const clients = settings.map(s => ({
-      client_id: s.key.replace("meta_token_",""),
-      token: JSON.parse(s.value),
-    })).filter(c => !targetClient || c.client_id === targetClient);
+    const clients = settings.map(s => {
+      try { return { client_id: s.key.replace("meta_token_",""), token: JSON.parse(s.value) }; }
+      catch { return null; }
+    }).filter(Boolean).filter((c: any) => !targetClient || c.client_id === targetClient);
 
-    for (const client of clients) {
+    for (const client of clients as any[]) {
       const at = client.token.page_token || "";
       const igId = client.token.ig_user_id || "";
-      if (!at || !igId) { results.push({ client_id: client.client_id, error: "Missing token/igId" }); continue; }
+      if (!at || !igId) { results.push({ client_id: client.client_id, error: "Missing token" }); continue; }
 
       try {
-        /* ── Get recent media (last 14 days) ── */
-        const mediaRes = await fetch(`https://graph.facebook.com/${V}/${igId}/media?fields=id,caption,timestamp,media_type&limit=10&access_token=${at}`);
+        /* Get recent media (last 7 days, max 5 posts) */
+        const mediaRes = await fetch(`https://graph.facebook.com/${V}/${igId}/media?fields=id,timestamp&limit=5&access_token=${at}`);
         const mediaData = await mediaRes.json();
         if (mediaData.error) { results.push({ client_id: client.client_id, error: mediaData.error.message }); continue; }
 
         const media = (mediaData.data || []).filter((m: any) => {
           const age = Date.now() - new Date(m.timestamp).getTime();
-          return age < 14 * 24 * 60 * 60 * 1000; // 14 days
+          return age < 7 * 24 * 60 * 60 * 1000;
         });
 
         let newComments = 0;
 
         for (const post of media) {
-          /* ── Get comments on this post ── */
-          const commRes = await fetch(`https://graph.facebook.com/${V}/${post.id}/comments?fields=id,text,timestamp,username&limit=50&access_token=${at}`);
+          const commRes = await fetch(`https://graph.facebook.com/${V}/${post.id}/comments?fields=id,text,timestamp,username&limit=30&access_token=${at}`);
           const commData = await commRes.json();
-          if (commData.error || !commData.data) continue;
+          if (commData.error || !commData.data?.length) continue;
 
-          /* ── Check which comments are already processed ── */
-          const commentIds = commData.data.map((c: any) => c.id);
-          const { data: existing } = await sb.from("comment_replies").select("comment_id").in("comment_id", commentIds);
-          const existingIds = new Set((existing || []).map((e: any) => e.comment_id));
+          /* Batch check existing */
+          const ids = commData.data.map((c: any) => c.id);
+          const { data: existing } = await sb.from("comment_replies").select("comment_id").in("comment_id", ids);
+          const existingSet = new Set((existing || []).map((e: any) => e.comment_id));
 
-          const fresh = commData.data.filter((c: any) => !existingIds.has(c.id));
-          if (!fresh.length) continue;
+          const fresh = commData.data.filter((c: any) => {
+            if (existingSet.has(c.id)) return false;
+            const text = (c.text || "").trim();
+            if (text.length < 3 || /^@\w+\s*$/.test(text)) return false;
+            return true;
+          });
 
-          /* ── Get client name for context ── */
-          let clientName = "";
-          try {
-            const { data: cl } = await sb.from("clients").select("name,segment").eq("id", client.client_id).single();
-            clientName = cl?.name || "";
-          } catch {}
-
-          /* ── Generate AI reply for each new comment ── */
-          for (const comment of fresh) {
-            // Skip very short or emoji-only comments
-            const text = (comment.text || "").trim();
-            if (text.length < 3) continue;
-            // Skip comments that are just tags (@mentions with no other text)
-            if (/^@\w+\s*$/.test(text)) continue;
-
-            let suggestedReply = "";
-
-            if (geminiKey) {
-              try {
-                const prompt = `Você é o social media da empresa "${clientName}". Gere UMA resposta curta, simpática e profissional para este comentário no Instagram. A resposta deve ter no máximo 2 frases. Não use hashtags. Seja natural e humano.
-
-Contexto do post: ${(post.caption || "").substring(0, 200)}
-
-Comentário de @${comment.username}: "${text}"
-
-Responda APENAS com o texto da resposta, sem aspas nem explicações:`;
-
-                const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 150, temperature: 0.7 } }),
-                });
-                const aiData = await aiRes.json();
-                suggestedReply = aiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-              } catch (e: any) { console.log("[comment-monitor] AI error:", e.message); }
-            }
-
-            /* ── Save to database ── */
-            await sb.from("comment_replies").insert({
+          if (fresh.length > 0) {
+            const rows = fresh.map((c: any) => ({
               client_id: client.client_id,
               post_id: post.id,
-              comment_id: comment.id,
-              comment_text: text,
-              comment_author: comment.username || "unknown",
-              comment_timestamp: comment.timestamp,
+              comment_id: c.id,
+              comment_text: (c.text || "").trim(),
+              comment_author: c.username || "unknown",
+              comment_timestamp: c.timestamp,
               platform: "instagram",
-              suggested_reply: suggestedReply,
-              status: suggestedReply ? "pending" : "no_reply",
-            });
-            newComments++;
+              status: "new",
+            }));
+            await sb.from("comment_replies").insert(rows);
+            newComments += rows.length;
           }
         }
-
-        results.push({ client_id: client.client_id, media_checked: media.length, new_comments: newComments });
+        results.push({ client_id: client.client_id, media: media.length, new_comments: newComments });
       } catch (e: any) {
         results.push({ client_id: client.client_id, error: e.message });
       }

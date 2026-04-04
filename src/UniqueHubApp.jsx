@@ -24302,7 +24302,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
-  const [filter, setFilter] = useState("pending");
+  const [filter, setFilter] = useState("new");
   const [editId, setEditId] = useState(null);
   const [editText, setEditText] = useState("");
   const [clientFilter, setClientFilter] = useState("all");
@@ -24320,12 +24320,21 @@ function CommentRepliesPage({ onBack, clients, user }) {
   const scanNow = async()=>{
     setScanning(true);
     try{
-      const res=await fetch(`${SUPA_URL}/functions/v1/comment-monitor`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_KEY}`},body:JSON.stringify({})});
+      const res=await fetch(`${SUPA_URL}/functions/v1/comment-monitor`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_KEY}`},body:JSON.stringify({action:"scan"})});
       const d=await res.json();
-      showToast("Scan concluído!");
-      await loadComments();
-    }catch(e){showToast("Erro no scan");}
+      if(d.error){showToast("Erro: "+d.error);}
+      else{const total=d.results?.reduce((s,r)=>s+(r.new_comments||0),0)||0;showToast(total>0?total+" comentário(s) encontrado(s)!":"Nenhum comentário novo");await loadComments();}
+    }catch(e){showToast("Erro de conexão: "+e.message);}
     setScanning(false);
+  };
+  const generateAI = async(id)=>{
+    setComments(p=>p.map(c=>c.id===id?{...c,_generating:true}:c));
+    try{
+      const res=await fetch(`${SUPA_URL}/functions/v1/comment-monitor`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${SUPA_KEY}`},body:JSON.stringify({action:"generate_reply",comment_id:id})});
+      const d=await res.json();
+      if(d.success){setComments(p=>p.map(c=>c.id===id?{...c,suggested_reply:d.suggestion,status:"pending",_generating:false}:c));showToast("Sugestão gerada!");}
+      else{setComments(p=>p.map(c=>c.id===id?{...c,_generating:false}:c));showToast(d.error||"Erro na IA");}
+    }catch(e){setComments(p=>p.map(c=>c.id===id?{...c,_generating:false}:c));showToast("Erro");}
   };
 
   const approveReply = async(id,text)=>{
@@ -24345,8 +24354,8 @@ function CommentRepliesPage({ onBack, clients, user }) {
   };
 
   const getClientName=(cid)=>{const c=CDATA.find(x=>(x.supaId||x.id)===cid);return c?.name||cid;};
-  const filtered=comments.filter(c=>(filter==="all"||c.status===filter)&&(clientFilter==="all"||c.client_id===clientFilter));
-  const stats={total:comments.length,pending:comments.filter(c=>c.status==="pending").length,replied:comments.filter(c=>c.status==="replied").length};
+  const filtered=comments.filter(c=>(filter==="all"||(c.status||"new")===filter)&&(clientFilter==="all"||c.client_id===clientFilter));
+  const stats={total:comments.length,novo:comments.filter(c=>c.status==="new").length,pending:comments.filter(c=>c.status==="pending").length,replied:comments.filter(c=>c.status==="replied").length};
   const uniqueClients=[...new Set(comments.map(c=>c.client_id))];
 
   return <div className="content-wide" style={{paddingTop:TOP,minHeight:"100%"}}>
@@ -24360,7 +24369,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
     </div>
     {/* Stats */}
     <div style={{display:"grid",gridTemplateColumns:isDesktop?"repeat(3,1fr)":"repeat(3,1fr)",gap:10,margin:"12px 0 16px"}}>
-      {[{l:"Pendentes",v:stats.pending,c:"#F59E0B"},{l:"Respondidos",v:stats.replied,c:"#10B981"},{l:"Total",v:stats.total,c:B.accent}].map((s,i)=>
+      {[{l:"Novos",v:stats.novo,c:"#F59E0B"},{l:"Com sugestão",v:stats.pending,c:"#3B82F6"},{l:"Respondidos",v:stats.replied,c:"#10B981"},{l:"Total",v:stats.total,c:B.accent}].map((s,i)=>
         <div key={i} style={{background:B.bgCard,borderRadius:14,border:`1px solid ${B.border}`,padding:"12px 16px",textAlign:"center"}}>
           <p style={{fontSize:9,fontWeight:600,color:B.muted,textTransform:"uppercase"}}>{s.l}</p>
           <p style={{fontSize:24,fontWeight:900,color:s.c}}>{s.v}</p>
@@ -24370,7 +24379,7 @@ function CommentRepliesPage({ onBack, clients, user }) {
     {/* Filters */}
     <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
       <div style={{display:"flex",gap:4}}>
-        {[{k:"pending",l:"Pendentes"},{k:"replied",l:"Respondidos"},{k:"dismissed",l:"Descartados"},{k:"all",l:"Todos"}].map(f=>
+        {[{k:"new",l:"Novos"},{k:"pending",l:"Com sugestão"},{k:"replied",l:"Respondidos"},{k:"dismissed",l:"Descartados"},{k:"all",l:"Todos"}].map(f=>
           <button key={f.k} onClick={()=>setFilter(f.k)} style={{padding:"6px 12px",borderRadius:8,border:filter===f.k?"none":`1px solid ${B.border}`,background:filter===f.k?B.accent:"transparent",color:filter===f.k?"#0D0D0D":B.muted,fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f.l}</button>
         )}
       </div>
@@ -24407,6 +24416,13 @@ function CommentRepliesPage({ onBack, clients, user }) {
             :<p style={{fontSize:13,lineHeight:1.5,color:B.text,opacity:0.8,fontStyle:"italic"}}>{c.suggested_reply}</p>}
           </div>}
           {/* Actions */}
+          {c.status==="new"&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <button onClick={()=>generateAI(c.id)} disabled={c._generating} style={{padding:"8px 16px",borderRadius:8,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#0D0D0D",opacity:c._generating?.5:1,display:"flex",alignItems:"center",gap:4}}>
+              {c._generating?<div style={{width:12,height:12,border:"2px solid #0D0D0D",borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>:null}
+              {c._generating?"Gerando...":"Gerar sugestão IA"}
+            </button>
+            <button onClick={()=>dismissReply(c.id)} style={{padding:"8px 16px",borderRadius:8,background:"transparent",border:`1px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:600,color:B.muted}}>Ignorar</button>
+          </div>}
           {c.status==="pending"&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             {isEditing?<>
               <button onClick={()=>approveReply(c.id,editText)} style={{padding:"8px 16px",borderRadius:8,background:"#10B981",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:11,fontWeight:700,color:"#fff"}}>Enviar</button>
