@@ -27740,12 +27740,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                 <div style={{width:24,height:24,borderRadius:7,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME}}>{IC[pk==="conteudo"?"content":pk==="relatorios"?"reports":pk==="suporte"?"help":pk==="ia"?"ai":pk==="config"?"settings":pk==="calendario"?"calendar":pk==="biblioteca"?"library":pk==="noticias"?"news":pk==="ideias"?"ideas":pk]?.(LIME)||IC.home(LIME)}</div>{p.l}
               </div>; })}
             {/* Visitar meu site */}
-            {resolvedClient?.website && <div onClick={()=>window.open(resolvedClient.website,"_blank")} style={{display:"flex",alignItems:"center",gap:7,background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:12,padding:"8px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:B.text,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
+            <div onClick={()=>resolvedClient?.website?window.open(resolvedClient.website,"_blank"):setSub("settings")} style={{display:"flex",alignItems:"center",gap:7,background:B.bgCard,border:`1px solid ${B.border}`,borderRadius:12,padding:"8px 16px",cursor:"pointer",fontSize:12,fontWeight:600,color:B.text,transition:"all .12s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=LIME;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;}}>
               <div style={{width:24,height:24,borderRadius:7,background:`${LIME}15`,display:"flex",alignItems:"center",justifyContent:"center",color:LIME}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={LIME} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
-              Visitar meu site
-              <span style={{fontSize:11,color:B.muted,marginLeft:4,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{resolvedClient.website.replace(/^https?:\/\//,"")}</span>
+              {resolvedClient?.website ? "Visitar meu site" : "Adicionar meu site"}
+              {resolvedClient?.website && <span style={{fontSize:11,color:B.muted,marginLeft:4,maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{resolvedClient.website.replace(/^https?:\/\//,"")}</span>}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-            </div>}
+            </div>
             {/* Compromissos da semana */}
             <div onClick={()=>goTab("content")} style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:10,padding:"10px 18px",borderRadius:14,background:weekDemands.length>0?`${LIME}10`:B.bgCard,border:`1px solid ${weekDemands.length>0?LIME+"30":B.border}`,cursor:"pointer",whiteSpace:"nowrap",transition:"all .15s"}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={weekDemands.length>0?LIME:B.muted} strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -28056,10 +28056,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                 const ZONES = [{name:"Estruturação",min:0,max:20,color:"#EF4444"},{name:"Crescimento",min:21,max:40,color:"#F59E0B"},{name:"Expansão",min:41,max:60,color:"#3B82F6"},{name:"Maturidade",min:61,max:80,color:"#10B981"},{name:"Referência",min:81,max:100,color:LIME}];
                 const curZone = ZONES.find(z => growthScore >= z.min && growthScore <= z.max) || ZONES[0];
                 const PILLARS = [{k:"execucao",n:"Execução",icon:"🎯"},{k:"estrategia",n:"Estratégia",icon:"📊"},{k:"educacao",n:"Educação",icon:"📚"},{k:"ecossistema",n:"Ecossistema",icon:"🌐"},{k:"crescimento",n:"Crescimento",icon:"📈"}];
-                return <div key={pk} style={{background:"#0D0D0D",borderRadius:20,overflow:"hidden",height:580,display:"flex",flexDirection:"column",color:"#fff"}}>
-                  <div style={{padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-                    <span style={{fontSize:14,fontWeight:700,color:"#fff"}}>Growth Score</span>
-                    <span onClick={()=>setSub("gamify")} style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver detalhes <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
+                const gBg = isDark?"#0D0D0D":B.bgCard; const gTxt = isDark?"#fff":B.text; const gSub = isDark?"rgba(255,255,255,0.4)":B.muted; const gBar = isDark?"rgba(255,255,255,0.08)":`${B.muted}15`; const gBrd = isDark?"transparent":B.border;
+                return <div key={pk} style={{background:gBg,borderRadius:20,overflow:"hidden",height:580,display:"flex",flexDirection:"column",color:gTxt,border:`1px solid ${gBrd}`}}>
+                  <div style={{padding:"16px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,borderBottom:isDark?"none":`1px solid ${B.border}`}}>
+                    <span style={{fontSize:14,fontWeight:700,color:gTxt}}>Growth Score</span>
+                    <span onClick={()=>setSub("gamify")} style={{fontSize:11,fontWeight:600,color:gSub,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>Ver detalhes <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={gSub} strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg></span>
                   </div>
                   <div style={{padding:"10px 20px 20px",flexShrink:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:20}}>
@@ -28067,22 +28068,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                         <span style={{fontSize:32,fontWeight:900,color:curZone.color}}>{growthScore}</span>
                       </div>
                       <div style={{flex:1}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><div style={{width:8,height:8,borderRadius:4,background:curZone.color}}/><span style={{fontSize:14,fontWeight:700,color:"#fff"}}>Zona {curZone.name}</span></div>
-                        <p style={{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.5}}>Índice de crescimento digital baseado em 5 pilares.</p>
-                        <div style={{marginTop:8,height:6,borderRadius:3,background:"rgba(255,255,255,0.08)",overflow:"hidden"}}><div style={{height:6,borderRadius:3,background:`linear-gradient(90deg, ${curZone.color}, ${LIME})`,width:`${growthScore}%`}}/></div>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><div style={{width:8,height:8,borderRadius:4,background:curZone.color}}/><span style={{fontSize:14,fontWeight:700,color:gTxt}}>Zona {curZone.name}</span></div>
+                        <p style={{fontSize:11,color:gSub,lineHeight:1.5}}>Índice de crescimento digital baseado em 5 pilares.</p>
+                        <div style={{marginTop:8,height:6,borderRadius:3,background:gBar,overflow:"hidden"}}><div style={{height:6,borderRadius:3,background:`linear-gradient(90deg, ${curZone.color}, ${LIME})`,width:`${growthScore}%`}}/></div>
                       </div>
                     </div>
                   </div>
                   <div style={{padding:"0 20px 16px",flexShrink:0}}>
-                    <p style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Pilares</p>
+                    <p style={{fontSize:10,fontWeight:700,color:gSub,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Pilares</p>
                     <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                      {PILLARS.map((p,pi) => { const val = Math.min(100, Math.round(growthScore * (0.6 + pi * 0.15))); return <div key={p.k} style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:14,width:22,textAlign:"center"}}>{p.icon}</span><span style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.6)",width:80}}>{p.n}</span><div style={{flex:1,height:6,borderRadius:3,background:"rgba(255,255,255,0.08)"}}><div style={{height:6,borderRadius:3,background:LIME,width:`${val}%`}}/></div><span style={{fontSize:10,fontWeight:700,color:LIME,width:24,textAlign:"right"}}>{val}</span></div>; })}
+                      {PILLARS.map((p,pi) => { const val = Math.min(100, Math.round(growthScore * (0.6 + pi * 0.15))); return <div key={p.k} style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:14,width:22,textAlign:"center"}}>{p.icon}</span><span style={{fontSize:11,fontWeight:600,color:gSub,width:80}}>{p.n}</span><div style={{flex:1,height:6,borderRadius:3,background:gBar}}><div style={{height:6,borderRadius:3,background:LIME,width:`${val}%`}}/></div><span style={{fontSize:10,fontWeight:700,color:LIME,width:24,textAlign:"right"}}>{val}</span></div>; })}
                     </div>
                   </div>
                   <div style={{flex:1,overflowY:"auto",padding:"0 20px 16px",minHeight:0}}>
-                    <p style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Zonas</p>
+                    <p style={{fontSize:10,fontWeight:700,color:gSub,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Zonas</p>
                     <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                      {ZONES.map(z => { const active = growthScore >= z.min && growthScore <= z.max; const done = growthScore > z.max; return <div key={z.name} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,background:active?"rgba(255,255,255,0.06)":"transparent",border:active?`1px solid ${z.color}30`:"1px solid transparent"}}><div style={{width:24,height:24,borderRadius:8,background:done?z.color:`${z.color}20`,display:"flex",alignItems:"center",justifyContent:"center"}}>{done?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:active?<div style={{width:8,height:8,borderRadius:4,background:z.color}}/>:<div style={{width:6,height:6,borderRadius:3,background:`${z.color}50`}}/>}</div><div style={{flex:1}}><span style={{fontSize:12,fontWeight:active?700:500,color:active||done?"#fff":"rgba(255,255,255,0.35)"}}>{z.name}</span><span style={{fontSize:9,color:"rgba(255,255,255,0.3)",marginLeft:8}}>{z.min}-{z.max} pts</span></div>{active&&<span style={{fontSize:10,fontWeight:700,color:z.color}}>{growthScore}/{z.max}</span>}</div>; })}
+                      {ZONES.map(z => { const active = growthScore >= z.min && growthScore <= z.max; const done = growthScore > z.max; return <div key={z.name} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,background:active?`${z.color}10`:"transparent",border:active?`1px solid ${z.color}30`:`1px solid transparent`}}><div style={{width:24,height:24,borderRadius:8,background:done?z.color:`${z.color}20`,display:"flex",alignItems:"center",justifyContent:"center"}}>{done?<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>:active?<div style={{width:8,height:8,borderRadius:4,background:z.color}}/>:<div style={{width:6,height:6,borderRadius:3,background:`${z.color}50`}}/>}</div><div style={{flex:1}}><span style={{fontSize:12,fontWeight:active?700:500,color:active||done?gTxt:gSub}}>{z.name}</span><span style={{fontSize:9,color:gSub,marginLeft:8}}>{z.min}-{z.max} pts</span></div>{active&&<span style={{fontSize:10,fontWeight:700,color:z.color}}>{growthScore}/{z.max}</span>}</div>; })}
                     </div>
                   </div>
                 </div>;
@@ -28099,17 +28100,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                     {metricsLoading&&<div style={{textAlign:"center",padding:40}}><div style={{width:24,height:24,border:`2.5px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto"}}/></div>}
                     {!metricsLoading&&<>
                       <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>{metricsData.map((md,i) => <button key={i} onClick={()=>setMetricsSlide(i)} style={{padding:"7px 14px",borderRadius:10,border:metricsSlide===i?"none":`1.5px solid ${B.border}`,background:metricsSlide===i?LIME:"transparent",color:metricsSlide===i?"#0D0D0D":B.muted,fontSize:12,fontWeight:metricsSlide===i?700:500,cursor:"pointer",fontFamily:"inherit"}}>{md.network}</button>)}</div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                         {(metricsData[metricsSlide]?.metrics||[]).map((m,i) => <div key={i} style={{padding:"16px 14px",borderRadius:14,background:`${LIME}06`,border:`1px solid ${B.border}`}}>
                           <span style={{fontSize:9,fontWeight:700,letterSpacing:0.5,color:B.muted,textTransform:"uppercase"}}>{m.l}</span>
                           <div style={{display:"flex",alignItems:"baseline",gap:6,marginTop:8}}><span style={{fontSize:24,fontWeight:900,color:B.text}}>{m.v}</span>{m.d&&<span style={{fontSize:10,fontWeight:700,color:B.green,background:`${B.green}12`,padding:"2px 8px",borderRadius:6}}>{m.d}</span>}</div>
                         </div>)}
-                      </div>
-                      <div style={{padding:"14px 16px",borderRadius:14,background:isDark?"#111":"#f8f9fa",border:`1px solid ${B.border}`}}>
-                        <p style={{fontSize:11,fontWeight:700,color:B.muted,textTransform:"uppercase",letterSpacing:0.5,marginBottom:10}}>Resumo de Performance</p>
-                        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                          {[{l:"Melhor horário",v:"18h - 21h",icon:"🕐"},{l:"Dia mais ativo",v:"Terça-feira",icon:"📅"},{l:"Formato top",v:"Carrossel",icon:"🎨"},{l:"Engajamento médio",v:((metricsData[metricsSlide]?.metrics||[]).find(m=>(m.l||"").toLowerCase().includes("engaj"))?.v)||"2.4%",icon:"💬"}].map((item,i) => <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i?`1px solid ${B.border}`:"none"}}><span style={{fontSize:16}}>{item.icon}</span><span style={{flex:1,fontSize:12,color:B.muted}}>{item.l}</span><span style={{fontSize:12,fontWeight:700,color:B.text}}>{item.v}</span></div>)}
-                        </div>
                       </div>
                     </>}
                   </div>
