@@ -24656,6 +24656,26 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
   const gradients=["linear-gradient(135deg,#667eea,#764ba2)","linear-gradient(135deg,#f093fb,#f5576c)","linear-gradient(135deg,#4facfe,#00f2fe)","linear-gradient(135deg,#43e97b,#38f9d7)","linear-gradient(135deg,#fa709a,#fee140)","linear-gradient(135deg,#a18cd1,#fbc2eb)","linear-gradient(135deg,#89f7fe,#66a6ff)","linear-gradient(135deg,#ffecd2,#fcb69f)"];
   const cardGrad = curProfile ? gradients[(curProfile.client_name||"").length % gradients.length] : gradients[0];
 
+  /* ═══ DESKTOP BLOCKER ═══ */
+  if (isDesktop) return <div className="content-wide" style={{paddingTop:0,minHeight:"100%"}}>
+    <CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false}/>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh"}}>
+      <div style={{textAlign:"center",maxWidth:420,padding:"40px 30px"}}>
+        <div style={{width:100,height:100,borderRadius:"50%",background:"linear-gradient(135deg,#667eea,#764ba2)",margin:"0 auto 24px",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+        <h2 style={{fontSize:28,fontWeight:900,marginBottom:8,letterSpacing:"-0.5px"}}>Experiência mobile</h2>
+        <p style={{fontSize:15,color:B.muted,lineHeight:1.6,marginBottom:24}}>O Match4Biz foi projetado para ser usado no celular, com swipe e interações otimizadas para toque.</p>
+        <div style={{padding:"16px 20px",borderRadius:16,background:`${LIME}08`,border:`1.5px solid ${LIME}20`,marginBottom:20}}>
+          <p style={{fontSize:13,fontWeight:700,color:LIME,marginBottom:4}}>Acesse pelo celular</p>
+          <p style={{fontSize:12,color:B.muted}}>Abra <strong style={{color:B.text}}>uniquehub.com.br</strong> no navegador do seu smartphone</p>
+        </div>
+        <div style={{display:"flex",gap:16,justifyContent:"center",color:B.muted,fontSize:12}}>
+          <span style={{display:"flex",alignItems:"center",gap:4}}>💚 {matches.length} matches</span>
+          <span style={{display:"flex",alignItems:"center",gap:4}}>💰 {credits} créditos</span>
+        </div>
+      </div>
+    </div>
+  </div>;
+
   if(loading) return <div className="content-wide" style={{paddingTop:0,minHeight:"100%"}}><CollapseHeader icon={IC.match4biz} label="Networking" title="Match4Biz" onBack={onBack} collapsed={false}/><div style={{textAlign:"center",padding:80}}><div style={{width:32,height:32,border:`3px solid ${B.border}`,borderTopColor:LIME,borderRadius:"50%",animation:"spin .7s linear infinite",margin:"0 auto"}}/></div></div>;
 
   /* ═══ MATCH POPUP — Tinder style fullscreen ═══ */
