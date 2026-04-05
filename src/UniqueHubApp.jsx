@@ -24413,7 +24413,7 @@ function IntelligencePage({ onBack, clients, user, demands, setDemands }) {
       const clientObj = CDATA.find(c => (c.supaId||c.id) === comp.clientId);
       const prompt = `Analise o concorrente "${comp.name}" (Instagram: @${comp.instagram || "desconhecido"}, segmento: ${comp.segment || clientObj?.segment || "não informado"}) em comparação com o cliente "${comp.clientName}" (segmento: ${clientObj?.segment || "marketing digital"}).
 
-Busque informações públicas atuais sobre esse concorrente usando web search.
+Data de hoje: ${new Date().toLocaleDateString("pt-BR")} (${new Date().getFullYear()}). Busque informações ATUAIS e recentes sobre esse concorrente usando web search.
 
 Responda SOMENTE em JSON válido, sem markdown:
 {
@@ -24463,10 +24463,12 @@ Responda SOMENTE em JSON válido, sem markdown:
       const clientList = CDATA.map(c => `${c.name} (${c.segment||"geral"})`).join(", ");
       const prompt = `Você é um analista de tendências de marketing digital no Brasil. Busque tendências ATUAIS usando web search.
 
+IMPORTANTE: A data de HOJE é ${new Date().toLocaleDateString("pt-BR")} (${new Date().getFullYear()}). Busque APENAS tendências atuais de ${new Date().getFullYear()}. NÃO traga nada de anos anteriores.
+
 Clientes da agência: ${clientList || "diversos segmentos"}
 Segmentos: ${segments.join(", ") || "marketing, gastronomia, tecnologia, saúde, beleza"}
 
-Busque e retorne 8-12 tendências atuais divididas em categorias:
+Busque e retorne 8-12 tendências atuais de ${new Date().toLocaleDateString("pt-BR",{month:"long",year:"numeric"})} divididas em categorias:
 - viral: memes, challenges, áudios virais no TikTok/Reels/X
 - news: notícias relevantes para marketing/negócios
 - seasonal: datas comemorativas, eventos próximos
@@ -24552,7 +24554,7 @@ Responda SOMENTE em JSON válido, sem markdown:
     {ToastEl}
     <CollapseHeader icon={IC.intel||IC.target} label="Análise Estratégica" title="Inteligência de Mercado" collapsed={false} onBack={onBack} />
     {/* Tabs */}
-    <div style={{display:"flex",gap:4,background:"rgba(0,0,0,0.04)",borderRadius:12,padding:4,margin:"0 0 16px"}}>
+    <div style={{display:"flex",gap:4,background:"rgba(0,0,0,0.04)",borderRadius:12,padding:4,margin:"16px 0 20px"}}>
       {[["competitors","🎯 Radar de Concorrentes"],["trends","📡 Detector de Tendências"]].map(([k,l]) => (
         <button key={k} onClick={()=>setTab(k)} style={{flex:1,padding:"10px 16px",borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:tab===k?700:500,background:tab===k?LIME:"transparent",color:tab===k?"#0D0D0D":B.muted,transition:"all .2s"}}>{l}</button>
       ))}
