@@ -24638,7 +24638,7 @@ Responda SOMENTE em JSON válido, sem markdown:
   /* ── RENDER ── */
   const _dsk = isDesktop;
 
-  return <div className="pg">
+  return <div>
     {ToastEl}
     <CollapseHeader icon={IC.intel||IC.target} label="Análise Estratégica" title="Inteligência de Mercado" collapsed={false} onBack={onBack} />
     {/* Tabs */}
