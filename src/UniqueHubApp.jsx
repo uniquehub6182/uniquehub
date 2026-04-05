@@ -24518,26 +24518,97 @@ Responda SOMENTE em JSON válido, sem markdown:
     setTrendsLoading(false);
   };
 
-  /* ── Create demand from trend ── */
+  const [creatingPost, setCreatingPost] = useState(false);
+
+  /* ── Create COMPLETE demand from trend (AI-generated) ── */
   const createPostFromTrend = async (trend) => {
     if (!selPostClient) return showToast("Selecione um cliente","error");
     if (!supabase) return;
+    setCreatingPost(true);
     const clientObj = CDATA.find(c => (c.supaId||c.id) === selPostClient);
-    const demand = {
-      client_id: selPostClient,
-      title: `[Trend] ${trend.title}`,
-      description: `${trend.postIdea}\n\n---\nFonte: ${trend.source||"Radar de Tendências"}\nHashtags: ${(trend.hashtags||[]).join(" ")}`,
-      stage: "idea",
-      format: "feed",
-      created_by: user?.id,
-      priority: trend.urgency === "high" ? "high" : "normal"
-    };
-    const { data, error } = await supabase.from("demands").insert(demand).select().single();
-    if (error) return showToast("Erro ao criar demanda","error");
-    if (demands && setDemands) setDemands([data, ...demands]);
-    setCreatePostModal(null);
-    setSelPostClient("");
-    showToast(`Demanda criada para ${clientObj?.name||"cliente"}!`);
+    const today = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+
+    try {
+      const keys = await supaGetAIKeys();
+      const genPrompt = `Você é uma social media experiente de agência. Crie um post COMPLETO para o cliente "${clientObj?.name||"cliente"}" (segmento: ${clientObj?.segment||"geral"}) baseado nesta tendência:
+
+Tendência: ${trend.title}
+Descrição: ${trend.description}
+Ideia sugerida: ${trend.postIdea || ""}
+Plataformas: ${(trend.platforms||[]).join(", ")}
+Hashtags sugeridas: ${(trend.hashtags||[]).join(" ")}
+
+Data de hoje: ${new Date().toLocaleDateString("pt-BR")} (${new Date().getFullYear()})
+
+Responda SOMENTE em JSON válido, sem markdown:
+{
+  "title": "Título curto do post (max 57 caracteres)",
+  "format": "Feed|Carrossel|Reels|Stories",
+  "networks": ["Instagram","Facebook"],
+  "idea": "Descrição detalhada da ideia do post: objetivo, conceito, referência visual, tom de voz",
+  "briefing": "Briefing completo para o designer: dimensões, estilo visual, elementos obrigatórios, cores, tipografia, quantidade de slides (se carrossel)",
+  "caption": "Legenda completa e pronta para publicar, com CTA, emojis estratégicos e tom adequado ao segmento",
+  "hashtags": "#hashtag1 #hashtag2 #hashtag3 #hashtag4 #hashtag5",
+  "priority": "alta|média"
+}`;
+
+      let result = null;
+      if (keys.claude_key) {
+        const r = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:{"Content-Type":"application/json","x-api-key":keys.claude_key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}, body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2000, messages:[{role:"user",content:genPrompt}] }) });
+        const d = await r.json();
+        const txt = d.content?.[0]?.text || "";
+        try { result = JSON.parse(txt.replace(/```json|```/g,"").trim()); } catch {}
+      } else if (keys.gemini_key) {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+keys.gemini_key, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ contents:[{parts:[{text:genPrompt}]}], generationConfig:{maxOutputTokens:2000} }) });
+        const d = await r.json();
+        const txt = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        try { result = JSON.parse(txt.replace(/```json|```/g,"").trim()); } catch {}
+      }
+
+      const p = result || {};
+      const newD = {
+        title: (p.title || `[Trend] ${trend.title}`).substring(0,57),
+        type: "social",
+        stage: "design",
+        format: p.format || "Feed",
+        priority: p.priority || (trend.urgency === "high" ? "alta" : "média"),
+        network: (p.networks || trend.platforms || ["Instagram"]).join(", "),
+        client: clientObj?.name || "",
+        client_id: selPostClient,
+        steps: {
+          idea: {
+            text: `📡 Gerado a partir de tendência: ${trend.title}\n${trend.source ? "Fonte: " + trend.source : ""}\n\n${p.idea || trend.postIdea || trend.description}`,
+            by: "Munique A.I · Tendências",
+            date: today
+          },
+          briefing: {
+            text: p.briefing || `Criar arte para: ${trend.title}\nFormato: ${p.format||"Feed"}\nReferência: tendência ${trend.type==="viral"?"viral":"atual"} nas redes sociais`,
+            by: "Munique A.I · Tendências",
+            date: today
+          },
+          caption: {
+            text: p.caption || trend.postIdea || "",
+            hashtags: p.hashtags || (trend.hashtags||[]).join(" "),
+            by: "Munique A.I · Tendências",
+            date: today
+          },
+        },
+      };
+
+      const res = await supaCreateDemand(newD, selPostClient);
+      if (res?.data) {
+        if (demands && setDemands) setDemands(prev => [{ ...newD, id: res.data.id, supaId: res.data.id, createdAt: today, assignees: [] }, ...prev]);
+        setCreatePostModal(null);
+        setSelPostClient("");
+        showToast(`Post completo criado para ${clientObj?.name||"cliente"}! Já está no Kanban (Design) ✨`);
+      } else {
+        showToast("Erro ao criar demanda","error");
+      }
+    } catch(e) {
+      console.error(e);
+      showToast("Erro ao gerar post","error");
+    }
+    setCreatingPost(false);
   };
 
   /* ── Filtered ── */
@@ -24750,7 +24821,9 @@ Responda SOMENTE em JSON válido, sem markdown:
                 return <option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}{isSuggested?" ⭐ Sugerido":""}</option>;
               })}
             </select>
-            <button onClick={()=>createPostFromTrend(createPostModal)} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:LIME,color:"#0D0D0D",fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:"pointer"}}>Criar demanda</button>
+            <button onClick={()=>createPostFromTrend(createPostModal)} disabled={creatingPost} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:creatingPost?"#999":LIME,color:"#0D0D0D",fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:creatingPost?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              {creatingPost ? <><span style={{display:"inline-block",width:16,height:16,border:"2px solid rgba(0,0,0,0.2)",borderTop:"2px solid #0D0D0D",borderRadius:"50%",animation:"spin 1s linear infinite"}}></span> Gerando post completo com IA...</> : "✨ Gerar post completo com IA"}
+            </button>
           </div>
         </div>}
 
