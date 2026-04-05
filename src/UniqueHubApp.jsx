@@ -24356,6 +24356,11 @@ function IntelligencePage({ onBack, clients, user, demands, setDemands }) {
   const [expandedTrend, setExpandedTrend] = useState(null);
   const [createPostModal, setCreatePostModal] = useState(null);
   const [selPostClient, setSelPostClient] = useState("");
+  const [postTone, setPostTone] = useState("Adequado ao segmento");
+  const [postEmojis, setPostEmojis] = useState("sim");
+  const [postEmojiQty, setPostEmojiQty] = useState("5");
+  const [postNetworks, setPostNetworks] = useState(["Instagram"]);
+  const [postDimensions, setPostDimensions] = useState("1080x1350");
 
   const CDATA = clients || [];
   const LIME = "#C8FF00";
@@ -24535,22 +24540,26 @@ Responda SOMENTE em JSON válido, sem markdown:
 Tendência: ${trend.title}
 Descrição: ${trend.description}
 Ideia sugerida: ${trend.postIdea || ""}
-Plataformas: ${(trend.platforms||[]).join(", ")}
-Hashtags sugeridas: ${(trend.hashtags||[]).join(" ")}
 
 Data de hoje: ${new Date().toLocaleDateString("pt-BR")} (${new Date().getFullYear()})
+
+CONFIGURAÇÕES DO USUÁRIO (OBRIGATÓRIO seguir):
+- Tom da legenda: ${postTone}
+- Emojis: ${postEmojis==="sim" ? `SIM, usar ${postEmojiQty} emojis distribuídos na legenda` : "NÃO usar emojis na legenda"}
+- Redes sociais: ${postNetworks.join(", ")}
+- Dimensões: ${postDimensions}px
 
 Responda SOMENTE em JSON válido, sem markdown:
 {
   "title": "Título curto do post (max 57 caracteres)",
   "format": "Feed|Carrossel|Reels|Stories",
-  "networks": ["Instagram","Facebook"],
-  "dimensions": "1080x1080 (Feed quadrado) | 1080x1350 (Feed retrato) | 1080x1920 (Stories/Reels) | 1080x566 (Feed paisagem)",
-  "tone": "Tom da legenda: ex: Divertido e leve | Profissional e informativo | Inspirador | Provocativo | Educativo | Empático",
-  "emojis": { "use": true, "quantity": 5, "placement": "início de cada parágrafo e CTA" },
+  "networks": ${JSON.stringify(postNetworks)},
+  "dimensions": "${postDimensions}",
+  "tone": "${postTone}",
+  "emojis": { "use": ${postEmojis==="sim"}, "quantity": ${postEmojiQty==="moderado"?5:parseInt(postEmojiQty)||5} },
   "idea": "Descrição detalhada da ideia do post: objetivo, conceito, referência visual, tom de voz, público-alvo",
-  "briefing": "Briefing completo para o designer: dimensões exatas (ex: 1080x1350px), estilo visual, elementos obrigatórios, paleta de cores sugerida, tipografia, quantidade de slides (se carrossel), referências visuais",
-  "caption": "Legenda completa e pronta para publicar, com CTA, emojis estratégicos posicionados conforme o tom e segmento do cliente",
+  "briefing": "Briefing completo para o designer: dimensões ${postDimensions}px, estilo visual, elementos obrigatórios, paleta de cores sugerida, tipografia, quantidade de slides (se carrossel), referências visuais",
+  "caption": "Legenda completa pronta para publicar no tom ${postTone}, ${postEmojis==="sim"?`com ${postEmojiQty} emojis`:"SEM emojis"}, com CTA adequado ao segmento",
   "hashtags": "#hashtag1 #hashtag2 #hashtag3 #hashtag4 #hashtag5",
   "priority": "alta|média"
 }`;
@@ -24575,17 +24584,17 @@ Responda SOMENTE em JSON válido, sem markdown:
         stage: "design",
         format: p.format || "Feed",
         priority: p.priority || (trend.urgency === "high" ? "alta" : "média"),
-        network: (p.networks || trend.platforms || ["Instagram"]).join(", "),
+        network: postNetworks.join(", "),
         client: clientObj?.name || "",
         client_id: selPostClient,
         steps: {
           idea: {
-            text: `📡 Gerado a partir de tendência: ${trend.title}\n${trend.source ? "Fonte: " + trend.source : ""}\n\n${p.idea || trend.postIdea || trend.description}\n\n🎨 Tom: ${p.tone||"Adequado ao segmento"}\n${p.emojis ? `😀 Emojis: ${p.emojis.use?"Sim":"Não"}${p.emojis.use?` (${p.emojis.quantity||"moderado"}) — ${p.emojis.placement||"distribuídos na legenda"}`:""}\n` : ""}📐 Dimensões: ${p.dimensions||"1080x1080"}\n📱 Redes: ${(p.networks||trend.platforms||["Instagram"]).join(", ")}`,
+            text: `📡 Gerado a partir de tendência: ${trend.title}\n${trend.source ? "Fonte: " + trend.source : ""}\n\n${p.idea || trend.postIdea || trend.description}\n\n🎨 Tom: ${postTone}\n${postEmojis==="sim" ? `😀 Emojis: Sim (${postEmojiQty})\n` : "😀 Emojis: Não\n"}📐 Dimensões: ${postDimensions}px\n📱 Redes: ${postNetworks.join(", ")}`,
             by: "Munique A.I · Tendências",
             date: today
           },
           briefing: {
-            text: `${p.briefing || `Criar arte para: ${trend.title}\nFormato: ${p.format||"Feed"}`}\n\n📐 DIMENSÕES: ${p.dimensions||"1080x1080px"}\n📱 REDES: ${(p.networks||["Instagram"]).join(", ")}\n🎨 TOM VISUAL: ${p.tone||"Alinhado ao segmento"}`,
+            text: `${p.briefing || `Criar arte para: ${trend.title}\nFormato: ${p.format||"Feed"}`}\n\n📐 DIMENSÕES: ${postDimensions}px\n📱 REDES: ${postNetworks.join(", ")}\n🎨 TOM VISUAL: ${postTone}`,
             by: "Munique A.I · Tendências",
             date: today
           },
@@ -24803,7 +24812,7 @@ Responda SOMENTE em JSON válido, sem markdown:
                     {trend.postIdea && <div style={{background:`${LIME}08`,borderRadius:10,padding:"10px 12px",marginBottom:8,borderLeft:`3px solid ${LIME}`}}><p style={{fontSize:10,fontWeight:700,color:"#1A1D23",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>💡 Ideia de post</p><p style={{fontSize:12,color:B.text,lineHeight:1.5}}>{trend.postIdea}</p></div>}
                     {trend.suggestedClients?.length > 0 && <div style={{marginBottom:8}}><p style={{fontSize:10,fontWeight:600,color:B.muted,marginBottom:4}}>Clientes sugeridos:</p><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{trend.suggestedClients.map((sc,i)=><span key={i} style={{fontSize:11,padding:"3px 10px",borderRadius:6,background:"rgba(139,92,246,0.1)",color:"#8B5CF6",fontWeight:600}}>{sc}</span>)}</div></div>}
                     {trend.hashtags?.length > 0 && <div style={{display:"flex",flexWrap:"wrap",gap:4,marginBottom:10}}>{trend.hashtags.map((h,i)=><span key={i} style={{fontSize:11,padding:"2px 8px",borderRadius:6,background:"rgba(0,0,0,0.04)",color:B.muted}}>{h}</span>)}</div>}
-                    <button onClick={()=>{setCreatePostModal(trend);setSelPostClient("");}} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:LIME,color:"#0D0D0D",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}}>✨ Criar post a partir desta tendência</button>
+                    <button onClick={()=>{setCreatePostModal(trend);setSelPostClient("");setPostTone("Adequado ao segmento");setPostEmojis("sim");setPostEmojiQty("5");setPostNetworks(trend.platforms?trend.platforms.map(p=>p==="x"?"X (Twitter)":p==="tiktok"?"TikTok":p==="instagram"?"Instagram":p==="facebook"?"Facebook":p==="youtube"?"YouTube":p==="linkedin"?"LinkedIn":p==="threads"?"Threads":p):["Instagram"]);setPostDimensions("1080x1350");}} style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:LIME,color:"#0D0D0D",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:"pointer"}}>✨ Criar post a partir desta tendência</button>
                   </div>}
                 </div>
               </div>;
@@ -24813,18 +24822,60 @@ Responda SOMENTE em JSON válido, sem markdown:
 
         {/* Create post modal */}
         {createPostModal && <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setCreatePostModal(null)}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,width:"100%",maxWidth:480,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,width:"100%",maxWidth:520,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,0.3)",maxHeight:"85vh",overflowY:"auto"}}>
             <h3 style={{fontSize:16,fontWeight:800,marginBottom:4}}>Criar post a partir da tendência</h3>
-            <p style={{fontSize:13,color:B.muted,marginBottom:16}}>{createPostModal.title}</p>
+            <p style={{fontSize:13,color:B.muted,marginBottom:12}}>{createPostModal.title}</p>
             {createPostModal.postIdea && <div style={{background:`${LIME}08`,borderRadius:10,padding:"10px 12px",marginBottom:16,borderLeft:`3px solid ${LIME}`}}><p style={{fontSize:12,color:B.text,lineHeight:1.5}}>{createPostModal.postIdea}</p></div>}
-            <label style={{fontSize:12,fontWeight:600,color:B.muted,marginBottom:6,display:"block"}}>Para qual cliente?</label>
-            <select value={selPostClient} onChange={e=>setSelPostClient(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid rgba(0,0,0,0.1)",fontFamily:"inherit",fontSize:14,marginBottom:12}}>
+            
+            {/* Cliente */}
+            <label style={{fontSize:12,fontWeight:600,color:B.muted,marginBottom:4,display:"block"}}>Para qual cliente? *</label>
+            <select value={selPostClient} onChange={e=>setSelPostClient(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid rgba(0,0,0,0.1)",fontFamily:"inherit",fontSize:14,marginBottom:14}}>
               <option value="">Selecione</option>
               {CDATA.map(c=>{
                 const isSuggested = (createPostModal.suggestedClients||[]).includes(c.name);
                 return <option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}{isSuggested?" ⭐ Sugerido":""}</option>;
               })}
             </select>
+
+            {/* Tom da legenda */}
+            <label style={{fontSize:12,fontWeight:600,color:B.muted,marginBottom:4,display:"block"}}>🎨 Tom da legenda</label>
+            <select value={postTone} onChange={e=>setPostTone(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid rgba(0,0,0,0.1)",fontFamily:"inherit",fontSize:14,marginBottom:14}}>
+              {["Adequado ao segmento","Divertido e leve","Profissional e informativo","Inspirador e motivacional","Provocativo e ousado","Educativo e didático","Empático e acolhedor","Jovem e descolado","Sofisticado e premium","Urgente e direto"].map(t=><option key={t} value={t}>{t}</option>)}
+            </select>
+
+            {/* Emojis */}
+            <label style={{fontSize:12,fontWeight:600,color:B.muted,marginBottom:4,display:"block"}}>😀 Emojis na legenda</label>
+            <div style={{display:"flex",gap:8,marginBottom:14}}>
+              <div style={{display:"flex",gap:4,flex:1}}>
+                {[["sim","✅ Sim"],["nao","❌ Não"]].map(([v,l])=>(
+                  <button key={v} onClick={()=>setPostEmojis(v)} style={{flex:1,padding:"8px",borderRadius:8,border:postEmojis===v?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:postEmojis===v?`${LIME}15`:"#fff",fontFamily:"inherit",fontSize:12,fontWeight:postEmojis===v?700:500,cursor:"pointer"}}>{l}</button>
+                ))}
+              </div>
+              {postEmojis==="sim" && <select value={postEmojiQty} onChange={e=>setPostEmojiQty(e.target.value)} style={{padding:"8px 12px",borderRadius:8,border:"1.5px solid rgba(0,0,0,0.08)",fontFamily:"inherit",fontSize:12,minWidth:90}}>
+                <option value="3">3 emojis</option><option value="5">5 emojis</option><option value="8">8 emojis</option><option value="10">10+ emojis</option><option value="moderado">Moderado</option>
+              </select>}
+            </div>
+
+            {/* Redes Sociais */}
+            <label style={{fontSize:12,fontWeight:600,color:B.muted,marginBottom:4,display:"block"}}>📱 Redes sociais</label>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+              {["Instagram","Facebook","TikTok","LinkedIn","X (Twitter)","YouTube","Threads"].map(net=>{
+                const sel = postNetworks.includes(net);
+                return <button key={net} onClick={()=>setPostNetworks(prev=>sel?prev.filter(n=>n!==net):[...prev,net])} style={{padding:"6px 12px",borderRadius:8,border:sel?`2px solid ${LIME}`:"1.5px solid rgba(0,0,0,0.08)",background:sel?`${LIME}15`:"#fff",fontFamily:"inherit",fontSize:11,fontWeight:sel?700:500,cursor:"pointer",color:sel?"#1A1D23":B.muted}}>{net}</button>;
+              })}
+            </div>
+
+            {/* Dimensões */}
+            <label style={{fontSize:12,fontWeight:600,color:B.muted,marginBottom:4,display:"block"}}>📐 Dimensões do post</label>
+            <select value={postDimensions} onChange={e=>setPostDimensions(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid rgba(0,0,0,0.1)",fontFamily:"inherit",fontSize:14,marginBottom:16}}>
+              <option value="1080x1080">1080×1080 — Feed quadrado</option>
+              <option value="1080x1350">1080×1350 — Feed retrato (recomendado)</option>
+              <option value="1080x566">1080×566 — Feed paisagem</option>
+              <option value="1080x1920">1080×1920 — Stories / Reels</option>
+              <option value="1200x628">1200×628 — Facebook / LinkedIn</option>
+              <option value="1280x720">1280×720 — YouTube thumbnail</option>
+            </select>
+
             <button onClick={()=>createPostFromTrend(createPostModal)} disabled={creatingPost} style={{width:"100%",padding:"14px",borderRadius:12,border:"none",background:creatingPost?"#999":LIME,color:"#0D0D0D",fontFamily:"inherit",fontSize:15,fontWeight:700,cursor:creatingPost?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
               {creatingPost ? <><span style={{display:"inline-block",width:16,height:16,border:"2px solid rgba(0,0,0,0.2)",borderTop:"2px solid #0D0D0D",borderRadius:"50%",animation:"spin 1s linear infinite"}}></span> Gerando post completo com IA...</> : "✨ Gerar post completo com IA"}
             </button>
