@@ -24391,7 +24391,11 @@ function IntelligencePage({ onBack, clients, user, demands, setDemands }) {
   /* ── Add competitor ── */
   const handleAddComp = () => {
     if (!newComp.name.trim() || !selClient) return showToast("Preencha nome e selecione um cliente","error");
-    const comp = { id:Date.now().toString(), clientId:selClient, clientName:CDATA.find(c=>(c.supaId||c.id)===selClient)?.name||"", name:newComp.name.trim(), instagram:newComp.instagram.trim().replace("@",""), segment:newComp.segment.trim(), addedAt:new Date().toISOString(), lastAnalysis:null, analysisData:null };
+    let igHandle = newComp.instagram.trim().replace("@","");
+    // Extract username from Instagram URLs
+    const igUrlMatch = igHandle.match(/instagram\.com\/([^/?]+)/);
+    if (igUrlMatch) igHandle = igUrlMatch[1];
+    const comp = { id:Date.now().toString(), clientId:selClient, clientName:CDATA.find(c=>(c.supaId||c.id)===selClient)?.name||"", name:newComp.name.trim(), instagram:igHandle, segment:newComp.segment.trim(), addedAt:new Date().toISOString(), lastAnalysis:null, analysisData:null };
     saveCompetitors([...competitors, comp]);
     setNewComp({ name:"", instagram:"", segment:"" });
     setAddModal(false);
@@ -24596,15 +24600,17 @@ Responda SOMENTE em JSON válido, sem markdown:
               const ad = comp.analysisData;
               return <div key={comp.id} style={{background:"#fff",borderRadius:16,border:"1.5px solid rgba(0,0,0,0.06)",overflow:"hidden",transition:"all .2s"}}>
                 {/* Card header */}
-                <div style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:12}}>
-                  <div style={{width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:16,flexShrink:0}}>{comp.name.charAt(0).toUpperCase()}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontSize:15,fontWeight:700,color:B.text}}>{comp.name}</p>
-                    <p style={{fontSize:12,color:B.muted}}>{comp.instagram ? `@${comp.instagram}` : "Sem @"} · {comp.clientName}</p>
+                <div style={{padding:"16px 20px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+                    <div style={{width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#667eea,#764ba2)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:16,flexShrink:0}}>{comp.name.charAt(0).toUpperCase()}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{fontSize:15,fontWeight:700,color:B.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{comp.name}</p>
+                      <p style={{fontSize:12,color:B.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{comp.instagram ? `@${comp.instagram}` : "Sem @"} · {comp.clientName}</p>
+                    </div>
                   </div>
-                  <div style={{display:"flex",gap:4}}>
-                    <button onClick={()=>analyzeCompetitor(comp)} disabled={analyzing} style={{padding:"6px 14px",borderRadius:8,border:"none",background:`${LIME}15`,color:"#1A1D23",fontFamily:"inherit",fontSize:11,fontWeight:700,cursor:"pointer"}}>{analyzing && expandedComp===comp.id ? "⏳":"🔍"} Analisar</button>
-                    <button onClick={()=>handleDeleteComp(comp.id)} style={{padding:"6px 8px",borderRadius:8,border:"none",background:"rgba(239,68,68,0.08)",color:"#EF4444",fontFamily:"inherit",fontSize:11,cursor:"pointer"}}>✕</button>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={()=>analyzeCompetitor(comp)} disabled={analyzing} style={{flex:1,padding:"8px 14px",borderRadius:10,border:"none",background:`${LIME}15`,color:"#1A1D23",fontFamily:"inherit",fontSize:12,fontWeight:700,cursor:"pointer"}}>{analyzing && expandedComp===comp.id ? "⏳ Analisando...":"🔍 Analisar com IA"}</button>
+                    <button onClick={()=>handleDeleteComp(comp.id)} style={{padding:"8px 12px",borderRadius:10,border:"none",background:"rgba(239,68,68,0.08)",color:"#EF4444",fontFamily:"inherit",fontSize:12,fontWeight:600,cursor:"pointer"}}>Remover</button>
                   </div>
                 </div>
                 {/* Segment tag */}
@@ -24638,9 +24644,8 @@ Responda SOMENTE em JSON válido, sem markdown:
         )}
 
         {/* Add Modal */}
-        {addModal && <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setAddModal(false)}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,padding:24,maxHeight:"80vh",overflowY:"auto"}}>
-            <div style={{width:40,height:4,borderRadius:2,background:"rgba(0,0,0,0.1)",margin:"0 auto 16px"}}/>
+        {addModal && <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setAddModal(false)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,width:"100%",maxWidth:480,padding:24,maxHeight:"80vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
             <h3 style={{fontSize:18,fontWeight:800,marginBottom:16}}>Adicionar Concorrente</h3>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
               <div>
@@ -24732,9 +24737,8 @@ Responda SOMENTE em JSON válido, sem markdown:
         )}
 
         {/* Create post modal */}
-        {createPostModal && <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setCreatePostModal(null)}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,padding:24}}>
-            <div style={{width:40,height:4,borderRadius:2,background:"rgba(0,0,0,0.1)",margin:"0 auto 16px"}}/>
+        {createPostModal && <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:99999,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setCreatePostModal(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:20,width:"100%",maxWidth:480,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
             <h3 style={{fontSize:16,fontWeight:800,marginBottom:4}}>Criar post a partir da tendência</h3>
             <p style={{fontSize:13,color:B.muted,marginBottom:16}}>{createPostModal.title}</p>
             {createPostModal.postIdea && <div style={{background:`${LIME}08`,borderRadius:10,padding:"10px 12px",marginBottom:16,borderLeft:`3px solid ${LIME}`}}><p style={{fontSize:12,color:B.text,lineHeight:1.5}}>{createPostModal.postIdea}</p></div>}
