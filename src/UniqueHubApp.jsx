@@ -24348,6 +24348,14 @@ function IntelligencePage({ onBack, clients, user, demands, setDemands }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [expandedComp, setExpandedComp] = useState(null);
 
+  /* ── IDEA BANK STATE ── */
+  const [ibClient, setIbClient] = useState("");
+  const [ibIdeas, setIbIdeas] = useState([]);
+  const [ibLoading, setIbLoading] = useState(false);
+  const [ibExpandedId, setIbExpandedId] = useState(null);
+  const [ibFilter, setIbFilter] = useState("all");
+  const [ibSending, setIbSending] = useState(null);
+
   /* ── TRENDS STATE ── */
   const [trends, setTrends] = useState([]);
   const [trendsLoading, setTrendsLoading] = useState(false);
@@ -24373,6 +24381,13 @@ function IntelligencePage({ onBack, clients, user, demands, setDemands }) {
       setCompLoading(true);
       const { data } = await supabase.from("app_settings").select("key,value").eq("key","competitor_profiles");
       if (data?.[0]?.value) { try { setCompetitors(JSON.parse(data[0].value)); } catch {} }
+      /* Load idea bank cache */
+      const { data: ib } = await supabase.from("app_settings").select("key,value").like("key","idea_bank_%");
+      if (ib?.length) {
+        const allIdeas = {};
+        ib.forEach(row => { try { allIdeas[row.key] = JSON.parse(row.value); } catch {} });
+        setIbIdeas(Object.values(allIdeas).flat());
+      }
       /* Load trends cache */
       const { data: tc } = await supabase.from("app_settings").select("key,value").eq("key","intel_trends_cache");
       if (tc?.[0]?.value) {
@@ -24623,12 +24638,102 @@ Responda SOMENTE em JSON válido, sem markdown:
     setCreatingPost(false);
   };
 
+  /* ── Generate ideas with AI ── */
+  const generateIdeas = async () => {
+    if (!ibClient) return showToast("Selecione um cliente","error");
+    setIbLoading(true);
+    try {
+      const keys = await supaGetAIKeys();
+      const clientObj = CDATA.find(c => (c.supaId||c.id) === ibClient);
+      const month = new Date().toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
+      const prompt = `Você é um estrategista de conteúdo para redes sociais. Gere exatamente 30 ideias de posts para o cliente "${clientObj?.name||"cliente"}" (segmento: ${clientObj?.segment||"geral"}).
+
+Data: ${new Date().toLocaleDateString("pt-BR")} — mês de ${month}
+
+Distribua as ideias nestas 4 categorias (mínimo 6 por categoria):
+- educativo: Posts que ensinam algo ao público (dicas, tutoriais, curiosidades, how-to)
+- entretenimento: Posts leves, memes, trends, humor, bastidores, enquetes
+- venda: Posts focados em conversão (promoções, CTAs, depoimentos, antes/depois)
+- autoridade: Posts que posicionam como referência (dados do setor, opiniões, cases, resultados)
+
+Considere datas comemorativas de ${month}, tendências atuais e sazonalidade do segmento.
+
+Responda SOMENTE em JSON válido (array), sem markdown:
+[
+  {
+    "id": 1,
+    "type": "educativo|entretenimento|venda|autoridade",
+    "title": "Título curto e criativo",
+    "description": "Descrição em 2-3 frases do conceito do post",
+    "format": "Feed|Carrossel|Reels|Stories",
+    "tone": "Tom sugerido para a legenda",
+    "hook": "Frase de gancho para prender atenção nos primeiros 3 segundos"
+  }
+]`;
+
+      let result = null;
+      if (keys.claude_key) {
+        const r = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:{"Content-Type":"application/json","x-api-key":keys.claude_key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}, body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:6000, messages:[{role:"user",content:prompt}] }) });
+        const d = await r.json();
+        const txt = d.content?.[0]?.text || "";
+        try { result = JSON.parse(txt.replace(/```json|```/g,"").trim()); } catch {}
+      } else if (keys.gemini_key) {
+        const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+keys.gemini_key, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:6000} }) });
+        const d = await r.json();
+        const txt = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        try { result = JSON.parse(txt.replace(/```json|```/g,"").trim()); } catch {}
+      }
+      if (result && Array.isArray(result)) {
+        const enriched = result.map((idea,i) => ({ ...idea, id: Date.now()+i, clientId: ibClient, clientName: clientObj?.name||"", month: new Date().toISOString().slice(0,7), used: false }));
+        setIbIdeas(prev => { const filtered = prev.filter(i => !(i.clientId === ibClient && i.month === enriched[0]?.month)); return [...filtered, ...enriched]; });
+        if (supabase) {
+          const cacheKey = `idea_bank_${ibClient}_${enriched[0]?.month}`;
+          await supabase.from("app_settings").upsert({ key: cacheKey, value: JSON.stringify(enriched) }, { onConflict:"key" });
+        }
+        showToast(`${result.length} ideias geradas para ${clientObj?.name}!`);
+      } else { showToast("Erro ao gerar ideias","error"); }
+    } catch(e) { console.error(e); showToast("Erro na geração","error"); }
+    setIbLoading(false);
+  };
+
+  /* ── Send idea to Kanban ── */
+  const sendIdeaToKanban = async (idea) => {
+    if (!supabase) return;
+    setIbSending(idea.id);
+    const today = new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    const newD = {
+      title: idea.title.substring(0,57), type: "social", stage: "idea",
+      format: idea.format || "Feed", priority: "média",
+      network: "Instagram, Facebook", client: idea.clientName, client_id: idea.clientId,
+      steps: {
+        idea: { text: `💡 Banco de Ideias IA
+
+${idea.description}
+
+🎣 Hook: ${idea.hook||""}
+🎨 Tom: ${idea.tone||""}
+📂 Tipo: ${idea.type}`, by: "Munique A.I · Banco de Ideias", date: today },
+      },
+    };
+    const res = await supaCreateDemand(newD, idea.clientId);
+    if (res?.data) {
+      if (demands && setDemands) setDemands(prev => [{ ...newD, id: res.data.id, supaId: res.data.id, createdAt: today, assignees: [] }, ...prev]);
+      setIbIdeas(prev => prev.map(i => i.id === idea.id ? {...i, used: true} : i));
+      showToast(`"${idea.title}" enviada pro Kanban!`);
+    } else { showToast("Erro ao criar demanda","error"); }
+    setIbSending(null);
+  };
+
   /* ── Filtered ── */
   const filteredComps = selClient ? competitors.filter(c => c.clientId === selClient) : competitors;
+  const clientIdeas = ibClient ? ibIdeas.filter(i => i.clientId === ibClient) : ibIdeas;
+  const filteredIdeas = ibFilter === "all" ? clientIdeas : clientIdeas.filter(i => i.type === ibFilter);
+  const ideaCounts = { all: clientIdeas.length, educativo: clientIdeas.filter(i=>i.type==="educativo").length, entretenimento: clientIdeas.filter(i=>i.type==="entretenimento").length, venda: clientIdeas.filter(i=>i.type==="venda").length, autoridade: clientIdeas.filter(i=>i.type==="autoridade").length };
   const normalizeType = (t) => t==="meme"?"viral":t==="opportunity"?"seasonal":t;
   const filteredTrends = trendFilter === "all" ? trends : trends.filter(t => normalizeType(t.type) === trendFilter);
   const trendCounts = { all: trends.length, viral: trends.filter(t=>normalizeType(t.type)==="viral").length, news: trends.filter(t=>t.type==="news").length, seasonal: trends.filter(t=>normalizeType(t.type)==="seasonal").length, local: trends.filter(t=>t.type==="local").length };
 
+  const IDEA_TYPES = { educativo:{icon:"📚",color:"#3B82F6",label:"Educativo"}, entretenimento:{icon:"🎭",color:"#EC4899",label:"Entretenimento"}, venda:{icon:"💰",color:"#10B981",label:"Venda"}, autoridade:{icon:"👑",color:"#F59E0B",label:"Autoridade"} };
   const TYPE_COLORS = { viral:"#EC4899", meme:"#EC4899", news:"#3B82F6", seasonal:"#10B981", local:"#F59E0B", opportunity:"#10B981" };
   const TYPE_LABELS = { viral:"Viral", meme:"Viral", news:"Notícia", seasonal:"Sazonal", local:"Local", opportunity:"Oportunidade" };
   const TYPE_ICONS = { viral:"🔥", meme:"🔥", news:"📰", seasonal:"📅", local:"📍", opportunity:"📅" };
@@ -24643,7 +24748,7 @@ Responda SOMENTE em JSON válido, sem markdown:
     <CollapseHeader icon={IC.intel||IC.target} label="Análise Estratégica" title="Inteligência de Mercado" collapsed={false} onBack={onBack} />
     {/* Tabs */}
     <div style={{display:"flex",gap:4,background:"rgba(0,0,0,0.04)",borderRadius:12,padding:4,margin:"16px 0 20px"}}>
-      {[["competitors","🎯 Radar de Concorrentes"],["trends","📡 Detector de Tendências"]].map(([k,l]) => (
+      {[["competitors","🎯 Concorrentes"],["trends","📡 Tendências"],["ideabank","💡 Banco de Ideias"]].map(([k,l]) => (
         <button key={k} onClick={()=>setTab(k)} style={{flex:1,padding:"10px 16px",borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:tab===k?700:500,background:tab===k?LIME:"transparent",color:tab===k?"#0D0D0D":B.muted,transition:"all .2s"}}>{l}</button>
       ))}
     </div>
@@ -24883,6 +24988,74 @@ Responda SOMENTE em JSON válido, sem markdown:
         </div>}
 
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </>}
+
+      {/* ═══════════════════════════════════════════════
+          TAB: BANCO DE IDEIAS
+      ═══════════════════════════════════════════════ */}
+      {tab === "ideabank" && <>
+        {/* Toolbar */}
+        <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16,alignItems:"center"}}>
+          <select value={ibClient} onChange={e=>setIbClient(e.target.value)} style={{padding:"10px 14px",borderRadius:10,border:"1.5px solid rgba(0,0,0,0.08)",background:"#fff",fontFamily:"inherit",fontSize:13,fontWeight:500,minWidth:200}}>
+            <option value="">Selecione um cliente</option>
+            {CDATA.map(c => <option key={c.supaId||c.id} value={c.supaId||c.id}>{c.name}</option>)}
+          </select>
+          <button onClick={generateIdeas} disabled={ibLoading||!ibClient} style={{padding:"12px 24px",borderRadius:12,border:"none",background:ibLoading?"#999":"linear-gradient(135deg,#8B5CF6,#EC4899)",color:"#fff",fontFamily:"inherit",fontSize:14,fontWeight:700,cursor:ibLoading?"wait":"pointer",display:"flex",alignItems:"center",gap:8,opacity:!ibClient?0.5:1}}>
+            {ibLoading ? <><span style={{display:"inline-block",width:16,height:16,border:"2px solid rgba(255,255,255,0.3)",borderTop:"2px solid #fff",borderRadius:"50%",animation:"spin 1s linear infinite"}}></span> Gerando 30 ideias...</> : "✨ Gerar 30 ideias do mês"}
+          </button>
+          <div style={{flex:1}}/>
+          {clientIdeas.length > 0 && <p style={{fontSize:12,color:B.muted,fontWeight:600}}>{clientIdeas.filter(i=>i.used).length}/{clientIdeas.length} enviadas ao Kanban</p>}
+        </div>
+
+        {/* Filter pills */}
+        {clientIdeas.length > 0 && <div style={{display:"flex",gap:4,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+          {[["all","📋 Todas"],["educativo","📚 Educativo"],["entretenimento","🎭 Entretenimento"],["venda","💰 Venda"],["autoridade","👑 Autoridade"]].map(([k,l]) => {
+            const c = IDEA_TYPES[k]?.color || LIME;
+            return <button key={k} onClick={()=>setIbFilter(k)} style={{padding:"8px 14px",borderRadius:10,border:ibFilter===k?`2px solid ${c}`:"1.5px solid rgba(0,0,0,0.06)",background:ibFilter===k?`${c}12`:"#fff",fontFamily:"inherit",fontSize:12,fontWeight:ibFilter===k?700:500,cursor:"pointer",whiteSpace:"nowrap",color:ibFilter===k?c:B.muted}}>{l} ({ideaCounts[k]||0})</button>;
+          })}
+        </div>}
+
+        {/* Empty state */}
+        {clientIdeas.length === 0 && !ibLoading && (
+          <div style={{textAlign:"center",padding:"60px 20px"}}>
+            <div style={{width:80,height:80,borderRadius:20,background:"linear-gradient(135deg,rgba(139,92,246,0.1),rgba(236,72,153,0.1))",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",fontSize:36}}>💡</div>
+            <p style={{fontSize:18,fontWeight:700,color:B.text,marginBottom:8}}>{ibClient ? "Nenhuma ideia gerada" : "Selecione um cliente"}</p>
+            <p style={{fontSize:14,color:B.muted,maxWidth:420,margin:"0 auto",lineHeight:1.6}}>{ibClient ? 'Clique em "Gerar 30 ideias do mês" para a IA criar ideias de posts classificadas por tipo.' : "Escolha um cliente no dropdown acima para gerar ou visualizar ideias de conteúdo."}</p>
+          </div>
+        )}
+
+        {/* Ideas grid */}
+        {filteredIdeas.length > 0 && (
+          <div style={{display:"grid",gridTemplateColumns:_dsk?"repeat(auto-fill,minmax(300px,1fr))":"1fr",gap:10}}>
+            {filteredIdeas.map((idea) => {
+              const it = IDEA_TYPES[idea.type] || IDEA_TYPES.educativo;
+              const isExp = ibExpandedId === idea.id;
+              return <div key={idea.id} style={{background:idea.used?"rgba(0,0,0,0.02)":"#fff",borderRadius:14,border:`1.5px solid ${idea.used?"rgba(0,0,0,0.04)":"rgba(0,0,0,0.06)"}`,overflow:"hidden",opacity:idea.used?0.6:1,transition:"all .2s"}}>
+                <div style={{padding:"14px 16px",cursor:"pointer"}} onClick={()=>setIbExpandedId(isExp?null:idea.id)}>
+                  {/* Badges */}
+                  <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+                    <span style={{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:6,background:`${it.color}15`,color:it.color}}>{it.icon} {it.label}</span>
+                    <span style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:6,background:"rgba(0,0,0,0.03)",color:B.muted}}>{idea.format||"Feed"}</span>
+                    {idea.used && <span style={{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:6,background:`${LIME}20`,color:"#1A1D23"}}>✓ No Kanban</span>}
+                    <div style={{flex:1}}/>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2.5" strokeLinecap="round" style={{transform:isExp?"rotate(180deg)":"",transition:"transform .2s"}}><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <p style={{fontSize:14,fontWeight:700,color:B.text,marginBottom:4}}>{idea.title}</p>
+                  <p style={{fontSize:12,color:B.muted,lineHeight:1.5,display:isExp?"block":"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{idea.description}</p>
+
+                  {/* Expanded */}
+                  {isExp && <div style={{marginTop:10}} onClick={e=>e.stopPropagation()}>
+                    {idea.hook && <div style={{background:`${it.color}08`,borderRadius:8,padding:"8px 10px",marginBottom:8,borderLeft:`3px solid ${it.color}`}}><p style={{fontSize:10,fontWeight:700,color:it.color,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>🎣 Hook</p><p style={{fontSize:12,color:B.text,lineHeight:1.4,fontStyle:"italic"}}>"{idea.hook}"</p></div>}
+                    {idea.tone && <p style={{fontSize:11,color:B.muted,marginBottom:8}}>🎨 Tom: <strong>{idea.tone}</strong></p>}
+                    {!idea.used && <button onClick={()=>sendIdeaToKanban(idea)} disabled={ibSending===idea.id} style={{width:"100%",padding:"10px",borderRadius:10,border:"none",background:ibSending===idea.id?"#ccc":LIME,color:"#0D0D0D",fontFamily:"inherit",fontSize:13,fontWeight:700,cursor:ibSending===idea.id?"wait":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                      {ibSending===idea.id ? "Enviando..." : "📋 Enviar pro Kanban"}
+                    </button>}
+                  </div>}
+                </div>
+              </div>;
+            })}
+          </div>
+        )}
       </>}
 
     </div>
