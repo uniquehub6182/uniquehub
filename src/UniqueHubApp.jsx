@@ -24545,9 +24545,12 @@ Responda SOMENTE em JSON válido, sem markdown:
   "title": "Título curto do post (max 57 caracteres)",
   "format": "Feed|Carrossel|Reels|Stories",
   "networks": ["Instagram","Facebook"],
-  "idea": "Descrição detalhada da ideia do post: objetivo, conceito, referência visual, tom de voz",
-  "briefing": "Briefing completo para o designer: dimensões, estilo visual, elementos obrigatórios, cores, tipografia, quantidade de slides (se carrossel)",
-  "caption": "Legenda completa e pronta para publicar, com CTA, emojis estratégicos e tom adequado ao segmento",
+  "dimensions": "1080x1080 (Feed quadrado) | 1080x1350 (Feed retrato) | 1080x1920 (Stories/Reels) | 1080x566 (Feed paisagem)",
+  "tone": "Tom da legenda: ex: Divertido e leve | Profissional e informativo | Inspirador | Provocativo | Educativo | Empático",
+  "emojis": { "use": true, "quantity": 5, "placement": "início de cada parágrafo e CTA" },
+  "idea": "Descrição detalhada da ideia do post: objetivo, conceito, referência visual, tom de voz, público-alvo",
+  "briefing": "Briefing completo para o designer: dimensões exatas (ex: 1080x1350px), estilo visual, elementos obrigatórios, paleta de cores sugerida, tipografia, quantidade de slides (se carrossel), referências visuais",
+  "caption": "Legenda completa e pronta para publicar, com CTA, emojis estratégicos posicionados conforme o tom e segmento do cliente",
   "hashtags": "#hashtag1 #hashtag2 #hashtag3 #hashtag4 #hashtag5",
   "priority": "alta|média"
 }`;
@@ -24577,12 +24580,12 @@ Responda SOMENTE em JSON válido, sem markdown:
         client_id: selPostClient,
         steps: {
           idea: {
-            text: `📡 Gerado a partir de tendência: ${trend.title}\n${trend.source ? "Fonte: " + trend.source : ""}\n\n${p.idea || trend.postIdea || trend.description}`,
+            text: `📡 Gerado a partir de tendência: ${trend.title}\n${trend.source ? "Fonte: " + trend.source : ""}\n\n${p.idea || trend.postIdea || trend.description}\n\n🎨 Tom: ${p.tone||"Adequado ao segmento"}\n${p.emojis ? `😀 Emojis: ${p.emojis.use?"Sim":"Não"}${p.emojis.use?` (${p.emojis.quantity||"moderado"}) — ${p.emojis.placement||"distribuídos na legenda"}`:""}\n` : ""}📐 Dimensões: ${p.dimensions||"1080x1080"}\n📱 Redes: ${(p.networks||trend.platforms||["Instagram"]).join(", ")}`,
             by: "Munique A.I · Tendências",
             date: today
           },
           briefing: {
-            text: p.briefing || `Criar arte para: ${trend.title}\nFormato: ${p.format||"Feed"}\nReferência: tendência ${trend.type==="viral"?"viral":"atual"} nas redes sociais`,
+            text: `${p.briefing || `Criar arte para: ${trend.title}\nFormato: ${p.format||"Feed"}`}\n\n📐 DIMENSÕES: ${p.dimensions||"1080x1080px"}\n📱 REDES: ${(p.networks||["Instagram"]).join(", ")}\n🎨 TOM VISUAL: ${p.tone||"Alinhado ao segmento"}`,
             by: "Munique A.I · Tendências",
             date: today
           },
