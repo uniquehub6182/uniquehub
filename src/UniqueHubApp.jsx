@@ -24616,13 +24616,14 @@ Responda SOMENTE em JSON válido, sem markdown:
 
   /* ── Filtered ── */
   const filteredComps = selClient ? competitors.filter(c => c.clientId === selClient) : competitors;
-  const filteredTrends = trendFilter === "all" ? trends : trends.filter(t => t.type === trendFilter);
-  const trendCounts = { all: trends.length, viral: trends.filter(t=>t.type==="viral").length, news: trends.filter(t=>t.type==="news").length, seasonal: trends.filter(t=>t.type==="seasonal").length, local: trends.filter(t=>t.type==="local").length };
+  const normalizeType = (t) => t==="meme"?"viral":t==="opportunity"?"seasonal":t;
+  const filteredTrends = trendFilter === "all" ? trends : trends.filter(t => normalizeType(t.type) === trendFilter);
+  const trendCounts = { all: trends.length, viral: trends.filter(t=>normalizeType(t.type)==="viral").length, news: trends.filter(t=>t.type==="news").length, seasonal: trends.filter(t=>normalizeType(t.type)==="seasonal").length, local: trends.filter(t=>t.type==="local").length };
 
-  const TYPE_COLORS = { viral:"#EC4899", news:"#3B82F6", seasonal:"#10B981", local:"#F59E0B" };
-  const TYPE_LABELS = { viral:"Viral", news:"Notícia", seasonal:"Sazonal", local:"Local" };
-  const TYPE_ICONS = { viral:"🔥", news:"📰", seasonal:"📅", local:"📍" };
-  const URG_LABELS = { high:"⚡ Urgente", medium:"📌 Esta semana", low:"🗓️ Duradouro" };
+  const TYPE_COLORS = { viral:"#EC4899", meme:"#EC4899", news:"#3B82F6", seasonal:"#10B981", local:"#F59E0B", opportunity:"#10B981" };
+  const TYPE_LABELS = { viral:"Viral", meme:"Viral", news:"Notícia", seasonal:"Sazonal", local:"Local", opportunity:"Oportunidade" };
+  const TYPE_ICONS = { viral:"🔥", meme:"🔥", news:"📰", seasonal:"📅", local:"📍", opportunity:"📅" };
+  const URG_LABELS = { high:"⚡ Urgente", medium:"📌 Esta semana", media:"📌 Esta semana", low:"🗓️ Duradouro", baixa:"🗓️ Duradouro", alta:"⚡ Urgente" };
   const PLAT_ICONS = { instagram:"📸", tiktok:"🎵", x:"𝕏", youtube:"▶️", facebook:"📘", linkedin:"💼", threads:"🧵" };
 
   /* ── RENDER ── */
