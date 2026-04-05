@@ -24547,30 +24547,18 @@ Responda SOMENTE em JSON válido, sem markdown:
 
   /* ── RENDER ── */
   const _dsk = isDesktop;
-  const maxW = _dsk ? 1200 : undefined;
 
-  return <div style={{minHeight:"100vh",background:B.bg,fontFamily:"'Inter',sans-serif"}}>
+  return <div className="pg">
     {ToastEl}
-    {/* Header */}
-    <div style={{background:"#1A1D23",padding:_dsk?"28px 40px":"20px 16px",color:"#fff"}}>
-      <div style={{maxWidth:maxW,margin:"0 auto"}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
-          <button onClick={onBack} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:10,padding:8,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-          <div>
-            <p style={{fontSize:11,fontWeight:600,letterSpacing:1.5,color:LIME,textTransform:"uppercase",marginBottom:2}}>Análise Estratégica</p>
-            <h1 style={{fontSize:_dsk?26:20,fontWeight:800,letterSpacing:-0.5}}>Inteligência de Mercado</h1>
-          </div>
-        </div>
-        {/* Tabs */}
-        <div style={{display:"flex",gap:4,background:"rgba(255,255,255,0.08)",borderRadius:12,padding:4}}>
-          {[["competitors","🎯 Radar de Concorrentes"],["trends","📡 Detector de Tendências"]].map(([k,l]) => (
-            <button key={k} onClick={()=>setTab(k)} style={{flex:1,padding:"10px 16px",borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:tab===k?700:500,background:tab===k?LIME:"transparent",color:tab===k?"#0D0D0D":"rgba(255,255,255,0.6)",transition:"all .2s"}}>{l}</button>
-          ))}
-        </div>
-      </div>
+    <CollapseHeader icon={IC.intel||IC.target} label="Análise Estratégica" title="Inteligência de Mercado" collapsed={false} onBack={onBack} />
+    {/* Tabs */}
+    <div style={{display:"flex",gap:4,background:"rgba(0,0,0,0.04)",borderRadius:12,padding:4,margin:"0 0 16px"}}>
+      {[["competitors","🎯 Radar de Concorrentes"],["trends","📡 Detector de Tendências"]].map(([k,l]) => (
+        <button key={k} onClick={()=>setTab(k)} style={{flex:1,padding:"10px 16px",borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:tab===k?700:500,background:tab===k?LIME:"transparent",color:tab===k?"#0D0D0D":B.muted,transition:"all .2s"}}>{l}</button>
+      ))}
     </div>
 
-    <div style={{maxWidth:maxW,margin:"0 auto",padding:_dsk?"24px 40px":"16px"}}>
+    <div>
 
       {/* ═══════════════════════════════════════════════
           TAB: RADAR DE CONCORRENTES
