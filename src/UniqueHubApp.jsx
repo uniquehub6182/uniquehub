@@ -24358,6 +24358,7 @@ function IntelligencePage({ onBack, clients, user, demands, setDemands }) {
   const [selPostClient, setSelPostClient] = useState("");
 
   const CDATA = clients || [];
+  const LIME = "#C8FF00";
   const B = { text:"#1A1D23", muted:"#6B7280", bg:"#ECEEF2", card:"#fff", accent:LIME, brd:"rgba(0,0,0,0.06)", red:"#EF4444" };
 
   /* ── Load competitors from Supabase ── */
