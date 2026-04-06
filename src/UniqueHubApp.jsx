@@ -97,6 +97,29 @@ const _metaOAuthCapture = (() => {
 
 const supabase = SUPA_URL && SUPA_KEY ? createClient(SUPA_URL, SUPA_KEY) : null;
 let _currentOrgId = null; /* Module-level org ID for use in top-level supabase helpers */
+let _currentOrgPlan = "enterprise"; /* Module-level org plan — defaults to enterprise for Unique Marketing */
+
+/* ── Feature gating: what each plan unlocks ── */
+const PLAN_FEATURES = {
+  free:        { clients: 1,  users: 1,  scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: false, contentAi: false, reports: "basic", gamification: false, checkin: false, financial: false, crm: false, match4biz: false, whatsapp: false, academy: false, permissions: false, intelligence: false, presentations: false, newsAutogen: false, commentAi: false },
+  essencial:   { clients: 5,  users: 2,  scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: false, contentAi: false, reports: "basic", gamification: false, checkin: false, financial: false, crm: false, match4biz: false, whatsapp: false, academy: false, permissions: false, intelligence: false, presentations: false, newsAutogen: false, commentAi: false },
+  profissional:{ clients: 10, users: 5,  scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: true,  contentAi: true,  reports: true,    gamification: true,  checkin: true,  financial: true,  crm: false, match4biz: false, whatsapp: false, academy: false, permissions: false, intelligence: false, presentations: false, newsAutogen: true,  commentAi: true  },
+  agencia:     { clients: 20, users: 15, scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: true,  contentAi: true,  reports: true,    gamification: true,  checkin: true,  financial: true,  crm: true,  match4biz: true,  whatsapp: false, academy: true,  permissions: true,  intelligence: true,  presentations: true,  newsAutogen: true,  commentAi: true  },
+  escala:      { clients: 40, users: 999,scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: true,  contentAi: true,  reports: true,    gamification: true,  checkin: true,  financial: true,  crm: true,  match4biz: true,  whatsapp: true,  academy: true,  permissions: true,  intelligence: true,  presentations: true,  newsAutogen: true,  commentAi: true  },
+  enterprise:  { clients: 999,users: 999,scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: true,  contentAi: true,  reports: true,    gamification: true,  checkin: true,  financial: true,  crm: true,  match4biz: true,  whatsapp: true,  academy: true,  permissions: true,  intelligence: true,  presentations: true,  newsAutogen: true,  commentAi: true  },
+};
+const getPlanFeatures = (plan) => PLAN_FEATURES[plan] || PLAN_FEATURES.free;
+const canFeature = (feature) => { const f = getPlanFeatures(_currentOrgPlan); return f[feature] === true || f[feature] === "basic" || (typeof f[feature] === "number" && f[feature] > 0); };
+
+/* Map navigation keys to required features — null means always visible */
+const NAV_FEATURE_MAP = {
+  clients:true, content:true, chat:true, calendar:true, library:true, news:true,
+  ideas:true, team:true, settings:true, help:true, inbox:true, notes:true, search:true, home:true,
+  financial:"financial", reports:true, checkin:"checkin", gamify:"gamification",
+  match4biz:"match4biz", comments:"commentAi", ai:"ai", presentations:"presentations",
+  academy:"academy", intel:"intelligence", feedplanner:true,
+};
+const canNav = (k) => { const req = NAV_FEATURE_MAP[k]; if (req === true || req === undefined) return true; return canFeature(req); };
 
 /* ═══════════════════════ LAYOUT ═══════════════════════ */
 const TOP = "env(safe-area-inset-top, 16px)";
@@ -3372,7 +3395,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
     const fn = icons[ak];
     return typeof fn === "function" ? fn("currentColor") : fn || IC.more("currentColor");
   };
-  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"Comentários IA",k:"comments"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Inbox",k:"inbox"},{l:"Notas",k:"notes"},{l:"Apresentações",k:"presentations"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ];
+  const searchItems = [ {l:"Clientes",k:"clients"},{l:"Conteúdo",k:"content"},{l:"Chat",k:"chat"},{l:"Financeiro",k:"financial"},{l:"Relatórios",k:"reports"},{l:"Calendário",k:"calendar"},{l:"Check-in",k:"checkin"},{l:"Equipe",k:"team"},{l:"Ideias",k:"ideas"},{l:"Ranking",k:"gamify"},{l:"Match4Biz",k:"match4biz"},{l:"Comentários IA",k:"comments"},{l:"IA",k:"ai"},{l:"News",k:"news"},{l:"Biblioteca",k:"library"},{l:"Config",k:"settings"},{l:"Ajuda",k:"help"},{l:"Inbox",k:"inbox"},{l:"Notas",k:"notes"},{l:"Apresentações",k:"presentations"},{l:"Academy",k:"academy"}, ...(CDATA||[]).map(c=>({l:c.name,k:"clients",sub:c.plan})), ...(team||[]).map(m=>({l:m.name,k:"team",sub:"Membro"})) ].filter(s => canNav(s.k));
   const searchResults = searchQ.trim() ? searchItems.filter(s => s.l.toLowerCase().includes(searchQ.toLowerCase())).slice(0,8) : [];
   const renderSection = (key) => {
     if(key==="comunicados") {
@@ -15718,7 +15741,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* ═══ PERSONALIZAR MENU (desktop inline) ═══ */
   if (sub === "navmenu" && isSetDesktop && navPicks) {
-    const avail = (navTabs || ALL_TABS).filter(t => t.k !== "more");
+    const avail = (navTabs || ALL_TABS).filter(t => t.k !== "more").filter(t => canNav(t.k));
     const toggleNav = k => { if (navPicks.includes(k)) { if (navPicks.length <= 3) return; setNavPicks(navPicks.filter(x => x !== k)); } else { if (navPicks.length >= 5) return; setNavPicks([...navPicks, k]); } };
     const moveNav = (i, d) => { const n = [...navPicks]; const j = i + d; if (j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; setNavPicks(n); };
     const notPicked = avail.filter(t => !navPicks.includes(t.k));
@@ -16262,7 +16285,7 @@ function MoreSheet({ onClose, goSub }) {
         <div style={{ width: 32, height: 4, borderRadius: 2, background: B.border, margin: "0 auto 12px" }} />
         <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: B.text }}>Mais funcionalidades</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-          {moreItems.map(it => {
+          {moreItems.filter(it => canNav(it.k)).map(it => {
             const tab = ALL_TABS.find(t => t.k === it.k);
             return (
               <button key={it.k} onClick={() => { goSub(it.k); onClose(); }} className="grid-btn">
@@ -16278,7 +16301,7 @@ function MoreSheet({ onClose, goSub }) {
 }
 
 function NavEditSheet({ picks, setPicks, onClose }) {
-  const avail = ALL_TABS.filter(t => t.k !== "more");
+  const avail = ALL_TABS.filter(t => t.k !== "more").filter(t => canNav(t.k));
   const isNavDesktop = useIsDesktop();
   const toggle = k => { if (picks.includes(k)) { if (picks.length <= 3) return; setPicks(p => p.filter(x => x !== k)); } else { if (picks.length >= 5) return; setPicks(p => [...p, k]); } };
   const moveNav = (i, d) => { setPicks(prev => { const n = [...prev]; const j = i + d; if (j < 0 || j >= n.length) return prev; [n[i], n[j]] = [n[j], n[i]]; return n; }); };
@@ -26851,7 +26874,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     { k:"ideas", l:"Comunique-se", i:IC.ideas }, { k:"notes", l:"Notas", i:(c) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c||"currentColor"} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> }, { k:"ai", l:"IA", i:IC.ai },
     { k:"inbox", l:"Inbox", i:IC.inbox }, { k:"match4biz", l:"Match4Biz", i:IC.match4biz },
     { k:"help", l:"Ajuda", i:IC.help }, { k:"settings", l:"Config", i:IC.settings },
-  ];
+  ].filter(t => canNav(t.k));
   const [clientNavPicks, setClientNavPicks] = useState(() => {
     try { const s = localStorage.getItem("uh_client_nav"); return s ? JSON.parse(s) : ["home","content","chat","calendar"]; } catch { return ["home","content","chat","calendar"]; }
   });
@@ -26965,6 +26988,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
   const [editCfg, setEditCfg] = useState(null);
   const CLIENT_CARDS_MAP = { meta:{l:"Meta do Mês"}, aprovacoes:{l:"Aprovações"}, growth:{l:"Growth Score"}, match:{l:"Match4Biz"} };
   const CLIENT_PILLS_MAP = { conteudo:{l:"Conteúdo",k:"content"}, relatorios:{l:"Relatórios",k:"reports"}, suporte:{l:"Suporte",k:"help"}, growth:{l:"Growth",k:"gamify"}, match:{l:"Match4Biz",k:"match4biz"}, calendario:{l:"Agenda",k:"calendar"}, biblioteca:{l:"Biblioteca",k:"library"}, noticias:{l:"Notícias",k:"news"}, ideias:{l:"Ideias",k:"ideas"}, ia:{l:"Assistente IA",k:"ai"}, config:{l:"Configurações",k:"settings"} };
+  const clientPillsFiltered = Object.fromEntries(Object.entries(CLIENT_PILLS_MAP).filter(([,v]) => canNav(v.k)));
   const [clientCards, setClientCards] = useState(() => { try { const s = localStorage.getItem("uh_client_cards"); return s ? JSON.parse(s) : ["meta","aprovacoes","growth","match"]; } catch { return ["meta","aprovacoes","growth","match"]; } });
   const [clientPills, setClientPills] = useState(() => { try { const s = localStorage.getItem("uh_client_pills"); return s ? JSON.parse(s) : ["conteudo","relatorios","suporte"]; } catch { return ["conteudo","relatorios","suporte"]; } });
   const [metaInfoOpen, setMetaInfoOpen] = useState(false);
@@ -29088,7 +29112,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
     try { localStorage.setItem("uh_nav_picks", JSON.stringify(picks)); } catch {}
     savePrefsToCloud(undefined, undefined, undefined, userId, undefined, picks);
   };
-  const TABS = [...navPicks.map(k => ALL_TABS.find(t => t.k === k)).filter(Boolean), { k: "more", l: "Mais", i: IC.more }];
+  const TABS = [...navPicks.map(k => ALL_TABS.find(t => t.k === k)).filter(Boolean).filter(t => canNav(t.k)), { k: "more", l: "Mais", i: IC.more }];
   const [showNavEdit, setShowNavEdit] = useState(false);
   const [chatTermsOk, setChatTermsOk] = useState(() => localStorage.getItem("uh_chat_terms") === "1");
   const [chatOpenWith, setChatOpenWith] = useState(null);
@@ -29761,6 +29785,7 @@ export default function App() {
         setOrgId(membership.org_id);
         orgRef.current = membership.org_id;
         _currentOrgId = membership.org_id;
+        _currentOrgPlan = membership.organizations?.plan || "free";
         setOrg({ ...membership.organizations, memberRole: membership.role });
         console.log("[Org] Loaded:", membership.organizations?.name, "role:", membership.role);
       } else {
