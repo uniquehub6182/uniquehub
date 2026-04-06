@@ -585,6 +585,9 @@ const mergeSupaEvent = (row) => {
     day: d.getDate(), month: d.getMonth(), year: d.getFullYear(),
     createdBy: row.created_by_name || "Equipe", notes: row.description || "", client: row.client_name || "",
     completed: row.completed || false,
+    cancelled: row.cancelled || false,
+    cancelledAt: row.cancelled_at || null,
+    rescheduledTo: row.rescheduled_to || null,
   };
 };
 
@@ -17073,7 +17076,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                   /* Mark as cancelled, no reschedule */
                   const updated = events.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), cancelledBy: propUser?.name || "" } : e);
                   setEvents(updated);
-                  if (ev.supaId) await supabase.from("calendar_events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
+                  if (ev.supaId) await supabase.from("events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
                   setCancelFlow(null);
                   showToast("Compromisso desmarcado");
                 }} style={{ flex:1, padding:"12px 0", borderRadius:12, background:`${B.red}10`, border:`1.5px solid ${B.red}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red }}>Não, apenas desmarcar</button>
@@ -17090,8 +17093,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               <button disabled={!cancelFlow.newDate} onClick={async () => {
                 /* 1. Mark current as cancelled */
                 const updated = events.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), cancelledBy: propUser?.name || "", rescheduledTo: cancelFlow.newDate } : e);
-                if (ev.supaId) await supabase.from("calendar_events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
-                /* 2. Create new event with same details but new date */
+                if (ev.supaId) await supabase.from("events").update({ cancelled: true, cancelled_at: new Date().toISOString(), rescheduled_to: cancelFlow.newDate }).eq("id", ev.supaId);
                 const newD = new Date(cancelFlow.newDate);
                 const newEvent = { ...ev, id: Date.now(), supaId: undefined, day: newD.getDate(), month: newD.getMonth(), year: newD.getFullYear(), time: cancelFlow.newTime || ev.time, cancelled: false, cancelledAt: undefined, rescheduledFrom: `${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}/${ev.year}`, createdBy: propUser?.name || ev.createdBy, notes: ev.notes ? `${ev.notes}\n\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` : `📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` };
                 const saved = await supaCreateEvent(newEvent);
@@ -17111,6 +17113,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
           <p style={{ fontSize:14, fontWeight:800, color:B.red }}>❌ Compromisso desmarcado</p>
           {ev.cancelledBy && <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Por {ev.cancelledBy}</p>}
           {ev.rescheduledTo && <p style={{ fontSize:11, color:B.accent, marginTop:4 }}>📅 Reagendado para {ev.rescheduledTo.split("-").reverse().join("/")}</p>}
+          {!ev.rescheduledTo && !cancelFlow && <button onClick={() => setCancelFlow({ eventId: ev.id, step: "reschedule", newDate: "", newTime: "" })} style={{ marginTop:10, padding:"10px 20px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>📅 Remarcar</button>}
         </Card>}
       </div>
     );
@@ -17337,7 +17340,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                       setEvents(prev=>prev.map(x=>(x.id===ev.id)?{...x,day:d}:x));
                       setSelDay(d);
                       setViewEvent(null);
-                      if(ev.supaId) { try { await supabase.from("calendar_events").update({day:d}).eq("id",ev.supaId); } catch {} }
+                      if(ev.supaId) { try { const dd = new Date(ev.year, ev.month, d); await supabase.from("events").update({date:`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`}).eq("id",ev.supaId); } catch {} }
                       showToast(`📅 "${ev.title}" movido de ${oldDay} → ${d}`);
                     }catch(err){console.error("Drop error:",err);}
                   }}
@@ -17403,7 +17406,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                       <button onClick={()=>setCancelFlow(p=>({...p,step:"reschedule"}))} style={{flex:1,padding:"10px 0",borderRadius:10,background:B.accent,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.textOnAccent||"#0D0D0D"}}>Sim, reagendar</button>
                       <button onClick={async()=>{
                         setEvents(p=>p.map(e=>e.id===ev.id?{...e,cancelled:true,cancelledAt:new Date().toISOString(),cancelledBy:propUser?.name||""}:e));
-                        if(ev.supaId) await supabase.from("calendar_events").update({cancelled:true,cancelled_at:new Date().toISOString()}).eq("id",ev.supaId);
+                        if(ev.supaId) await supabase.from("events").update({cancelled:true,cancelled_at:new Date().toISOString()}).eq("id",ev.supaId);
                         setCancelFlow(null);showToast("Compromisso desmarcado");
                       }} style={{flex:1,padding:"10px 0",borderRadius:10,background:`${B.red}10`,border:`1.5px solid ${B.red}30`,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,color:B.red}}>Apenas desmarcar</button>
                     </div>
@@ -17416,7 +17419,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                     </div>
                     <button disabled={!cancelFlow.newDate} onClick={async()=>{
                       setEvents(p=>p.map(e=>e.id===ev.id?{...e,cancelled:true,cancelledAt:new Date().toISOString(),rescheduledTo:cancelFlow.newDate}:e));
-                      if(ev.supaId) await supabase.from("calendar_events").update({cancelled:true,cancelled_at:new Date().toISOString()}).eq("id",ev.supaId);
+                      if(ev.supaId) await supabase.from("events").update({cancelled:true,cancelled_at:new Date().toISOString()}).eq("id",ev.supaId);
                       const newD=new Date(cancelFlow.newDate);
                       const newEvent={...ev,id:Date.now(),supaId:undefined,day:newD.getDate(),month:newD.getMonth(),year:newD.getFullYear(),time:cancelFlow.newTime||ev.time,cancelled:false,notes:ev.notes?`${ev.notes}\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}`:`📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}`};
                       const saved=await supaCreateEvent(newEvent);if(saved?.id)newEvent.supaId=saved.id;
@@ -17431,6 +17434,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               {ev.cancelled && <div style={{padding:14,borderRadius:12,background:`${B.red}06`,border:`1.5px solid ${B.red}20`,textAlign:"center",marginBottom:12}}>
                 <p style={{fontSize:14,fontWeight:800,color:B.red}}>❌ Compromisso desmarcado</p>
                 {ev.rescheduledTo && <p style={{fontSize:11,color:B.accent,marginTop:4}}>📅 Reagendado para {ev.rescheduledTo.split("-").reverse().join("/")}</p>}
+                {!ev.rescheduledTo && !cancelFlow && <button onClick={() => setCancelFlow({ eventId: ev.id, step: "reschedule", newDate: "", newTime: "" })} style={{ marginTop:10, padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>📅 Remarcar</button>}
               </div>}
               <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
                 {[{l:"Tipo",v:et.l},{l:"Horário",v:ev.time},{l:"Data",v:`${ev.day}/${(ev.month+1).toString().padStart(2,"0")}/${ev.year}`},{l:"Criado por",v:ev.createdBy},{l:"Cliente",v:ev.client},{l:"Local",v:ev.location}].filter(x=>x.v).map((item,ii)=>(
@@ -17551,7 +17555,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                           <button onClick={() => setCancelFlow(p => ({ ...p, step: "reschedule" }))} style={{ flex:1, padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>Sim, reagendar</button>
                           <button onClick={async () => {
                             setEvents(p => p.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), cancelledBy: propUser?.name || "" } : e));
-                            if (ev.supaId) await supabase.from("calendar_events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
+                            if (ev.supaId) await supabase.from("events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
                             setCancelFlow(null);
                             showToast("Compromisso desmarcado");
                           }} style={{ flex:1, padding:"10px 0", borderRadius:10, background:`${B.red}10`, border:`1.5px solid ${B.red}30`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.red }}>Apenas desmarcar</button>
@@ -17565,7 +17569,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                         </div>
                         <button disabled={!cancelFlow.newDate} onClick={async () => {
                           setEvents(p => p.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), rescheduledTo: cancelFlow.newDate } : e));
-                          if (ev.supaId) await supabase.from("calendar_events").update({ cancelled: true, cancelled_at: new Date().toISOString() }).eq("id", ev.supaId);
+                          if (ev.supaId) await supabase.from("events").update({ cancelled: true, cancelled_at: new Date().toISOString(), rescheduled_to: cancelFlow.newDate }).eq("id", ev.supaId);
                           const newD = new Date(cancelFlow.newDate);
                           const newEvent = { ...ev, id: Date.now(), supaId: undefined, day: newD.getDate(), month: newD.getMonth(), year: newD.getFullYear(), time: cancelFlow.newTime || ev.time, cancelled: false, notes: ev.notes ? `${ev.notes}\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` : `📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` };
                           const saved = await supaCreateEvent(newEvent);
@@ -17607,6 +17611,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                   {ev.cancelled && <div style={{ padding:14, borderRadius:12, background:`${B.red}06`, border:`1.5px solid ${B.red}20`, textAlign:"center" }}>
                     <p style={{ fontSize:14, fontWeight:800, color:B.red }}>❌ Compromisso desmarcado</p>
                     {ev.rescheduledTo && <p style={{ fontSize:11, color:B.accent, marginTop:4 }}>📅 Reagendado para {ev.rescheduledTo.split("-").reverse().join("/")}</p>}
+                    {!ev.rescheduledTo && !cancelFlow && <button onClick={() => setCancelFlow({ eventId: ev.id, step: "reschedule", newDate: "", newTime: "" })} style={{ marginTop:10, padding:"8px 16px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.textOnAccent||"#0D0D0D" }}>📅 Remarcar</button>}
                   </div>}
                   {/* Desmarcar dialog handled by header button + inline dialog above */}
                 </div>
