@@ -16766,7 +16766,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
 }
 
 /* ═══════════════════════ CALENDAR PAGE ═══════════════════════ */
-function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter, canAccess: ca, forceMobile, demands: propDemands }) {
+function CalendarPage({ onBack, clients: propClients, team: propTeam, user: propUser, clientFilter, canAccess: ca, forceMobile, demands: propDemands, onEventCreate }) {
   const _isCalDesktop = useIsDesktop();
   const isCalDesktop = forceMobile ? false : _isCalDesktop;
   const [calExpanded, setCalExpanded] = useState(false);
@@ -16917,6 +16917,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
     setEvents(p=>[...p, ne]);
     setAdding(false); setEventType(null); setForm({});
     showToast("Adicionado ao calendário! ✓");
+    if (onEventCreate) onEventCreate(ne);
   };
 
   const deleteEvent = (id) => {
@@ -19354,13 +19355,15 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
 }
 
 
-function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user, isClientView, forceMobile, onCreatePost }) {
+function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, user, isClientView, forceMobile, onCreatePost, onArticleRead }) {
   const _dsk = useIsDesktop();
   const isNewsDesktop = forceMobile ? false : _dsk;
   const contained = !!forceMobile;
   const [tab, setTab] = useState("all");
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selArticle, setSelArticle] = useState(null);
+  const readArticleIds = React.useRef(new Set());
+  useEffect(() => { if (selArticle && onArticleRead && !readArticleIds.current.has(selArticle.id)) { readArticleIds.current.add(selArticle.id); onArticleRead(selArticle); } }, [selArticle, onArticleRead]);
   const [articles, setArticles] = useState([]);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => { if(onArticlesLoad) onArticlesLoad(articles); }, [articles]);
@@ -27137,6 +27140,35 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
     return cl?.id || cl?.supaId;
   })();
 
+  /* ── Gamification scoring helper with dedup (max 1x/day per action) ── */
+  const gamifyScore = React.useCallback(async (action, points, pillar, description) => {
+    if (!supabase || !myClientId_inner) { console.warn("[Gamify] skip:", action, "no client"); return; }
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: existing } = await supabase.from("client_scores")
+        .select("id").eq("client_id", myClientId_inner).eq("action", action)
+        .gte("created_at", today + "T00:00:00").lte("created_at", today + "T23:59:59").limit(1);
+      if (existing?.length) { console.log("[Gamify] already scored today:", action); return; }
+      const r = await supabase.from("client_scores").insert({ client_id: myClientId_inner, action, points, pillar, description });
+      console.log("[Gamify]", action, r.error ? r.error.message : "OK +"+points);
+    } catch(e) { console.error("[Gamify] error:", action, e); }
+  }, [myClientId_inner]);
+
+  /* ── Trigger: Daily login (+0.3) ── */
+  const loginScoredRef = React.useRef(false);
+  useEffect(() => {
+    if (loginScoredRef.current || !myClientId_inner) return;
+    loginScoredRef.current = true;
+    gamifyScore("daily_login", 0.3, "execucao", "Login diário no app");
+  }, [myClientId_inner, gamifyScore]);
+
+  /* ── Trigger: Sub-page navigation scoring ── */
+  useEffect(() => {
+    if (!sub || !myClientId_inner) return;
+    if (sub === "match4biz") gamifyScore("access_match4biz", 1.0, "ecossistema", "Acessou Match4Biz");
+    else if (sub === "reports") gamifyScore("access_reports", 1.0, "crescimento", "Acessou relatórios de performance");
+  }, [sub, myClientId_inner, gamifyScore]);
+
   const respondDemand = async (demand, status, feedback) => {
     try {
       const steps = { ...demand.steps, client: { ...demand.steps?.client, status, feedback, respondedAt: new Date().toISOString(), respondedBy: user.name || user.email } };
@@ -28875,9 +28907,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "gamify" ? <ClientGamification onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "match4biz" ? <ClientMatch4Biz onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
-      sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={canAccessFn} demands={demands} /> :
+      sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={canAccessFn} demands={demands} onEventCreate={(ev) => gamifyScore(ev?.type==="meeting"?"schedule_meeting":"create_event", ev?.type==="meeting"?3.0:2.0, "estrategia", ev?.type==="meeting"?`Agendou reunião: ${ev.title}`:`Criou evento: ${ev.title}`)} /> :
       sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={resolvedClient?.name||user?.company||user?.name} /> :
-      sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView initialArticleId={openArticleId} onOpenIdConsumed={() => setOpenArticleId(null)} /> :
+      sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView initialArticleId={openArticleId} onOpenIdConsumed={() => setOpenArticleId(null)} onArticleRead={(a) => gamifyScore("read_news_"+a.id, 0.5, "educacao", `Leu: ${a.title}`)} /> :
       sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} isClientView clientFilter={resolvedClient?.name||user?.company||user?.name} /> :
       sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
       sub === "notes" ? <NotesPage onBack={() => setSub(null)} user={user} /> :
@@ -28909,7 +28941,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
           {tab !== "home" && <div style={isDesktop?{maxWidth:1440,margin:"0 auto"}:{}}>
             {tab !== "chat" && tab !== "calendar" && <><div style={isDesktop?{}:{margin:"0 -16px"}}><CollapseHeader icon={hdr.icon} label={hdr.label} title={hdr.title} collapsed={false} /></div><div style={{height:isDesktop?0:14}}/></>}
             {tab === "content" && (isDesktop ? <div style={{background:B.bgCard||"#fff",borderRadius:20,padding:"20px 20px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)",border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`,marginTop:16}}>{renderContent()}</div> : renderContent())}
-            {tab === "calendar" && <div style={{ margin:isDesktop?0:"0 -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} /></div>}
+            {tab === "calendar" && <div style={{ margin:isDesktop?0:"0 -16px 0" }}><CalendarPage onBack={()=>goTab("home")} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={()=>true} demands={demands} onEventCreate={(ev) => gamifyScore(ev?.type==="meeting"?"schedule_meeting":"create_event", ev?.type==="meeting"?3.0:2.0, "estrategia", ev?.type==="meeting"?`Agendou reunião: ${ev.title}`:`Criou evento: ${ev.title}`)} /></div>}
             {tab === "chat" && <div style={{ margin:isDesktop?0:"-14px -16px 0", flex:1, display:"flex", flexDirection:"column" }}><ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} /></div>}
           </div>}
         </div>
