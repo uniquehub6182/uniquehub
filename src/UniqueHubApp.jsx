@@ -5256,60 +5256,96 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   }
 
   /* ── ADD CLIENT FORM ── */
+  const ncFieldStyle = { width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border||"rgba(0,0,0,0.08)"}`, fontFamily:"inherit", fontSize:14, background:B.bgCard||"#fff", color:B.text, boxSizing:"border-box", outline:"none", transition:"border .2s" };
+  const ncLabelStyle = { fontSize:12, fontWeight:600, color:B.muted, marginBottom:6, display:"block", letterSpacing:0.3 };
+  const ncSectionStyle = { fontSize:11, fontWeight:700, color:B.accent, letterSpacing:1.5, textTransform:"uppercase", marginBottom:12 };
+  const ncCardStyle = { background:B.bgCard||"#fff", borderRadius:16, border:`1px solid ${B.border||"rgba(0,0,0,0.06)"}`, padding:isClientsDesktop?"24px":"16px", marginBottom:16, boxShadow:"0 1px 4px rgba(0,0,0,0.04)" };
+
   if (creating) return (
-    <div className="pg">
+    <div className={isClientsDesktop?"content-wide":"pg"} style={isClientsDesktop?{paddingTop:TOP,minHeight:"100%"}:{}}>
       {ToastEl}
-      <Head title="Novo Cliente" onBack={() => { setCreating(false); setForm({}); }} />
+      {isClientsDesktop
+        ? <CollapseHeader icon={IC.clients} label="Carteira" title="Novo Cliente" collapsed={false} onBack={() => { setCreating(false); setForm({}); }} />
+        : <Head title="Novo Cliente" onBack={() => { setCreating(false); setForm({}); }} />
+      }
 
-      <p className="sl" style={{ marginBottom:6 }}>Dados da empresa</p>
-      <Card>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome da empresa *</label>
-        <input value={form.name||""} onChange={e=>f("name",e.target.value)} placeholder="Ex: Casa Nova Imóveis" className="tinput" style={{ marginBottom:10 }} />
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>CNPJ</label>
-        <input value={form.cnpj||""} onChange={e=>f("cnpj",e.target.value)} placeholder="00.000.000/0001-00" className="tinput" style={{ marginBottom:10 }} />
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Segmento</label>
-        <input value={form.segment||""} onChange={e=>f("segment",e.target.value)} placeholder="Ex: Imobiliário, Estética, Tecnologia..." className="tinput" style={{ marginBottom:10 }} />
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Endereço</label>
-        <input value={form.address||""} onChange={e=>f("address",e.target.value)} placeholder="Rua, número - Cidade/UF" className="tinput" />
-      </Card>
-
-      <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Contato principal</p>
-      <Card>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do contato</label>
-        <input value={form.contact||""} onChange={e=>f("contact",e.target.value)} placeholder="Ex: Roberto Silva" className="tinput" style={{ marginBottom:10 }} />
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10 }}>
-          <div>
-            <label className="sl" style={{ display:"block", marginBottom:4 }}>Telefone *</label>
-            <input value={form.phone||""} onChange={e=>f("phone",maskPhone(e.target.value))} placeholder="(24) 99999-9999" className="tinput" inputMode="tel" />
+      <div style={{maxWidth:720,margin:isClientsDesktop?"20px auto 0":"0"}}>
+        {/* DADOS DA EMPRESA */}
+        <p style={ncSectionStyle}>Dados da empresa</p>
+        <div style={ncCardStyle}>
+          <div style={{display:"grid",gridTemplateColumns:isClientsDesktop?"1fr 1fr":"1fr",gap:14}}>
+            <div style={{gridColumn:isClientsDesktop?"span 2":"span 1"}}>
+              <label style={ncLabelStyle}>Nome da empresa *</label>
+              <input value={form.name||""} onChange={e=>f("name",e.target.value)} placeholder="Ex: Casa Nova Imóveis" style={ncFieldStyle} />
+            </div>
+            <div>
+              <label style={ncLabelStyle}>CNPJ</label>
+              <input value={form.cnpj||""} onChange={e=>f("cnpj",e.target.value)} placeholder="00.000.000/0001-00" style={ncFieldStyle} />
+            </div>
+            <div>
+              <label style={ncLabelStyle}>Segmento</label>
+              <input value={form.segment||""} onChange={e=>f("segment",e.target.value)} placeholder="Ex: Imobiliário, Estética, Tecnologia..." style={ncFieldStyle} />
+            </div>
+            <div style={{gridColumn:isClientsDesktop?"span 2":"span 1"}}>
+              <label style={ncLabelStyle}>Endereço</label>
+              <input value={form.address||""} onChange={e=>f("address",e.target.value)} placeholder="Rua, número - Cidade/UF" style={ncFieldStyle} />
+            </div>
           </div>
-          <div>
-            <label className="sl" style={{ display:"block", marginBottom:4 }}>E-mail</label>
-            <input value={form.email||""} onChange={e=>f("email",e.target.value)} placeholder="email@empresa.com" className="tinput" />
+        </div>
+
+        {/* CONTATO PRINCIPAL */}
+        <p style={ncSectionStyle}>Contato principal</p>
+        <div style={ncCardStyle}>
+          <div style={{display:"grid",gridTemplateColumns:isClientsDesktop?"1fr 1fr":"1fr",gap:14}}>
+            <div style={{gridColumn:isClientsDesktop?"span 2":"span 1"}}>
+              <label style={ncLabelStyle}>Nome do contato</label>
+              <input value={form.contact||""} onChange={e=>f("contact",e.target.value)} placeholder="Ex: Roberto Silva" style={ncFieldStyle} />
+            </div>
+            <div>
+              <label style={ncLabelStyle}>Telefone *</label>
+              <input value={form.phone||""} onChange={e=>f("phone",maskPhone(e.target.value))} placeholder="(24) 99999-9999" style={ncFieldStyle} inputMode="tel" />
+            </div>
+            <div>
+              <label style={ncLabelStyle}>E-mail</label>
+              <input value={form.email||""} onChange={e=>f("email",e.target.value)} placeholder="email@empresa.com" style={ncFieldStyle} />
+            </div>
+            <div style={{gridColumn:isClientsDesktop?"span 2":"span 1"}}>
+              <label style={ncLabelStyle}>CPF / CNPJ *</label>
+              <input value={form.cnpj||""} onChange={e=>f("cnpj",e.target.value)} placeholder="000.000.000-00 ou 00.000.000/0000-00" style={ncFieldStyle} inputMode="numeric" />
+            </div>
           </div>
         </div>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>CPF / CNPJ *</label>
-        <input value={form.cnpj||""} onChange={e=>f("cnpj",e.target.value)} placeholder="000.000.000-00 ou 00.000.000/0000-00" className="tinput" inputMode="numeric" />
-      </Card>
 
-      <p className="sl" style={{ marginTop:16, marginBottom:6 }}>Plano e valor</p>
-      <Card>
-        <label className="sl" style={{ display:"block", marginBottom:6 }}>Plano</label>
-        <div style={{ display:"flex", gap:6, marginBottom:10 }}>
-          {["Traction","Growth 360","Partner"].map(p=>(
-            <button key={p} onClick={()=>{f("plan",p);f("monthly",PLAN_VALUES[p]);}} className={`htab${form.plan===p?" a":""}`} style={{ flex:1 }}>{p}{canFinancial && <span style={{display:"block",fontSize:9,opacity:0.6,marginTop:2}}>{PLAN_VALUES[p]}</span>}</button>
-          ))}
+        {/* PLANO E VALOR */}
+        <p style={ncSectionStyle}>Plano e valor</p>
+        <div style={ncCardStyle}>
+          <label style={ncLabelStyle}>Plano</label>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+            {["Traction","Growth 360","Partner"].map(p=>(
+              <button key={p} onClick={()=>{f("plan",p);f("monthly",PLAN_VALUES[p]);}} style={{padding:"14px 12px",borderRadius:12,border:form.plan===p?`2px solid ${B.accent}`:`1.5px solid ${B.border||"rgba(0,0,0,0.08)"}`,background:form.plan===p?`${B.accent}12`:B.bgCard||"#fff",cursor:"pointer",fontFamily:"inherit",textAlign:"center",transition:"all .2s"}}>
+                <p style={{fontSize:14,fontWeight:form.plan===p?800:600,color:B.text}}>{p}</p>
+                {canFinancial && <p style={{fontSize:11,color:B.muted,marginTop:4}}>{PLAN_VALUES[p]}</p>}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:isClientsDesktop?"1fr 1fr":"1fr",gap:14}}>
+            <div>
+              <label style={ncLabelStyle}>Valor mensal</label>
+              <input value={form.monthly||""} onChange={e=>f("monthly",e.target.value)} placeholder="R$ 2.500" style={ncFieldStyle} />
+            </div>
+            <div>
+              <label style={ncLabelStyle}>Status</label>
+              <div style={{display:"flex",gap:8}}>
+                {[{k:"ativo",l:"✅ Ativo",c:"#10B981"},{k:"trial",l:"🧪 Trial",c:"#F59E0B"}].map(s=>(
+                  <button key={s.k} onClick={()=>f("status",s.k)} style={{flex:1,padding:"12px",borderRadius:12,border:form.status===s.k?`2px solid ${s.c}`:`1.5px solid ${B.border||"rgba(0,0,0,0.08)"}`,background:form.status===s.k?`${s.c}12`:B.bgCard||"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:form.status===s.k?700:500,color:form.status===s.k?s.c:B.muted}}>{s.l}</button>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Valor mensal</label>
-        <input value={form.monthly||""} onChange={e=>f("monthly",e.target.value)} placeholder="R$ 2.500" className="tinput" style={{ marginBottom:10 }} />
-        <label className="sl" style={{ display:"block", marginBottom:6 }}>Status</label>
-        <div style={{ display:"flex", gap:6 }}>
-          {[{k:"ativo",l:"Ativo"},{k:"trial",l:"Trial"}].map(s=>(
-            <button key={s.k} onClick={()=>f("status",s.k)} className={`htab${form.status===s.k?" a":""}`} style={{ flex:1 }}>{s.l}</button>
-          ))}
-        </div>
-      </Card>
 
-      <button onClick={saveClient} className="pill full accent" style={{ marginTop:20, padding:"14px 0" }}>Cadastrar Cliente</button>
+        <button onClick={saveClient} style={{width:"100%",padding:"16px",borderRadius:14,border:"none",background:B.accent,color:"#0D0D0D",fontFamily:"inherit",fontSize:16,fontWeight:800,cursor:"pointer",marginBottom:40,boxShadow:`0 4px 20px ${B.accent}40`}}>Cadastrar Cliente</button>
+      </div>
     </div>
   );
 
