@@ -498,3 +498,269 @@ Capturando 0.1% = 240 clientes pagantes = R$20k+ MRR.
 - Plano WhatsApp: `/docs/whatsapp-integration-plan.md`
 - Spec Apresentações: `/docs/apresentacoes-spec.md`
 - Prompt Apresentações: `/docs/apresentacoes-prompt.md`
+
+## Conexão de Redes Sociais (Multi-Tenant)
+
+### Como funciona hoje (single-tenant)
+
+```
+UniqueHub tem 2 apps no Meta:
+  Facebook App (1557196698688426) → publica no Facebook
+  Instagram App (1380216083791935) → publica no Instagram
+  
+Tokens salvos em: social_tokens (tabela no Supabase)
+Cada cliente da Unique Marketing conecta via OAuth → token salvo
+```
+
+### Como precisa funcionar (multi-tenant)
+
+```
+UniqueHub (PLATAFORMA) tem 1 Facebook App verificado
+         ↓
+   Agência A se cadastra no UniqueHub
+         ↓
+   Agência A adiciona seu cliente "Pizzaria Bella"
+         ↓
+   Pizzaria Bella conecta o Instagram DELA via OAuth
+   (autoriza o app da UniqueHub a publicar)
+         ↓
+   Token salvo: org_id=agencia_a, client_id=pizzaria_bella
+         ↓
+   Agência A agenda post → UniqueHub publica com o token da Pizzaria
+```
+
+**O ponto-chave**: O app do Facebook/Instagram é da PLATAFORMA (UniqueHub), 
+não de cada agência. Isso é exatamente como Buffer, mLabs, Etus funcionam. 
+Uma única app do Meta autorizada, e cada usuário final (cliente da agência) 
+faz OAuth pra dar permissão de publicação.
+
+### Arquitetura
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  Meta Platform                                           │
+│                                                          │
+│  Facebook App: "UniqueHub" (verificado, tipo Business)   │
+│  Permissões: pages_manage_posts, instagram_basic,        │
+│              instagram_content_publish, leads_retrieval,  │
+│              pages_read_engagement, business_management   │
+│                                                          │
+│  Redirect URI: https://uniquehub.com.br/auth/meta/cb     │
+└─────────────────────────┬────────────────────────────────┘
+                          │ OAuth 2.0
+      ┌───────────────────┼───────────────────┐
+      ▼                   ▼                   ▼
+┌───────────┐      ┌───────────┐      ┌───────────┐
+│ Agência A │      │ Agência B │      │ Criador C │
+│           │      │           │      │           │
+│ Client 1 ─┼─token│ Client 1 ─┼─token│ (próprio)─┼─token
+│ Client 2 ─┼─token│ Client 2 ─┼─token│           │
+│ Client 3 ─┼─token│ Client 3 ─┼─token│           │
+└───────────┘      └───────────┘      └───────────┘
+```
+
+### Tabela `social_tokens` (atualizada para multi-tenant)
+
+```sql
+-- Migrar a tabela existente
+ALTER TABLE social_tokens ADD COLUMN org_id UUID REFERENCES organizations(id);
+
+-- Estrutura final
+CREATE TABLE social_tokens (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
+  
+  -- Qual rede
+  platform TEXT NOT NULL,        -- 'instagram', 'facebook', 'tiktok', 'linkedin'
+  
+  -- Dados da conta conectada
+  account_id TEXT,               -- ID da conta na plataforma
+  account_name TEXT,             -- Nome/username
+  account_avatar TEXT,           -- URL do avatar
+  page_id TEXT,                  -- Facebook Page ID (necessário pra Instagram)
+  ig_user_id TEXT,               -- Instagram Business Account ID
+  
+  -- Tokens
+  access_token TEXT NOT NULL,
+  refresh_token TEXT,
+  token_expires_at TIMESTAMPTZ,
+  token_status TEXT DEFAULT 'active',  -- 'active', 'expired', 'revoked'
+  
+  -- Metadata
+  permissions TEXT[],            -- Permissões concedidas
+  connected_by TEXT,             -- Quem conectou (email do user)
+  connected_at TIMESTAMPTZ DEFAULT now(),
+  last_used_at TIMESTAMPTZ,
+  last_checked_at TIMESTAMPTZ,
+  
+  UNIQUE(org_id, client_id, platform, account_id)
+);
+
+-- RLS
+ALTER TABLE social_tokens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY org_isolation ON social_tokens
+  FOR ALL USING (org_id = (auth.jwt()->>'org_id')::uuid);
+```
+
+### Fluxo de Conexão (quem faz o quê)
+
+**Cenário 1: Agência conecta o Instagram do cliente**
+```
+1. Agência abre UniqueHub → vai no cliente "Pizzaria Bella"
+2. Clica "Conectar Instagram"
+3. Entra no celular/computador do cliente (ou pede pro cliente fazer)
+4. OAuth: Login no Instagram → autoriza o app UniqueHub
+5. Callback retorna token → salvo com org_id + client_id
+6. Pronto — agência pode agendar posts pro Instagram da Pizzaria
+```
+
+**Cenário 2: Cliente conecta ele mesmo (self-service)**
+```
+1. Cliente abre o app UniqueHub (app do cliente)
+2. Em Configurações → "Conectar Instagram"
+3. OAuth: Login no Instagram → autoriza
+4. Token salvo automaticamente com o org_id da agência + client_id dele
+5. Agência já pode publicar sem pedir nada ao cliente
+```
+
+**Cenário 3: Criador de conteúdo / influenciador (sem agência)**
+```
+1. Criador se cadastra no UniqueHub (plano Solo)
+2. É ao mesmo tempo "agência" e "cliente" de si mesmo
+3. Conecta o próprio Instagram
+4. Usa o UniqueHub pra agendar seus posts
+```
+
+### O que muda no código atual
+
+Hoje, o OAuth redirect é fixo para a Unique Marketing:
+```
+redirect_uri: https://uniquehub.com.br/auth/instagram/callback
+```
+
+No multi-tenant, o redirect continua o MESMO (é uma limitação do Meta — 
+cada app tem URIs fixas), mas o callback precisa saber DE QUAL org veio:
+
+```javascript
+// No início do OAuth, salvar no state:
+const state = JSON.stringify({ org_id, client_id, platform });
+const authUrl = `https://api.instagram.com/oauth/authorize?
+  client_id=${INSTAGRAM_APP_ID}
+  &redirect_uri=${REDIRECT_URI}
+  &scope=instagram_basic,instagram_content_publish
+  &response_type=code
+  &state=${encodeURIComponent(state)}`;
+
+// No callback:
+const { code, state } = queryParams;
+const { org_id, client_id, platform } = JSON.parse(state);
+// Trocar code por token...
+// Salvar com org_id e client_id corretos
+```
+
+### Requisito: Verificação do App no Meta
+
+Para que o app da UniqueHub possa ser usado por qualquer pessoa 
+(não só a Unique Marketing), o app precisa passar pela 
+**App Review do Meta**:
+
+1. **App tipo Business** (já é o caso)
+2. **Verificação de negócio** — Precisa verificar a empresa UniqueHub 
+   no Meta Business Suite (documento, CNPJ, etc.)
+3. **Revisão de permissões** — Submeter cada permissão pra aprovação:
+   - `instagram_basic` — Ler dados do perfil
+   - `instagram_content_publish` — Publicar posts
+   - `pages_manage_posts` — Publicar no Facebook
+   - `pages_read_engagement` — Ler métricas
+   - `leads_retrieval` — Capturar leads (para o CRM)
+   - `business_management` — Gerenciar contas business
+4. **Gravação de screencast** — Mostrar como o app usa cada permissão
+5. **Política de privacidade** — URL pública com política adequada
+6. **Termos de uso** — URL pública
+
+Prazo estimado de aprovação: 2-6 semanas após submissão.
+
+**IMPORTANTE**: Enquanto não for aprovado, o app funciona em 
+"Development Mode" — só contas adicionadas como testador podem 
+conectar. Ou seja, a Unique Marketing continua funcionando normal, 
+mas novos clientes de outras agências precisam esperar a aprovação.
+
+### Estratégia para múltiplas plataformas
+
+O modelo se aplica a qualquer rede social:
+
+| Plataforma | App necessário | Status atual | Esforço |
+|---|---|---|---|
+| Instagram | Facebook App + Instagram API | ✅ Funcional | Só adaptar OAuth |
+| Facebook Pages | Facebook App | ✅ Funcional | Já integrado |
+| TikTok | TikTok for Developers App | ❌ Novo | API de publicação disponível |
+| LinkedIn | LinkedIn App | ❌ Novo | API de publicação disponível |
+| X (Twitter) | Twitter Developer App | ❌ Novo | API v2 disponível |
+| YouTube | Google Cloud Project | ❌ Novo | API de upload disponível |
+| Pinterest | Pinterest App | ❌ Novo | API de publicação |
+
+Cada plataforma é um "connector" separado. A agência escolhe quais 
+plataformas quer usar, e os clientes conectam as contas deles.
+
+**Fase 1**: Instagram + Facebook (já funciona)
+**Fase 2**: TikTok + LinkedIn (mais demandados)
+**Fase 3**: X + YouTube + Pinterest
+
+### Painel de Conexões na Agência
+
+Nova seção em cada cliente (no painel da agência):
+
+```
+┌─────────────────────────────────────────────────┐
+│  Pizzaria Bella — Redes Sociais                 │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  📸 Instagram     @pizzariabella                │
+│     ✅ Conectado · Token válido até 12/jun      │
+│     Publicar ✓ · Métricas ✓ · Stories ✗        │
+│     [Reconectar] [Desconectar]                  │
+│                                                 │
+│  📘 Facebook     Pizzaria Bella Oficial         │
+│     ✅ Conectado · Token válido até 12/jun      │
+│     Publicar ✓ · Métricas ✓                    │
+│     [Reconectar] [Desconectar]                  │
+│                                                 │
+│  🎵 TikTok      não conectado                  │
+│     [Conectar TikTok]                           │
+│                                                 │
+│  💼 LinkedIn     não conectado                  │
+│     [Conectar LinkedIn]                         │
+│                                                 │
+│  ── Enviar link para o cliente conectar ──      │
+│  O cliente pode conectar pelo próprio app.      │
+│  [Copiar link de convite]                       │
+│                                                 │
+│  ── Health Check ──                             │
+│  Última verificação: há 2 horas                 │
+│  Próxima: em 4 horas (automático)              │
+└─────────────────────────────────────────────────┘
+```
+
+### Token Health Check (já existe, adaptar para multi-tenant)
+
+O Edge Function `check-token-health` que já roda a cada 6h via pg_cron
+precisa ser adaptado:
+
+```typescript
+// Antes (single-tenant):
+const { data: tokens } = await supabase
+  .from("social_tokens").select("*");
+
+// Depois (multi-tenant):
+// Usa service_role key — ignora RLS, checa TODOS os tokens
+const { data: tokens } = await supabase
+  .from("social_tokens")
+  .select("*, organizations(name, plan)")
+  .eq("token_status", "active");
+
+// Se token expirado/inválido:
+// 1. Marcar como "expired" no banco
+// 2. Notificar a agência (org) que o token do cliente X expirou
+// 3. Notificar o cliente para reconectar
+```
