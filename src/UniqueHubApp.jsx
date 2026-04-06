@@ -19368,7 +19368,9 @@ function NewsPage({ onBack, onArticlesLoad, initialArticleId, onOpenIdConsumed, 
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const [selArticle, setSelArticle] = useState(null);
   const readArticleIds = React.useRef(new Set());
-  useEffect(() => { if (selArticle && onArticleRead && !readArticleIds.current.has(selArticle.id)) { readArticleIds.current.add(selArticle.id); onArticleRead(selArticle); } }, [selArticle, onArticleRead]);
+  const onArticleReadRef = React.useRef(onArticleRead);
+  onArticleReadRef.current = onArticleRead;
+  useEffect(() => { if (selArticle && onArticleReadRef.current && !readArticleIds.current.has(selArticle.id)) { readArticleIds.current.add(selArticle.id); try { onArticleReadRef.current(selArticle); } catch(e) { console.error("[Gamify] onArticleRead error:", e); } } }, [selArticle]);
   const [articles, setArticles] = useState([]);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => { if(onArticlesLoad) onArticlesLoad(articles); }, [articles]);
