@@ -111,6 +111,9 @@ const PLAN_FEATURES = {
 const getPlanFeatures = (plan) => PLAN_FEATURES[plan] || PLAN_FEATURES.free;
 const canFeature = (feature) => { const f = getPlanFeatures(_currentOrgPlan); return f[feature] === true || f[feature] === "basic" || (typeof f[feature] === "number" && f[feature] > 0); };
 
+/* ── Org-scoped query helper: adds .eq("org_id", _currentOrgId) when available ── */
+const orgScope = (query) => _currentOrgId ? query.eq("org_id", _currentOrgId) : query;
+
 /* Map navigation keys to required features — null means always visible */
 const NAV_FEATURE_MAP = {
   clients:true, content:true, chat:true, calendar:true, library:true, news:true,
@@ -128,7 +131,7 @@ const TOP = "env(safe-area-inset-top, 16px)";
 const supaLoadClients = async () => {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase.from("clients").select("*").order("name");
+    const { data, error } = await orgScope(supabase.from("clients").select("*")).order("name");
     if (error) { console.error("Supa clients error:", error); return null; }
     return data;
   } catch (e) { console.error("Supa clients catch:", e); return null; }
@@ -229,7 +232,7 @@ const mergeSupaClient = (row, existing) => ({
 const supaLoadDemands = async () => {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase.from("demands").select("*").order("created_at", { ascending: false });
+    const { data, error } = await orgScope(supabase.from("demands").select("*")).order("created_at", { ascending: false });
     if (error) { console.error("Supa demands error:", error); return null; }
     /* Fix double-encoded steps (stored as string instead of JSON object) */
     if (data) data.forEach(d => { if (typeof d.steps === "string") { try { d.steps = JSON.parse(d.steps); } catch {} } });
@@ -578,7 +581,7 @@ const mergeSupaDemand = (row) => {
 const supaLoadEvents = async () => {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase.from("events").select("*").order("date", { ascending: true });
+    const { data, error } = await orgScope(supabase.from("events").select("*")).order("date", { ascending: true });
     if (error) { console.error("Supa events error:", error); return null; }
     return data;
   } catch (e) { return null; }
@@ -622,7 +625,7 @@ const mergeSupaEvent = (row) => {
 const supaLoadIdeas = async () => {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase.from("ideas").select("*").order("created_at", { ascending: false });
+    const { data, error } = await orgScope(supabase.from("ideas").select("*")).order("created_at", { ascending: false });
     if (error) { console.error("Supa ideas error:", error); return null; }
     return data;
   } catch (e) { return null; }
@@ -657,7 +660,7 @@ const supaLoadAllXp = async () => {
     const { data: rpcData, error: rpcError } = await supabase.rpc("get_all_xp_events");
     if (!rpcError && rpcData) return rpcData;
     /* Fallback: direct query (limited by RLS to own user only) */
-    const { data, error } = await supabase.from("xp_events").select("*").order("created_at", { ascending: false }).limit(500);
+    const { data, error } = await orgScope(supabase.from("xp_events").select("*")).order("created_at", { ascending: false }).limit(500);
     if (error) return [];
     return data || [];
   } catch(e) { return []; }
@@ -678,7 +681,7 @@ const supaResetXp = async (userId) => {
 /* ── Supabase: News CRUD ── */
 const supaLoadNews = async () => {
   if (!supabase) return [];
-  try { const { data } = await supabase.from("news").select("*").order("created_at", { ascending: false }); return data || []; } catch(e) { return []; }
+  try { const { data } = await orgScope(supabase.from("news").select("*")).order("created_at", { ascending: false }); return data || []; } catch(e) { return []; }
 };
 const supaCreateNews = async (article) => {
   if (!supabase) return null;
@@ -894,7 +897,7 @@ const supaUpdateInvoice = async (id, upd) => { if (!supabase) return null; try {
 const supaDeleteInvoice = async (id) => { if (!supabase) return; await supabase.from("invoices").delete().eq("id", id); };
 
 /* ── Match4Biz Supabase ── */
-const supaLoadMatches = async () => { if (!supabase) return []; try { const { data } = await supabase.from("match4biz_matches").select("*").order("matched_at", { ascending: false }); return data || []; } catch { return []; } };
+const supaLoadMatches = async () => { if (!supabase) return []; try { const { data } = await orgScope(supabase.from("match4biz_matches").select("*")).order("matched_at", { ascending: false }); return data || []; } catch { return []; } };
 const supaCreateMatch = async (m) => { if (!supabase) return null; try { const { data, error } = await supabase.from("match4biz_matches").insert({...m, org_id: _currentOrgId}).select().single(); if (error) console.error("[Match]", error.message); return data; } catch { return null; } };
 const supaUpdateMatch = async (id, upd) => { if (!supabase) return null; try { const { data } = await supabase.from("match4biz_matches").update({ ...upd, updated_at: new Date().toISOString() }).eq("id", id).select().single(); return data; } catch { return null; } };
 const supaDeleteMatch = async (id) => { if (!supabase) return; await supabase.from("match4biz_matches").delete().eq("id", id); };
@@ -4365,7 +4368,7 @@ function CheckinPage({ onBack, user }) {
       setLoading(true);
       setTeamError(null);
       try {
-        const { data: checkins, error } = await supabase.from("checkins").select("*").order("check_in_at", { ascending: false }).limit(200);
+        const { data: checkins, error } = await orgScope(supabase.from("checkins").select("*")).order("check_in_at", { ascending: false }).limit(200);
         if (error) { setTeamError(error.message || "Erro ao carregar dados"); setTeamData([]); setLoading(false); return; }
         /* Fetch profile names separately */
         const uids = [...new Set((checkins || []).map(c => c.user_id))];
@@ -4781,7 +4784,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     if (!supabase || rankLoaded) return;
     (async () => {
       try {
-        const { data: scores } = await supabase.from("client_scores").select("*").order("created_at", { ascending: false });
+        const { data: scores } = await orgScope(supabase.from("client_scores").select("*")).order("created_at", { ascending: false });
         if (scores) {
           const byClient = {};
           scores.forEach(s => {
@@ -14155,7 +14158,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     setGRankLoading(true);
     (async () => {
       try {
-        const { data: scores } = await supabase.from("client_scores").select("*").order("created_at", { ascending: false });
+        const { data: scores } = await orgScope(supabase.from("client_scores").select("*")).order("created_at", { ascending: false });
         const byClient = {};
         (scores||[]).forEach(s => {
           if (!byClient[s.client_id]) byClient[s.client_id] = { total:0, execucao:0, estrategia:0, educacao:0, ecossistema:0, crescimento:0, history:[], count:0 };
@@ -26006,7 +26009,7 @@ function ClientGamification({ onBack, user, clients, demands }) {
     (async () => {
       try {
         /* Load scores for all clients */
-        const { data: scores } = await supabase.from("client_scores").select("*").order("created_at", { ascending: false });
+        const { data: scores } = await orgScope(supabase.from("client_scores").select("*")).order("created_at", { ascending: false });
         if (scores) {
           setScoreData(scores);
           const byClient = {};
