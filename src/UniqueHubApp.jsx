@@ -96,6 +96,7 @@ const _metaOAuthCapture = (() => {
 })();
 
 const supabase = SUPA_URL && SUPA_KEY ? createClient(SUPA_URL, SUPA_KEY) : null;
+let _currentOrgId = null; /* Module-level org ID for use in top-level supabase helpers */
 
 /* ═══════════════════════ LAYOUT ═══════════════════════ */
 const TOP = "env(safe-area-inset-top, 16px)";
@@ -140,6 +141,7 @@ const supaCreateClient = async (c) => {
       contact_phone: c.phone || null, plan: PLAN_MAP_TO_DB[c.plan] || "traction",
       monthly_value: parseBRL(c.monthly),
       status: c.status === "trial" ? "ativo" : (c.status || "ativo"), score: c.score || 0, segment: c.segment || null, website: c.website || null,
+      org_id: _currentOrgId,
     };
     const { data, error } = await supabase.from("clients").insert(payload).select().single();
     if (error) { console.error("Supa create client error:", error); return { data: null, err: error.message || error.code }; }
@@ -246,6 +248,7 @@ const supaCreateDemand = async (d, clientId) => {
     if (d.steps) payload.steps = d.steps;
     if (d.scheduling) payload.scheduling = d.scheduling;
     if (d.traffic) payload.traffic = d.traffic;
+    payload.org_id = _currentOrgId;
     const { data, error } = await supabase.from("demands").insert(payload).select().single();
     if (error) { return { data: null, err: JSON.stringify(error) }; }
     return { data, err: null };
@@ -567,6 +570,7 @@ const supaCreateEvent = async (e) => {
       time: e.time || null, description: e.notes || null, color: e.color || null,
       client_name: e.client || null, completed: false,
       created_by: e.createdById || null, created_by_name: e.createdBy || null,
+      org_id: _currentOrgId,
     };
     const { data, error } = await supabase.from("events").insert(payload).select().single();
     if (error) { console.error("Supa event error:", error); return null; }
@@ -606,6 +610,7 @@ const supaCreateIdea = async (idea) => {
     const payload = {
       title: idea.title, description: idea.desc || null, author: idea.author || "Equipe",
       client_name: idea.client || "Todos", tags: idea.tags || [], votes: 0, status: "pending",
+      org_id: _currentOrgId,
     };
     const { data, error } = await supabase.from("ideas").insert(payload).select().single();
     if (error) { console.error("Supa idea error:", error); return null; }
@@ -655,7 +660,7 @@ const supaLoadNews = async () => {
 const supaCreateNews = async (article) => {
   if (!supabase) return null;
   try {
-    const payload = { title: article.title, body: article.body || "", category: article.category || "geral", summary: article.summary || "", source: article.source || "", read_time: article.read_time || "", pinned: article.pinned || false, tags: article.tags || [], photo: article.photo || null };
+    const payload = { title: article.title, body: article.body || "", category: article.category || "geral", summary: article.summary || "", source: article.source || "", read_time: article.read_time || "", pinned: article.pinned || false, tags: article.tags || [], photo: article.photo || null, org_id: _currentOrgId };
     if (article.author) payload.author = article.author;
     const { data, error } = await supabase.from("news").insert(payload).select();
     if (error) { console.warn("supaCreateNews:", error.message); return null; }
@@ -812,7 +817,7 @@ const supaGetAIKeys = async () => {
 const supaCreateNotification = async (userId, type, title, body, icon, link) => {
   if (!supabase) return null;
   try {
-    const { data, error } = await supabase.from("notifications").insert({ user_id: userId, type, title, body: body || "", link: link || "" }).select().single();
+    const { data, error } = await supabase.from("notifications").insert({ user_id: userId, type, title, body: body || "", link: link || "", org_id: _currentOrgId }).select().single();
     if (error) console.error("[Notif] create error:", error.message);
     return data;
   } catch(e) { return null; }
@@ -824,7 +829,7 @@ const supaCreateNotificationForAll = async (type, title, body, icon, link, exclu
     const { data: profiles } = await supabase.from("profiles").select("id, role").not("role", "eq", "cliente");
     const users = (profiles || []).filter(u => u.id !== excludeUserId);
     if (users.length === 0) return;
-    const rows = users.map(u => ({ user_id: u.id, type, title, body: body || "", link: link || "" }));
+    const rows = users.map(u => ({ user_id: u.id, type, title, body: body || "", link: link || "", org_id: _currentOrgId }));
     await supabase.from("notifications").insert(rows);
   } catch(e) { console.error("[Notif] broadcast error:", e); }
 };
@@ -854,7 +859,7 @@ const supaNotifyClientUsers = async (clientId, type, title, body) => {
     const linked = [];
     (extras || []).forEach(e => { try { const v = typeof e.value === "string" ? JSON.parse(e.value) : e.value; if (v?.linked_client_id === clientId) { const uid = e.key.replace("client_extras_", ""); linked.push(uid); } } catch {} });
     if (!linked.length) return;
-    const rows = linked.map(uid => ({ user_id: uid, type, title, body: body || "", link: "" }));
+    const rows = linked.map(uid => ({ user_id: uid, type, title, body: body || "", link: "", org_id: _currentOrgId }));
     await supabase.from("notifications").insert(rows);
   } catch (e) { console.warn("supaNotifyClientUsers:", e); }
 };
@@ -867,7 +872,7 @@ const supaDeleteInvoice = async (id) => { if (!supabase) return; await supabase.
 
 /* ── Match4Biz Supabase ── */
 const supaLoadMatches = async () => { if (!supabase) return []; try { const { data } = await supabase.from("match4biz_matches").select("*").order("matched_at", { ascending: false }); return data || []; } catch { return []; } };
-const supaCreateMatch = async (m) => { if (!supabase) return null; try { const { data, error } = await supabase.from("match4biz_matches").insert(m).select().single(); if (error) console.error("[Match]", error.message); return data; } catch { return null; } };
+const supaCreateMatch = async (m) => { if (!supabase) return null; try { const { data, error } = await supabase.from("match4biz_matches").insert({...m, org_id: _currentOrgId}).select().single(); if (error) console.error("[Match]", error.message); return data; } catch { return null; } };
 const supaUpdateMatch = async (id, upd) => { if (!supabase) return null; try { const { data } = await supabase.from("match4biz_matches").update({ ...upd, updated_at: new Date().toISOString() }).eq("id", id).select().single(); return data; } catch { return null; } };
 const supaDeleteMatch = async (id) => { if (!supabase) return; await supabase.from("match4biz_matches").delete().eq("id", id); };
 
@@ -1384,7 +1389,7 @@ const supaLoadMessages = async (convId, limit = 200) => {
 const supaSendMessage = async (convId, senderId, content, fileUrl, fileName, fileType, replyToId) => {
   if (!supabase) return null;
   try {
-    const payload = { conversation_id: convId, sender_id: senderId, content: content || "" };
+    const payload = { conversation_id: convId, sender_id: senderId, content: content || "", org_id: _currentOrgId };
     if (fileUrl) { payload.file_url = fileUrl; payload.file_name = fileName; payload.file_type = fileType; }
     if (replyToId) payload.reply_to = replyToId;
     const { data, error } = await supabase.from("messages").insert(payload).select("*, profiles:sender_id(name, email)");
@@ -1412,7 +1417,7 @@ const supaFindOrCreateDM = async (userId, otherId) => {
     }
     /* No existing DM — create new */
     console.log("[DM] Creating new DM between", userId, "and", otherId);
-    const { data: newConv, error: convErr } = await supabase.from("conversations").insert({ type: "dm", created_by: userId }).select();
+    const { data: newConv, error: convErr } = await supabase.from("conversations").insert({ type: "dm", created_by: userId, org_id: _currentOrgId }).select();
     if (convErr) { console.error("[DM] Error creating conversation:", convErr); return null; }
     if (!newConv?.[0]) return null;
     const { error: memErr } = await supabase.from("conversation_members").insert([
@@ -1426,7 +1431,7 @@ const supaFindOrCreateDM = async (userId, otherId) => {
 const supaCreateGroup = async (name, creatorId, memberIds) => {
   if (!supabase) return null;
   try {
-    const { data: conv, error: convErr } = await supabase.from("conversations").insert({ type: "group", name, created_by: creatorId }).select();
+    const { data: conv, error: convErr } = await supabase.from("conversations").insert({ type: "group", name, created_by: creatorId, org_id: _currentOrgId }).select();
     if (convErr) { console.error("[Group] Error creating:", convErr); return null; }
     if (!conv?.[0]) { console.error("[Group] No conv returned"); return null; }
     const allIds = [...new Set([creatorId, ...memberIds])];
@@ -1503,7 +1508,7 @@ const supaCheckin = async (userId) => {
   if (!supabase) return null;
   try {
     const geo = await getGeoPosition();
-    const payload = { user_id: userId, check_in_at: new Date().toISOString(), check_in_lat: geo?.lat || null, check_in_lng: geo?.lng || null };
+    const payload = { user_id: userId, check_in_at: new Date().toISOString(), check_in_lat: geo?.lat || null, check_in_lng: geo?.lng || null, org_id: _currentOrgId };
     const { data, error } = await supabase.from("checkins").insert(payload).select().single();
     if (error) { console.error("checkin error:", error); return null; }
     return data;
@@ -15809,7 +15814,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           const addPoints = async (cid) => {
             const pts = parseFloat(gAddPtsVal);
             if (!pts || isNaN(pts)) { showToast("Informe os pontos"); return; }
-            try { await supabase.from("client_scores").insert({ client_id: cid, points: pts, pillar: gAddPtsPillar, description: gAddPtsDesc || "Ajuste manual (admin)", action: "admin_adjust" }); showToast((pts > 0 ? "+" : "") + pts + " pontos ✓"); setGAddPtsClient(null); setGAddPtsVal(""); setGAddPtsDesc(""); setGRankData(null); } catch(e) { showToast("Erro: " + e.message); }
+            try { await supabase.from("client_scores").insert({ client_id: cid, points: pts, pillar: gAddPtsPillar, description: gAddPtsDesc || "Ajuste manual (admin)", action: "admin_adjust", org_id: _currentOrgId }); showToast((pts > 0 ? "+" : "") + pts + " pontos ✓"); setGAddPtsClient(null); setGAddPtsVal(""); setGAddPtsDesc(""); setGRankData(null); } catch(e) { showToast("Erro: " + e.message); }
           };
           const unlockM4B = async (cid) => {
             const month = new Date().toISOString().slice(0,7);
@@ -22808,7 +22813,7 @@ NÃO invente campanhas que não existem no documento.`
       if (!Array.isArray(slides) || !slides.length) throw new Error("Nenhum slide gerado");
       setSaving(true);
       const title = mode === "metrics" ? `Resultados · ${selClient.name} · ${formatMonth(selMonth)}` : `Campanhas · ${selClient.name} · ${formatMonth(selMonth)}`;
-      const { data: saved, error } = await supabase.from("presentations").insert({ client_id: selClient.id, title, type: mode, month: selMonth, slides, created_by: user?.id }).select().single();
+      const { data: saved, error } = await supabase.from("presentations").insert({ client_id: selClient.id, title, type: mode, month: selMonth, slides, created_by: user?.id, org_id: _currentOrgId }).select().single();
       if (error) throw error;
       setPresentations(prev => [saved, ...prev]);
       setCurrentPres(saved); setSlideIdx(0); setView("viewer");
@@ -26685,7 +26690,7 @@ function ClientOnboarding({ onComplete, onBack }) {
               if (!curCl?.contact_email) { updPayload.contact_email = data.email; updPayload.contact_name = data.name; updPayload.contact_phone = data.phone; }
               await supabase.from("clients").update(updPayload).eq("id", existingClient.id);
             } else {
-              await supabase.from("clients").insert({ name: data.company || data.name, contact_name: data.name, contact_email: data.email, contact_phone: data.phone, status: "ativo", plan: "free", start_date: new Date().toISOString().split("T")[0], notes: `Cadastro via UniqueHub por ${data.name}` });
+              await supabase.from("clients").insert({ name: data.company || data.name, contact_name: data.name, contact_email: data.email, contact_phone: data.phone, status: "ativo", plan: "free", start_date: new Date().toISOString().split("T")[0], notes: `Cadastro via UniqueHub por ${data.name}`, org_id: _currentOrgId });
             }
           } catch(e) { console.warn("Client fallback sync:", e); }
         }
@@ -27156,7 +27161,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
         .select("id").eq("client_id", myClientId_inner).eq("action", action)
         .gte("created_at", today + "T00:00:00").lte("created_at", today + "T23:59:59").limit(1);
       if (existing?.length) { console.log("[Gamify] already scored today:", action); return; }
-      const r = await supabase.from("client_scores").insert({ client_id: myClientId_inner, action, points, pillar, description });
+      const r = await supabase.from("client_scores").insert({ client_id: myClientId_inner, action, points, pillar, description, org_id: _currentOrgId });
       console.log("[Gamify]", action, r.error ? r.error.message : "OK +"+points);
     } catch(e) { console.error("[Gamify] error:", action, e); }
   }, [myClientId_inner]);
@@ -27233,10 +27238,10 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       console.log("[Gamify] Attempting score. status:", status, "clientId:", scoreClientId, "demand.client_id:", demand.client_id, "myClientId_inner:", myClientId_inner);
       if (supabase && scoreClientId) {
         if (status === "approved") {
-          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "approve_post", points: 1.5, pillar: "execucao", description: `Aprovou: ${demand.title}` });
+          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "approve_post", points: 1.5, pillar: "execucao", description: `Aprovou: ${demand.title}`, org_id: _currentOrgId });
           console.log("[Gamify] Approve insert result:", r.error ? r.error.message : "OK", r.data);
         } else if (status === "revision") {
-          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "request_edit", points: 0.5, pillar: "execucao", description: `Solicitou edição: ${demand.title}` });
+          const r = await supabase.from("client_scores").insert({ client_id: scoreClientId, action: "request_edit", points: 0.5, pillar: "execucao", description: `Solicitou edição: ${demand.title}`, org_id: _currentOrgId });
           console.log("[Gamify] Edit insert result:", r.error ? r.error.message : "OK");
         }
       } else {
@@ -29744,6 +29749,33 @@ export default function App() {
   const setUserAndRef = (u) => { userRef.current = u; setUser(u); };
   const [showPWA, setShowPWA] = useState(false);
 
+  /* ── Multi-tenant: Organization ── */
+  const [orgId, setOrgId] = useState(null);
+  const [org, setOrg] = useState(null);
+  const orgRef = React.useRef(null);
+  const loadOrg = async (userId) => {
+    if (!supabase || !userId) return;
+    try {
+      const { data: membership } = await supabase.from("org_members").select("org_id, role, organizations(*)").eq("user_id", userId).limit(1).maybeSingle();
+      if (membership?.org_id) {
+        setOrgId(membership.org_id);
+        orgRef.current = membership.org_id;
+        _currentOrgId = membership.org_id;
+        setOrg({ ...membership.organizations, memberRole: membership.role });
+        console.log("[Org] Loaded:", membership.organizations?.name, "role:", membership.role);
+      } else {
+        /* Fallback: assign to Unique Marketing for existing users without membership */
+        const fallbackOrg = "a0000000-0000-0000-0000-000000000001";
+        setOrgId(fallbackOrg);
+        orgRef.current = fallbackOrg;
+        _currentOrgId = fallbackOrg;
+        console.log("[Org] No membership found, using fallback org");
+        /* Auto-create membership */
+        await supabase.from("org_members").upsert({ org_id: fallbackOrg, user_id: userId, role: "member", accepted_at: new Date().toISOString() }, { onConflict: "org_id,user_id" }).catch(() => {});
+      }
+    } catch(e) { console.error("[Org] Load error:", e); }
+  };
+
   /* ── iOS zoom prevention: lock viewport on input focus, release on blur ── */
   useEffect(() => {
     const vp = document.querySelector('meta[name=viewport]');
@@ -30059,6 +30091,7 @@ export default function App() {
               phone: profile?.phone || session.user.user_metadata?.phone || "",
               company: session.user.user_metadata?.company || "",
             });
+            loadOrg(session.user.id);
           } else {
             /* ── AGENCY user: restore to agency panel ── */
             setUserAndRef({
@@ -30069,6 +30102,7 @@ export default function App() {
             phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember: true,
           });
           /* Apply visual prefs from cloud */
+          loadOrg(session.user.id);
           try {
             if (cloudPrefs) {
               const vp = typeof cloudPrefs === "string" ? JSON.parse(cloudPrefs) : cloudPrefs;
@@ -30308,7 +30342,7 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && !clientUser && !onboardDone && <OnboardingSlides onDone={finishOnboard} />}
-      {!user && !clientUser && onboardDone && <LoginPage onAuth={(u) => { setUserAndRef(u); loadCloudPrefsForUser(u.id);
+      {!user && !clientUser && onboardDone && <LoginPage onAuth={(u) => { setUserAndRef(u); loadCloudPrefsForUser(u.id); loadOrg(u.id);
     const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
     const dismissed = (() => { try { return localStorage.getItem("uh_pwa_dismissed"); } catch { return null; } })();
