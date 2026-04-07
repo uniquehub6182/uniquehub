@@ -4062,7 +4062,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",padding:20}}>
                   <div style={{width:56,height:56,borderRadius:16,background:B.bg,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>{dpIco("drive",24,B.muted)}</div>
                   <p style={{fontSize:15,fontWeight:800,color:B.text,marginBottom:6}}>Conectar Drive</p>
-                  <p style={{fontSize:11,color:B.muted,marginBottom:20,lineHeight:1.5,textAlign:"center"}}>Acesse os arquivos da ag\u00eancia em tempo real</p>
+                  <p style={{fontSize:11,color:B.muted,marginBottom:20,lineHeight:1.5,textAlign:"center"}}>Acesse os arquivos da agência em tempo real</p>
                   <div style={{display:"flex",flexDirection:"column",gap:10,width:"100%",maxWidth:280}}>
                     <button onClick={()=>{setDriveType("gdrive");setDriveTmp("");setDriveEditing(true);}} style={{width:"100%",padding:"14px",borderRadius:14,background:B.bgCard,border:`1.5px solid ${B.border}`,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,color:B.text,display:"flex",alignItems:"center",gap:10}}>
                       <div style={{width:32,height:32,borderRadius:8,background:"linear-gradient(135deg,#4285F4 25%,#34A853 25%,#34A853 50%,#FBBC05 50%,#FBBC05 75%,#EA4335 75%)",flexShrink:0}} />
@@ -23749,39 +23749,39 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
   const isDesktop = typeof window !== "undefined" && window.innerWidth > 900;
   const PLANS = [
     { k:"essencial", name:"Essencial", desc:"Para freelancers e social medias", price:197, annual:157, clients:5, users:2, extra:39, color:"#5DCAA5" },
-    { k:"profissional", name:"Profissional", desc:"Para ag\u00eancias pequenas", price:397, annual:317, clients:10, users:5, extra:35, color:"#85B7EB" },
-    { k:"agencia", name:"Ag\u00eancia", desc:"Para ag\u00eancias em crescimento", price:597, annual:477, clients:20, users:15, extra:29, color:"#AFA9EC", popular:true },
-    { k:"escala", name:"Escala", desc:"Para ag\u00eancias grandes", price:997, annual:797, clients:40, users:"ilimitado", extra:19, color:"#F0997B" },
+    { k:"profissional", name:"Profissional", desc:"Para agências pequenas", price:397, annual:317, clients:10, users:5, extra:35, color:"#85B7EB" },
+    { k:"agencia", name:"Agência", desc:"Para agências em crescimento", price:597, annual:477, clients:20, users:15, extra:29, color:"#AFA9EC", popular:true },
+    { k:"escala", name:"Escala", desc:"Para agências grandes", price:997, annual:797, clients:40, users:"ilimitado", extra:19, color:"#F0997B" },
   ];
   const FEATURES = [
-    { cat:"Gest\u00e3o de conte\u00fado", items:[
+    { cat:"Gestão de conteúdo", items:[
       { l:"Pipeline de demandas (7 etapas)", p:[1,1,1,1] },
-      { l:"App do cliente (aprova\u00e7\u00e3o, chat, dashboard)", p:[1,1,1,1] },
+      { l:"App do cliente (aprova\u00e7ão, chat, dashboard)", p:[1,1,1,1] },
       { l:"Agendamento Instagram + Facebook", p:[1,1,1,1] },
-      { l:"Calend\u00e1rio editorial", p:[1,1,1,1] },
+      { l:"Calendário editorial", p:[1,1,1,1] },
       { l:"Biblioteca de assets + Feed Planner", p:[1,1,1,1] },
     ]},
-    { cat:"Intelig\u00eancia e IA", items:[
+    { cat:"Inteligência e IA", items:[
       { l:"Assistente IA (GPT-4o + Gemini + Claude)", p:[0,1,1,1] },
-      { l:"Gera\u00e7\u00e3o de conte\u00fado e legendas com IA", p:[0,1,1,1] },
-      { l:"Coment\u00e1rios IA + News auto-gen", p:[0,1,1,1] },
-      { l:"Intelig\u00eancia de mercado + concorrentes", p:[0,0,1,1] },
-      { l:"Apresenta\u00e7\u00f5es autom\u00e1ticas (slides IA)", p:[0,0,1,1] },
+      { l:"Gera\u00e7ão de conteúdo e legendas com IA", p:[0,1,1,1] },
+      { l:"Comentários IA + News auto-gen", p:[0,1,1,1] },
+      { l:"Inteligência de mercado + concorrentes", p:[0,0,1,1] },
+      { l:"Apresenta\u00e7ões automáticas (slides IA)", p:[0,0,1,1] },
     ]},
-    { cat:"Engajamento e reten\u00e7\u00e3o", items:[
-      { l:"Growth Score (gamifica\u00e7\u00e3o do cliente)", p:[0,1,1,1] },
+    { cat:"Engajamento e reten\u00e7ão", items:[
+      { l:"Growth Score (gamifica\u00e7ão do cliente)", p:[0,1,1,1] },
       { l:"Match4Biz (networking entre clientes)", p:[0,0,1,1] },
       { l:"CRM de leads + Meta Lead Ads", p:[0,0,1,1] },
-      { l:"WhatsApp autom\u00e1tico (resumos e alertas)", p:[0,0,0,1] },
+      { l:"WhatsApp automático (resumos e alertas)", p:[0,0,0,1] },
     ]},
-    { cat:"Opera\u00e7\u00e3o da ag\u00eancia", items:[
+    { cat:"Opera\u00e7ão da agência", items:[
       { l:"Chat interno da equipe", p:[1,1,1,1] },
-      { l:"Relat\u00f3rios de performance", p:["b\u00e1sico",1,1,1] },
+      { l:"Relat\u00f3rios de performance", p:["básico",1,1,1] },
       { l:"Check-in + XP da equipe", p:[0,1,1,1] },
       { l:"Financeiro (receita, planos, faturas)", p:[0,1,1,1] },
       { l:"Academy (cursos e treinamentos)", p:[0,0,1,1] },
-      { l:"Permiss\u00f5es por cargo", p:[0,0,1,1] },
-      { l:"Suporte priorit\u00e1rio + onboarding", p:[0,0,0,1] },
+      { l:"Permissões por cargo", p:[0,0,1,1] },
+      { l:"Suporte prioritário + onboarding", p:[0,0,0,1] },
     ]},
   ];
   const planOrder = ["free","essencial","profissional","agencia","escala","enterprise"];
@@ -23794,7 +23794,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
         </button>
         <div>
           <h1 style={{ fontSize:22, fontWeight:800, margin:0 }}>Planos UniqueHub</h1>
-          <p style={{ fontSize:13, color:B.muted, margin:0 }}>{orgName||"Sua ag\u00eancia"} \u00b7 Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
+          <p style={{ fontSize:13, color:B.muted, margin:0 }}>{orgName||"Sua agência"} · Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
         </div>
       </div>
       <div style={{ display:"flex", justifyContent:"center", padding:"20px 0 10px" }}>
@@ -23823,14 +23823,14 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
                 <p style={{ fontSize:11, color:B.muted, margin:"0 0 14px" }}>{p.desc}</p>
                 <div style={{ marginBottom:4 }}>
                   <span style={{ fontSize:32, fontWeight:900 }}>R$ {price}</span>
-                  <span style={{ fontSize:13, color:B.muted }}>/m\u00eas</span>
+                  <span style={{ fontSize:13, color:B.muted }}>/mês</span>
                 </div>
                 {billing==="anual" && <p style={{ fontSize:11, color:"#10B981", fontWeight:600, margin:"0 0 8px" }}>Economia de R$ {(p.price-p.annual)*12}/ano</p>}
                 <p style={{ fontSize:12, color:B.muted, margin:"0 0 4px" }}>{p.clients} clientes inclusos</p>
                 <p style={{ fontSize:11, color:B.muted, margin:"0 0 4px" }}>Extra: R$ {p.extra}/cliente</p>
-                <p style={{ fontSize:11, color:B.muted, margin:"0 0 16px" }}>{typeof p.users==="number"?p.users+" usu\u00e1rios":p.users+" usu\u00e1rios"}</p>
+                <p style={{ fontSize:11, color:B.muted, margin:"0 0 16px" }}>{typeof p.users==="number"?p.users+" usuários":p.users+" usuários"}</p>
                 <button onClick={()=>{ if(isUpgrade && onUpgrade) onUpgrade(p.k, price, billing); }} disabled={isCurrent || !isUpgrade} style={{ width:"100%", padding:"12px", borderRadius:12, border:isCurrent?`2px solid ${LIME}`:"none", background:isUpgrade?LIME:isCurrent?"transparent":B.bg, color:isUpgrade?"#0D1117":isCurrent?LIME:B.muted, fontSize:13, fontWeight:800, cursor:isUpgrade?"pointer":"default", fontFamily:"inherit", opacity:!isUpgrade&&!isCurrent?0.4:1, marginTop:"auto" }}>
-                  {isCurrent ? "\u2713 Plano atual" : isUpgrade ? "Fazer upgrade" : "\u2014"}
+                  {isCurrent ? "✓ Plano atual" : isUpgrade ? "Fazer upgrade" : "—"}
                 </button>
               </div>
             );
@@ -23841,7 +23841,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
         <div style={{ maxWidth:isDesktop?1100:"none", margin:"0 auto", background:B.card, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden" }}>
           <div style={{ padding:"20px 20px 10px" }}>
             <h2 style={{ fontSize:18, fontWeight:800, margin:0 }}>Comparativo completo de funcionalidades</h2>
-            <p style={{ fontSize:12, color:B.muted, margin:"4px 0 0" }}>Todas as features dispon\u00edveis em cada plano</p>
+            <p style={{ fontSize:12, color:B.muted, margin:"4px 0 0" }}>Todas as features disponíveis em cada plano</p>
           </div>
           <div style={{ display:"flex", padding:"10px 20px", borderBottom:`1px solid ${B.border}`, background:B.bg, position:"sticky", top:0, zIndex:2 }}>
             <div style={{ flex:2, fontSize:12, fontWeight:600, color:B.muted }}>Funcionalidade</div>
@@ -23857,7 +23857,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
                   <div style={{ flex:2, fontSize:13, color:B.text }}>{f.l}</div>
                   {f.p.map((v,vi) => (
                     <div key={vi} style={{ flex:1, textAlign:"center", fontSize:13 }}>
-                      {v === 1 ? <span style={{ color:"#10B981", fontWeight:700 }}>\u2713</span> : v === 0 ? <span style={{ color:`${B.muted}60` }}>\u2014</span> : <span style={{ fontSize:10, color:B.muted }}>{v}</span>}
+                      {v === 1 ? <span style={{ color:"#10B981", fontWeight:700 }}>✓</span> : v === 0 ? <span style={{ color:`${B.muted}60` }}>—</span> : <span style={{ fontSize:10, color:B.muted }}>{v}</span>}
                     </div>
                   ))}
                 </div>
@@ -23865,7 +23865,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
             </div>
           ))}
           <div style={{ padding:"16px 20px", background:B.bg, borderTop:`1px solid ${B.border}` }}>
-            <p style={{ fontSize:12, color:B.muted, margin:0, textAlign:"center" }}>Todos os planos incluem marca UniqueHub \u00b7 Desconto de 20% no plano anual \u00b7 Sem fidelidade</p>
+            <p style={{ fontSize:12, color:B.muted, margin:0, textAlign:"center" }}>Todos os planos incluem marca UniqueHub · Desconto de 20% no plano anual · Sem fidelidade</p>
           </div>
         </div>
       </div>
