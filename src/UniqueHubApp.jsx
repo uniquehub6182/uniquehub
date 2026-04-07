@@ -23788,12 +23788,13 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
   const currentIdx = planOrder.indexOf(currentPlan || "free");
   return (
     <div style={{ minHeight:"100vh", background:B.bg, color:B.text }}>
-      <div style={{ padding:"20px 20px 0", display:"flex", alignItems:"center", gap:12 }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", color:B.text, display:"flex", padding:4 }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      <div style={{ padding:"20px 20px 0", display:"flex", alignItems:"flex-start", gap:14 }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", color:B.text, display:"flex", padding:6, marginTop:2 }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <div>
-          <h1 style={{ fontSize:22, fontWeight:800, margin:0 }}>Planos UniqueHub</h1>
+          <p style={{ fontSize:12, fontWeight:700, color:LIME, textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 2px" }}>Assinatura</p>
+          <h1 style={{ fontSize:24, fontWeight:800, margin:"0 0 2px" }}>Planos UniqueHub</h1>
           <p style={{ fontSize:13, color:B.muted, margin:0 }}>{orgName||"Sua agência"} · Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
         </div>
       </div>
