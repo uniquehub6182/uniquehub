@@ -2237,6 +2237,15 @@ function OnboardingSlides({ onDone }) {
 function LoginPage({ onAuth, onClientAuth }) {
   const [portal, setPortal] = useState("team"); /* "team" | "client" */
   const [mode, setMode] = useState("login");
+  /* Agency signup states */
+  const [agSignup, setAgSignup] = useState(false);
+  const [agName, setAgName] = useState("");
+  const [agAgencyName, setAgAgencyName] = useState("");
+  const [agEmail, setAgEmail] = useState("");
+  const [agPw, setAgPw] = useState("");
+  const [agLoading, setAgLoading] = useState(false);
+  const [agError, setAgError] = useState("");
+  const [agSuccess, setAgSuccess] = useState(false);
   const [step, setStep] = useState(0);
   /* Login fields */
   const [email, setEmail] = useState("");
@@ -2584,6 +2593,47 @@ function LoginPage({ onAuth, onClientAuth }) {
     } catch(e) { setError("Erro: " + e.message); setLoginLoading(false); }
   };
 
+  /* ── Agency Signup Handler ── */
+  const handleAgencySignup = async () => {
+    if (!supabase) return;
+    if (!agName.trim() || !agAgencyName.trim() || !agEmail.includes("@") || agPw.length < 6) {
+      setAgError("Preencha todos os campos corretamente"); return;
+    }
+    setAgLoading(true); setAgError("");
+    try {
+      /* 1. Create auth user */
+      const { data: authData, error: authErr } = await supabase.auth.signUp({
+        email: agEmail.trim().toLowerCase(),
+        password: agPw,
+        options: { data: { name: agName.trim(), company: agAgencyName.trim(), role: "admin" } }
+      });
+      if (authErr) { setAgError(authErr.message === "User already registered" ? "Este e-mail já está cadastrado. Faça login." : authErr.message); setAgLoading(false); return; }
+      if (!authData?.user) { setAgError("Erro ao criar conta. Tente novamente."); setAgLoading(false); return; }
+      const userId = authData.user.id;
+
+      /* 2. Create organization */
+      const slug = agAgencyName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") + "-" + Date.now().toString(36);
+      const { data: orgData, error: orgErr } = await supabase.from("organizations").insert({
+        name: agAgencyName.trim(), slug, owner_id: userId, plan: "essencial",
+        max_clients: 5, max_users: 2, brand_color: "#BBF246", app_name: "UniqueHub",
+      }).select().single();
+      if (orgErr) { console.error("[AgSignup] org error:", orgErr); setAgError("Erro ao criar organização: " + orgErr.message); setAgLoading(false); return; }
+
+      /* 3. Create org_member */
+      await supabase.from("org_members").insert({ org_id: orgData.id, user_id: userId, role: "owner", accepted_at: new Date().toISOString() });
+
+      /* 4. Create profile */
+      await supabase.from("profiles").upsert({ id: userId, name: agName.trim(), email: agEmail.trim().toLowerCase(), role: "admin", org_id: orgData.id }, { onConflict: "id" });
+
+      /* 5. Auto-login */
+      _currentOrgId = orgData.id;
+      _currentOrgPlan = "essencial";
+      const userObj = { id: userId, name: agName.trim(), email: agEmail.trim().toLowerCase(), role: "CEO", supaRole: "admin", photo: null, nick: agName.trim(), phone: "", remember: true };
+      setAgSuccess(true); setAgLoading(false);
+      setTimeout(() => { onAuth(userObj); }, 1500);
+    } catch(e) { console.error("[AgSignup]", e); setAgError("Erro inesperado: " + e.message); setAgLoading(false); }
+  };
+
   /* ── TEAM: portal toggle is now in the login form ── */
   const portalBackBtn = null;
 
@@ -2606,6 +2656,61 @@ function LoginPage({ onAuth, onClientAuth }) {
       </Card>
       <p style={{ fontSize: 12, color: B.muted, textAlign: "center", marginTop: 12 }}>Você receberá uma notificação por e-mail assim que for aprovado.</p>
       <button onClick={() => { setMode("login"); setStep(0); }} className="pill accent" style={{ marginTop: 24, padding: "12px 28px" }}>Voltar ao Login</button>
+    </div>
+  );
+
+  /* ── AGENCY SIGNUP SCREEN ── */
+  if (agSignup) return (
+    <div className="screen" style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117" }}>
+      <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 40px) 28px 24px", textAlign:"center" }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:36, objectFit:"contain", marginBottom:10 }} />
+        <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase" }}>Criar minha agência</p>
+      </div>
+      <div style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
+        <div style={{ maxWidth:400, margin:"0 auto" }}>
+        {agSuccess ? (<div style={{ textAlign:"center", padding:"40px 0" }}>
+          <div style={{ width:72, height:72, borderRadius:20, background:"linear-gradient(135deg,#BBF246,#9AE010)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h2 style={{ fontSize:24, fontWeight:900, color:"#1A1D23" }}>Agência criada!</h2>
+          <p style={{ fontSize:14, color:"#9CA3AF", marginTop:8 }}>Redirecionando para o painel...</p>
+        </div>) : (<>
+          <h1 style={{ fontSize:26, fontWeight:900, color:"#1A1D23", margin:"0 0 6px" }}>Crie sua agência</h1>
+          <p style={{ fontSize:14, color:"#9CA3AF", margin:"0 0 24px" }}>Comece grátis com o plano Essencial (14 dias de trial)</p>
+          {agError && <div style={{ padding:"12px 14px", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:12, marginBottom:14 }}><p style={{ fontSize:13, color:"#DC2626", margin:0 }}>⚠ {agError}</p></div>}
+          <div className="lf-wrap" style={{ marginBottom:14 }}>
+            <input className="lf-input" value={agName} onChange={e=>setAgName(e.target.value)} autoCapitalize="words" />
+            <label className={`lf-label${agName?" float":""}`}>Seu nome</label>
+          </div>
+          <div className="lf-wrap" style={{ marginBottom:14 }}>
+            <input className="lf-input" value={agAgencyName} onChange={e=>setAgAgencyName(e.target.value)} />
+            <label className={`lf-label${agAgencyName?" float":""}`}>Nome da agência</label>
+          </div>
+          <div className="lf-wrap" style={{ marginBottom:14 }}>
+            <input className="lf-input" value={agEmail} onChange={e=>setAgEmail(e.target.value)} type="email" autoCapitalize="none" autoCorrect="off" />
+            <label className={`lf-label${agEmail?" float":""}`}>E-mail</label>
+          </div>
+          <div className="lf-wrap" style={{ marginBottom:20 }}>
+            <input className="lf-input" value={agPw} onChange={e=>setAgPw(e.target.value)} type="password" />
+            <label className={`lf-label${agPw?" float":""}`}>Senha (mín. 6 caracteres)</label>
+          </div>
+          <button onClick={handleAgencySignup} disabled={agLoading || !agName.trim() || !agAgencyName.trim() || !agEmail.includes("@") || agPw.length<6} className="lsign-btn" style={{ opacity:agLoading?0.6:(!agName.trim()||!agAgencyName.trim()||!agEmail.includes("@")||agPw.length<6?0.45:1) }}>
+            {agLoading ? "Criando..." : "Criar agência grátis"}
+          </button>
+          <p style={{ fontSize:12, color:"#D1D5DB", textAlign:"center", marginTop:16 }}>
+            Ao criar sua conta, você concorda com os <a href="/terms" style={{ color:"#BBF246" }}>Termos</a> e <a href="/privacy" style={{ color:"#BBF246" }}>Privacidade</a>
+          </p>
+          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"20px 0 0" }}>
+            <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
+            <span style={{ fontSize:12, color:"#D1D5DB" }}>ou</span>
+            <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
+          </div>
+          <button onClick={()=>{setAgSignup(false);setAgError("");}} style={{ width:"100%", padding:"14px", borderRadius:16, border:"1.5px solid #E8EAF0", background:"transparent", color:"#9CA3AF", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginTop:16 }}>
+            Já tenho conta — fazer login
+          </button>
+        </>)}
+        </div>
+      </div>
     </div>
   );
 
@@ -3068,6 +3173,14 @@ function LoginPage({ onAuth, onClientAuth }) {
             </button>
           </div>
         )}
+
+        {/* Agency signup CTA */}
+        <div style={{ textAlign:"center", marginTop:16, paddingTop:16, borderTop:"1px solid #F0F1F3" }}>
+          <p style={{ fontSize:12, color:"#9CA3AF", marginBottom:8 }}>É dono de agência?</p>
+          <button onClick={()=>{setAgSignup(true);setAgError("");}} style={{ width:"100%", padding:"12px", borderRadius:14, border:"1.5px solid #1A1D2315", background:"#F8F9FC", color:"#1A1D23", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            Criar minha agência grátis
+          </button>
+        </div>
 
         {/* Version */}
         <div style={{ display:"flex", alignItems:"center", justifyContent:"center", marginTop:16 }}>
@@ -5009,6 +5122,12 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
 
   const saveClient = async () => {
     if (!form.name?.trim()) return showToast("Informe o nome da empresa");
+    /* ── Check client limit by plan ── */
+    const planLimits = getPlanFeatures(_currentOrgPlan);
+    if (clients.length >= planLimits.clients) {
+      showToast(`Limite de ${planLimits.clients} clientes atingido no plano atual. Faça upgrade para adicionar mais.`);
+      return;
+    }
     if (!form.phone?.trim() || form.phone.replace(/\D/g,"").length < 10) return showToast("Informe o telefone do contato");
     if (!form.cnpj?.trim()) return showToast("Informe o CPF ou CNPJ");
     const nc = {
