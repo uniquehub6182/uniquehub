@@ -16247,9 +16247,10 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     );
   }
 
-  /* ═══ PLANS ═══ */
+  /* ═══ PLANS — redirect to main app plans page ═══ */
   if (sub === "plans") {
-    return <PlansPage onBack={() => setSub(null)} currentPlan={_currentOrgPlan} orgName={null} onUpgrade={(plan, price, billing) => { /* TODO: integrate Asaas payment */ }} />;
+    setTimeout(() => { setSub(null); if (typeof window !== "undefined") window.__goPlans?.(); }, 50);
+    return null;
   }
 
   /* ═══ ABOUT ═══ */
@@ -29918,6 +29919,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} canAccess={canAccess} />}
         {sub === "notifs" && <NotifsPage onBack={() => { setSub(null); if (user?.id && supabase) supabase.from("notifications").select("*", { count:"exact", head:true }).eq("user_id", user.id).eq("read", false).then(r => setNotifCount(r.count||0)); }} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","clients"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} />}
         {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={() => setShowNavEdit(true)} navPicks={navPicks} setNavPicks={p => setNavPicksAndSave(p, user?.id)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
+        {typeof window!=="undefined"&&(window.__goPlans=()=>setSub("plans"))}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} user={user} canAccess={canAccess} demands={sharedDemands} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
