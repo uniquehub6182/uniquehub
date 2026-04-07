@@ -760,7 +760,15 @@ const parseNewsRow = (r) => {
 const supaLoadTeam = async () => {
   if (!supabase) return [];
   try {
-    const { data: members } = await supabase.from("agency_members").select("*").neq("role", "cliente").order("created_at");
+    /* Get user IDs belonging to current org */
+    let orgUserIds = null;
+    if (_currentOrgId) {
+      const { data: orgMembers } = await supabase.from("org_members").select("user_id").eq("org_id", _currentOrgId);
+      orgUserIds = (orgMembers || []).map(m => m.user_id);
+    }
+    let q = supabase.from("agency_members").select("*").neq("role", "cliente").order("created_at");
+    if (orgUserIds) q = q.in("user_id", orgUserIds);
+    const { data: members } = await q;
     if (!members?.length) return [];
     const userIds = members.filter(m => m.user_id).map(m => m.user_id);
     let profileMap = {};
@@ -16293,7 +16301,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             </div>
           ))}
         </Card>
-        {isAdmin && <button onClick={() => setEditAbout(true)} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>Editar informações</button>}
+        {isAdmin && _currentOrgPlan === "enterprise" && <button onClick={() => setEditAbout(true)} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>Editar informações</button>}
       </> : <>
         <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Edite as informações exibidas na tela "Sobre" do app.</p>
         {aboutItems.map((item,i) => (
