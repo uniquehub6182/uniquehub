@@ -2671,9 +2671,9 @@ function LoginPage({ onAuth, onClientAuth }) {
     const agValid = agName.trim() && agAgencyName.trim() && agEmail.includes("@") && agPw.length >= 6;
     const _isDsk = typeof window !== "undefined" && window.innerWidth > 900;
     return (
-    <div className="screen" style={{ position:"fixed", inset:0, display:"flex", alignItems:_isDsk?"flex-end":"stretch", justifyContent:_isDsk?"center":"stretch", background:"#000" }}>
-    <div style={_isDsk ? { width:420, maxWidth:"90vw", display:"flex", flexDirection:"column", flex:1 } : { flex:1, display:"flex", flexDirection:"column" }}>
-    <div style={{ display:"flex", flexDirection:"column", flex:1, background:"#0D1117" }}>
+    <div style={{ position:"fixed", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"#0D1117" }}>
+    <div style={_isDsk ? { width:480, maxHeight:"92vh", borderRadius:28, overflow:"hidden", display:"flex", flexDirection:"column", boxShadow:"0 20px 80px rgba(0,0,0,0.6)" } : { width:"100%", height:"100%", display:"flex", flexDirection:"column" }}>
+    <div style={{ display:"flex", flexDirection:"column", flex:1, overflow:"auto" }}>
       <style>{`
         @keyframes cardUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
         @keyframes logoIn{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
