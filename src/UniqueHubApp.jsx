@@ -30086,8 +30086,7 @@ export default function App() {
         /* Auto-create membership */
         await supabase.from("org_members").upsert({ org_id: fallbackOrg, user_id: userId, role: "member", accepted_at: new Date().toISOString() }, { onConflict: "org_id,user_id" }).catch(() => {});
       }
-      /* Trigger data reload now that org_id is known */
-      setClientsLoaded(false);
+      /* org_id is now set — data loading will use it automatically */
     } catch(e) { console.error("[Org] Load error:", e); }
   };
 
@@ -30406,7 +30405,7 @@ export default function App() {
               phone: profile?.phone || session.user.user_metadata?.phone || "",
               company: session.user.user_metadata?.company || "",
             });
-            loadOrg(session.user.id);
+            await loadOrg(session.user.id);
           } else {
             /* ── AGENCY user: restore to agency panel ── */
             setUserAndRef({
@@ -30416,8 +30415,9 @@ export default function App() {
             nick: profile?.nick || profile?.name || session.user.email.split("@")[0],
             phone: profile?.phone || "", birth: extras.birth || "", social: extras.social || "", blood: extras.blood || "", bio: extras.bio || "", remember: true,
           });
+          /* Load org BEFORE setting user — ensures _currentOrgId is ready when data loads */
+          await loadOrg(session.user.id);
           /* Apply visual prefs from cloud */
-          loadOrg(session.user.id);
           try {
             if (cloudPrefs) {
               const vp = typeof cloudPrefs === "string" ? JSON.parse(cloudPrefs) : cloudPrefs;
