@@ -2680,16 +2680,16 @@ function LoginPage({ onAuth, onClientAuth }) {
         @keyframes checkPop{0%{transform:scale(0)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
         .ag-card{animation:cardUp .5s cubic-bezier(.34,1.1,.64,1) both}
         .ag-logo{animation:logoIn .4s ease both}
-        .ag-input{width:100%;padding:22px 18px 10px;border:1.5px solid #E8EAF0;border-radius:16px;font-size:16px;font-family:inherit;background:#F8F9FC;color:#1A1D23;outline:none;transition:border-color .2s,background .2s;box-sizing:border-box}
+        .ag-input{width:100%;padding:20px 18px 8px;border:1.5px solid #E8EAF0;border-radius:14px;font-size:15px;font-family:inherit;background:#F8F9FC;color:#1A1D23;outline:none;transition:border-color .2s,background .2s;box-sizing:border-box}
         .ag-input:focus{border-color:#BBF246;background:#fff}
-        .ag-label{position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:15px;color:#9CA3AF;pointer-events:none;transition:all .18s cubic-bezier(.4,0,.2,1);font-family:inherit}
-        .ag-label.float{top:12px;transform:none;font-size:11px;font-weight:700;color:#BBF246;letter-spacing:.04em;text-transform:uppercase}
+        .ag-label{position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:14px;color:#9CA3AF;pointer-events:none;transition:all .18s cubic-bezier(.4,0,.2,1);font-family:inherit}
+        .ag-label.float{top:10px;transform:none;font-size:10px;font-weight:700;color:#BBF246;letter-spacing:.04em;text-transform:uppercase}
       `}</style>
-      <div className="ag-logo" style={{ padding:"calc(env(safe-area-inset-top,0px) + 48px) 28px 32px", textAlign:"center" }}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{ height:42, objectFit:"contain", marginBottom:12 }} />
-        <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase" }}>Crie sua agência</p>
+      <div className="ag-logo" style={{ padding:_isDsk?"20px 28px 14px":"calc(env(safe-area-inset-top,0px) + 48px) 28px 32px", textAlign:"center" }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:_isDsk?32:42, objectFit:"contain", marginBottom:_isDsk?6:12 }} />
+        <p style={{ fontSize:11, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase" }}>Crie sua agência</p>
       </div>
-      <div className="ag-card" style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:window.innerWidth>900?"36px 44px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
+      <div className="ag-card" style={{ flex:1, background:"#fff", borderRadius:_isDsk?"0 0 28px 28px":"32px 32px 0 0", padding:_isDsk?"24px 36px 28px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
         <div style={{ maxWidth:400, margin:"0 auto" }}>
         {agSuccess ? (<div style={{ textAlign:"center", padding:"40px 0" }}>
           <div style={{ width:80, height:80, borderRadius:22, background:"linear-gradient(135deg,#BBF246,#9AE010)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px", animation:"checkPop .5s cubic-bezier(.34,1.56,.64,1) .2s both" }}>
@@ -2700,32 +2700,32 @@ function LoginPage({ onAuth, onClientAuth }) {
           <p style={{ fontSize:13, color:"#9CA3AF", marginTop:4 }}>Redirecionando para o painel...</p>
           <div style={{ width:32, height:32, border:"3px solid #E8EAF0", borderTopColor:"#BBF246", borderRadius:"50%", animation:"spin .8s linear infinite", margin:"20px auto 0" }} />
         </div>) : (<>
-          <h1 style={{ fontSize:28, fontWeight:900, color:"#1A1D23", margin:"0 0 6px", letterSpacing:"-0.5px" }}>Comece agora</h1>
-          <p style={{ fontSize:14, color:"#9CA3AF", margin:"0 0 8px", lineHeight:1.5 }}>Plano Essencial grátis por 14 dias — sem cartão</p>
-          <div style={{ display:"flex", gap:8, marginBottom:24, flexWrap:"wrap" }}>
+          <h1 style={{ fontSize:_isDsk?22:28, fontWeight:900, color:"#1A1D23", margin:"0 0 4px", letterSpacing:"-0.5px" }}>Comece agora</h1>
+          <p style={{ fontSize:13, color:"#9CA3AF", margin:"0 0 6px", lineHeight:1.5 }}>Plano Essencial grátis por 14 dias — sem cartão</p>
+          <div style={{ display:"flex", gap:6, marginBottom:_isDsk?16:24, flexWrap:"wrap" }}>
             {["5 clientes","Agendamento IG/FB","App do cliente","Calendário"].map(f => (
-              <span key={f} style={{ fontSize:11, fontWeight:600, padding:"4px 10px", borderRadius:20, background:"#F0FDF4", color:"#16A34A", border:"1px solid #BBF7D0" }}>{f}</span>
+              <span key={f} style={{ fontSize:10, fontWeight:600, padding:"3px 8px", borderRadius:20, background:"#F0FDF4", color:"#16A34A", border:"1px solid #BBF7D0" }}>{f}</span>
             ))}
           </div>
           {agError && <div style={{ padding:"12px 14px", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:12, marginBottom:16 }}><p style={{ fontSize:13, color:"#DC2626", margin:0 }}>⚠ {agError}</p></div>}
           {agFields.map((f,i) => (
-            <div key={f.k} style={{ position:"relative", width:"100%", marginBottom:14 }}>
+            <div key={f.k} style={{ position:"relative", width:"100%", marginBottom:_isDsk?10:14 }}>
               <input className="ag-input" value={f.v} onChange={e=>f.set(e.target.value)} onFocus={()=>setAgFocus(f.k)} onBlur={()=>setAgFocus("")} type={f.type} autoCapitalize={f.auto==="name"?"words":"none"} autoCorrect="off" autoComplete={f.auto||"off"} />
               <label className={`ag-label${f.v||agFocus===f.k?" float":""}`}>{f.label}</label>
             </div>
           ))}
-          <button onClick={handleAgencySignup} disabled={agLoading || !agValid} style={{ width:"100%", padding:"18px", borderRadius:16, border:"none", background:agValid?"linear-gradient(135deg,#BBF246 0%,#9AE010 100%)":"#E8EAF0", color:agValid?"#0D1117":"#9CA3AF", fontSize:16, fontWeight:800, fontFamily:"inherit", cursor:agValid?"pointer":"not-allowed", boxShadow:agValid?"0 6px 24px rgba(187,242,70,0.35)":"none", transition:"all .2s", opacity:agLoading?0.6:1 }}>
+          <button onClick={handleAgencySignup} disabled={agLoading || !agValid} style={{ width:"100%", padding:_isDsk?"14px":"18px", borderRadius:16, border:"none", background:agValid?"linear-gradient(135deg,#BBF246 0%,#9AE010 100%)":"#E8EAF0", color:agValid?"#0D1117":"#9CA3AF", fontSize:15, fontWeight:800, fontFamily:"inherit", cursor:agValid?"pointer":"not-allowed", boxShadow:agValid?"0 6px 24px rgba(187,242,70,0.35)":"none", transition:"all .2s", opacity:agLoading?0.6:1 }}>
             {agLoading ? "Criando sua agência..." : "Criar agência grátis →"}
           </button>
-          <p style={{ fontSize:11, color:"#D1D5DB", textAlign:"center", marginTop:14, lineHeight:1.5 }}>
+          <p style={{ fontSize:10, color:"#D1D5DB", textAlign:"center", marginTop:10, lineHeight:1.5 }}>
             Ao criar sua conta, você concorda com os <a href="/terms" style={{ color:"#BBF246", textDecoration:"none" }}>Termos de Serviço</a> e <a href="/privacy" style={{ color:"#BBF246", textDecoration:"none" }}>Política de Privacidade</a>
           </p>
-          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"22px 0 16px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"14px 0 10px" }}>
             <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
             <span style={{ fontSize:12, color:"#D1D5DB", fontWeight:600 }}>ou</span>
             <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
           </div>
-          <button onClick={()=>{setAgSignup(false);setAgError("");}} style={{ width:"100%", padding:"16px", borderRadius:16, border:"1.5px solid #E8EAF0", background:"#fff", color:"#1A1D23", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all .15s" }}>
+          <button onClick={()=>{setAgSignup(false);setAgError("");}} style={{ width:"100%", padding:_isDsk?"12px":"16px", borderRadius:16, border:"1.5px solid #E8EAF0", background:"#fff", color:"#1A1D23", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all .15s" }}>
             Já tenho conta — fazer login
           </button>
         </>)}
