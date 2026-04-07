@@ -23742,7 +23742,8 @@ function NotesPage({ onBack, user }) {
 }
 
 function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
-  const B = useThemeColors();
+  const dark = (() => { try { return localStorage.getItem("uh_dark") === "1"; } catch { return false; } })();
+  const B = dark ? { text:"#E5E7EB", muted:"#9CA3AF", bg:"#0D1117", card:"#161B22", border:"#30363D", accent:"#BBF246" } : { text:"#1A1D23", muted:"#6B7280", bg:"#F3F4F6", card:"#FFFFFF", border:"#E5E7EB", accent:"#BBF246" };
   const LIME = "#BBF246";
   const [billing, setBilling] = useState("mensal");
   const isDesktop = typeof window !== "undefined" && window.innerWidth > 900;
