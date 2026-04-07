@@ -23798,7 +23798,6 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
         </div>
         <h1 style={{ fontSize:isDesktop?32:26, fontWeight:900, margin:"0 0 4px", letterSpacing:"-0.5px" }}>Planos</h1>
         <p style={{ fontSize:14, color:B.muted, margin:0 }}>{orgName||"Sua agência"} · Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
-        </div>
       </div>
       <div style={{ display:"flex", justifyContent:isDesktop?"flex-start":"center", padding:isDesktop?"20px 40px 10px":"20px 20px 10px", maxWidth:1440, margin:"0 auto" }}>
         <div style={{ display:"flex", background:B.card, borderRadius:14, padding:3, border:`1px solid ${B.border}` }}>
