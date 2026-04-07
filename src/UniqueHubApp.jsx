@@ -23788,17 +23788,19 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
   const currentIdx = planOrder.indexOf(currentPlan || "free");
   return (
     <div style={{ minHeight:"100vh", background:B.bg, color:B.text }}>
-      <div style={{ padding:"20px 20px 0", display:"flex", alignItems:"flex-start", gap:14 }}>
-        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", color:B.text, display:"flex", padding:6, marginTop:2 }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        </button>
-        <div>
-          <p style={{ fontSize:12, fontWeight:700, color:LIME, textTransform:"uppercase", letterSpacing:"0.08em", margin:"0 0 2px" }}>Assinatura</p>
-          <h1 style={{ fontSize:24, fontWeight:800, margin:"0 0 2px" }}>Planos UniqueHub</h1>
-          <p style={{ fontSize:13, color:B.muted, margin:0 }}>{orgName||"Sua agência"} · Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
+      {/* Header matching standard UniqueHub pages */}
+      <div style={{ maxWidth:1440, margin:"0 auto", padding:isDesktop?"40px 40px 0":"24px 20px 0" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
+          <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", padding:4 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <p style={{ fontSize:12, fontWeight:700, color:LIME, textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>Assinatura</p>
+        </div>
+        <h1 style={{ fontSize:isDesktop?32:26, fontWeight:900, margin:"0 0 4px", letterSpacing:"-0.5px" }}>Planos</h1>
+        <p style={{ fontSize:14, color:B.muted, margin:0 }}>{orgName||"Sua agência"} · Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
         </div>
       </div>
-      <div style={{ display:"flex", justifyContent:"center", padding:"20px 0 10px" }}>
+      <div style={{ display:"flex", justifyContent:isDesktop?"flex-start":"center", padding:isDesktop?"20px 40px 10px":"20px 20px 10px", maxWidth:1440, margin:"0 auto" }}>
         <div style={{ display:"flex", background:B.card, borderRadius:14, padding:3, border:`1px solid ${B.border}` }}>
           {[{k:"mensal",l:"Mensal"},{k:"anual",l:"Anual",badge:"-20%"}].map(b => (
             <button key={b.k} onClick={()=>setBilling(b.k)} style={{ padding:"10px 24px", borderRadius:12, border:"none", background:billing===b.k?LIME:"transparent", color:billing===b.k?"#0D1117":B.muted, fontSize:13, fontWeight:billing===b.k?800:500, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, transition:"all .2s" }}>
@@ -23808,7 +23810,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
           ))}
         </div>
       </div>
-      <div style={{ padding:"10px 16px 20px", overflowX:isDesktop?"visible":"auto", WebkitOverflowScrolling:"touch" }}>
+      <div style={{ padding:isDesktop?"10px 40px 20px":"10px 16px 20px", overflowX:isDesktop?"visible":"auto", WebkitOverflowScrolling:"touch", maxWidth:1440, margin:"0 auto" }}>
         <div style={{ display:"flex", gap:12, minWidth:isDesktop?"auto":"900px", justifyContent:isDesktop?"center":"flex-start" }}>
           {PLANS.map((p,pi) => {
             const price = billing === "anual" ? p.annual : p.price;
@@ -23838,7 +23840,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
           })}
         </div>
       </div>
-      <div style={{ padding:"0 16px 40px" }}>
+      <div style={{ padding:isDesktop?"0 40px 40px":"0 16px 40px", maxWidth:1440, margin:"0 auto" }}>
         <div style={{ maxWidth:isDesktop?1100:"none", margin:"0 auto", background:B.card, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden" }}>
           <div style={{ padding:"20px 20px 10px" }}>
             <h2 style={{ fontSize:18, fontWeight:800, margin:0 }}>Comparativo completo de funcionalidades</h2>
