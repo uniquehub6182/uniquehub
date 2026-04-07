@@ -23640,13 +23640,14 @@ function FeedPlannerPage({ onBack, clients, user }) {
 function NotesPage({ onBack, user }) {
   const isNotesDesktop = useIsDesktop();
   const TOP = 70;
-  const [notes, setNotes] = useState(() => { try { return JSON.parse(localStorage.getItem("uh_notes_list")||"[]"); } catch { return []; } });
+  const notesKey = `uh_notes_list_${user?.id || "anon"}`;
+  const [notes, setNotes] = useState(() => { try { return JSON.parse(localStorage.getItem(notesKey)||"[]"); } catch { return []; } });
   const [selNote, setSelNote] = useState(null);
   const [editText, setEditText] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const { showToast, ToastEl } = useToast();
 
-  const save = (list) => { setNotes(list); try { localStorage.setItem("uh_notes_list", JSON.stringify(list)); } catch {} };
+  const save = (list) => { setNotes(list); try { localStorage.setItem(notesKey, JSON.stringify(list)); } catch {} };
   const addNote = () => { const n = { id: Date.now(), title: "Nova nota", text: "", created: new Date().toISOString(), updated: new Date().toISOString() }; const list = [n, ...notes]; save(list); setSelNote(n); setEditTitle(n.title); setEditText(n.text); };
   const saveNote = () => { if (!selNote) return; const list = notes.map(n => n.id === selNote.id ? { ...n, title: editTitle || "Sem título", text: editText, updated: new Date().toISOString() } : n); save(list); showToast("Nota salva ✓"); };
   const deleteNote = () => { if (!selNote || !confirm("Excluir esta nota?")) return; save(notes.filter(n => n.id !== selNote.id)); setSelNote(null); showToast("Excluída"); };
