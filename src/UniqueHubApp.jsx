@@ -14686,6 +14686,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
     { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
     { k:"about", l:"Sobre", desc:"Versão e informações" },
+    { k:"plans", l:"Planos e Assinatura", desc:"Upgrade, features e pagamento" },
   ];
 
   /* ── Unified Settings wrapper — shell stays mounted, only panel content swaps ── */
@@ -16244,6 +16245,11 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         </>}
       </SetPage>
     );
+  }
+
+  /* ═══ PLANS ═══ */
+  if (sub === "plans") {
+    return <PlansPage onBack={() => setSub(null)} currentPlan={_currentOrgPlan} orgName={null} onUpgrade={(plan, price, billing) => { /* TODO: integrate Asaas payment */ }} />;
   }
 
   /* ═══ ABOUT ═══ */
@@ -23735,6 +23741,137 @@ function NotesPage({ onBack, user }) {
   );
 }
 
+function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
+  const B = useThemeColors();
+  const LIME = "#BBF246";
+  const [billing, setBilling] = useState("mensal");
+  const isDesktop = typeof window !== "undefined" && window.innerWidth > 900;
+  const PLANS = [
+    { k:"essencial", name:"Essencial", desc:"Para freelancers e social medias", price:197, annual:157, clients:5, users:2, extra:39, color:"#5DCAA5" },
+    { k:"profissional", name:"Profissional", desc:"Para ag\u00eancias pequenas", price:397, annual:317, clients:10, users:5, extra:35, color:"#85B7EB" },
+    { k:"agencia", name:"Ag\u00eancia", desc:"Para ag\u00eancias em crescimento", price:597, annual:477, clients:20, users:15, extra:29, color:"#AFA9EC", popular:true },
+    { k:"escala", name:"Escala", desc:"Para ag\u00eancias grandes", price:997, annual:797, clients:40, users:"ilimitado", extra:19, color:"#F0997B" },
+  ];
+  const FEATURES = [
+    { cat:"Gest\u00e3o de conte\u00fado", items:[
+      { l:"Pipeline de demandas (7 etapas)", p:[1,1,1,1] },
+      { l:"App do cliente (aprova\u00e7\u00e3o, chat, dashboard)", p:[1,1,1,1] },
+      { l:"Agendamento Instagram + Facebook", p:[1,1,1,1] },
+      { l:"Calend\u00e1rio editorial", p:[1,1,1,1] },
+      { l:"Biblioteca de assets + Feed Planner", p:[1,1,1,1] },
+    ]},
+    { cat:"Intelig\u00eancia e IA", items:[
+      { l:"Assistente IA (GPT-4o + Gemini + Claude)", p:[0,1,1,1] },
+      { l:"Gera\u00e7\u00e3o de conte\u00fado e legendas com IA", p:[0,1,1,1] },
+      { l:"Coment\u00e1rios IA + News auto-gen", p:[0,1,1,1] },
+      { l:"Intelig\u00eancia de mercado + concorrentes", p:[0,0,1,1] },
+      { l:"Apresenta\u00e7\u00f5es autom\u00e1ticas (slides IA)", p:[0,0,1,1] },
+    ]},
+    { cat:"Engajamento e reten\u00e7\u00e3o", items:[
+      { l:"Growth Score (gamifica\u00e7\u00e3o do cliente)", p:[0,1,1,1] },
+      { l:"Match4Biz (networking entre clientes)", p:[0,0,1,1] },
+      { l:"CRM de leads + Meta Lead Ads", p:[0,0,1,1] },
+      { l:"WhatsApp autom\u00e1tico (resumos e alertas)", p:[0,0,0,1] },
+    ]},
+    { cat:"Opera\u00e7\u00e3o da ag\u00eancia", items:[
+      { l:"Chat interno da equipe", p:[1,1,1,1] },
+      { l:"Relat\u00f3rios de performance", p:["b\u00e1sico",1,1,1] },
+      { l:"Check-in + XP da equipe", p:[0,1,1,1] },
+      { l:"Financeiro (receita, planos, faturas)", p:[0,1,1,1] },
+      { l:"Academy (cursos e treinamentos)", p:[0,0,1,1] },
+      { l:"Permiss\u00f5es por cargo", p:[0,0,1,1] },
+      { l:"Suporte priorit\u00e1rio + onboarding", p:[0,0,0,1] },
+    ]},
+  ];
+  const planOrder = ["free","essencial","profissional","agencia","escala","enterprise"];
+  const currentIdx = planOrder.indexOf(currentPlan || "free");
+  return (
+    <div style={{ minHeight:"100vh", background:B.bg, color:B.text }}>
+      <div style={{ padding:"20px 20px 0", display:"flex", alignItems:"center", gap:12 }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", color:B.text, display:"flex", padding:4 }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div>
+          <h1 style={{ fontSize:22, fontWeight:800, margin:0 }}>Planos UniqueHub</h1>
+          <p style={{ fontSize:13, color:B.muted, margin:0 }}>{orgName||"Sua ag\u00eancia"} \u00b7 Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
+        </div>
+      </div>
+      <div style={{ display:"flex", justifyContent:"center", padding:"20px 0 10px" }}>
+        <div style={{ display:"flex", background:B.card, borderRadius:14, padding:3, border:`1px solid ${B.border}` }}>
+          {[{k:"mensal",l:"Mensal"},{k:"anual",l:"Anual",badge:"-20%"}].map(b => (
+            <button key={b.k} onClick={()=>setBilling(b.k)} style={{ padding:"10px 24px", borderRadius:12, border:"none", background:billing===b.k?LIME:"transparent", color:billing===b.k?"#0D1117":B.muted, fontSize:13, fontWeight:billing===b.k?800:500, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, transition:"all .2s" }}>
+              {b.l}
+              {b.badge && <span style={{ fontSize:10, fontWeight:700, padding:"2px 6px", borderRadius:8, background:billing===b.k?"#0D111740":"#10B98120", color:billing===b.k?"#0D1117":"#10B981" }}>{b.badge}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding:"10px 16px 20px", overflowX:isDesktop?"visible":"auto", WebkitOverflowScrolling:"touch" }}>
+        <div style={{ display:"flex", gap:12, minWidth:isDesktop?"auto":"900px", justifyContent:isDesktop?"center":"flex-start" }}>
+          {PLANS.map((p,pi) => {
+            const price = billing === "anual" ? p.annual : p.price;
+            const isCurrent = p.k === currentPlan;
+            const isUpgrade = planOrder.indexOf(p.k) > currentIdx;
+            return (
+              <div key={p.k} style={{ flex:isDesktop?"1":"none", width:isDesktop?"auto":220, maxWidth:isDesktop?280:"none", background:B.card, borderRadius:20, border:p.popular?`2px solid ${LIME}`:`1px solid ${B.border}`, padding:"20px 18px", position:"relative", display:"flex", flexDirection:"column" }}>
+                {p.popular && <div style={{ position:"absolute", top:-10, left:"50%", transform:"translateX(-50%)", fontSize:10, fontWeight:800, padding:"3px 14px", borderRadius:20, background:LIME, color:"#0D1117", whiteSpace:"nowrap" }}>MAIS POPULAR</div>}
+                <div style={{ width:36, height:36, borderRadius:10, background:`${p.color}20`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}>
+                  <div style={{ width:14, height:14, borderRadius:4, background:p.color }} />
+                </div>
+                <h3 style={{ fontSize:17, fontWeight:800, margin:"0 0 2px" }}>{p.name}</h3>
+                <p style={{ fontSize:11, color:B.muted, margin:"0 0 14px" }}>{p.desc}</p>
+                <div style={{ marginBottom:4 }}>
+                  <span style={{ fontSize:32, fontWeight:900 }}>R$ {price}</span>
+                  <span style={{ fontSize:13, color:B.muted }}>/m\u00eas</span>
+                </div>
+                {billing==="anual" && <p style={{ fontSize:11, color:"#10B981", fontWeight:600, margin:"0 0 8px" }}>Economia de R$ {(p.price-p.annual)*12}/ano</p>}
+                <p style={{ fontSize:12, color:B.muted, margin:"0 0 4px" }}>{p.clients} clientes inclusos</p>
+                <p style={{ fontSize:11, color:B.muted, margin:"0 0 4px" }}>Extra: R$ {p.extra}/cliente</p>
+                <p style={{ fontSize:11, color:B.muted, margin:"0 0 16px" }}>{typeof p.users==="number"?p.users+" usu\u00e1rios":p.users+" usu\u00e1rios"}</p>
+                <button onClick={()=>{ if(isUpgrade && onUpgrade) onUpgrade(p.k, price, billing); }} disabled={isCurrent || !isUpgrade} style={{ width:"100%", padding:"12px", borderRadius:12, border:isCurrent?`2px solid ${LIME}`:"none", background:isUpgrade?LIME:isCurrent?"transparent":B.bg, color:isUpgrade?"#0D1117":isCurrent?LIME:B.muted, fontSize:13, fontWeight:800, cursor:isUpgrade?"pointer":"default", fontFamily:"inherit", opacity:!isUpgrade&&!isCurrent?0.4:1, marginTop:"auto" }}>
+                  {isCurrent ? "\u2713 Plano atual" : isUpgrade ? "Fazer upgrade" : "\u2014"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ padding:"0 16px 40px" }}>
+        <div style={{ maxWidth:isDesktop?1100:"none", margin:"0 auto", background:B.card, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden" }}>
+          <div style={{ padding:"20px 20px 10px" }}>
+            <h2 style={{ fontSize:18, fontWeight:800, margin:0 }}>Comparativo completo de funcionalidades</h2>
+            <p style={{ fontSize:12, color:B.muted, margin:"4px 0 0" }}>Todas as features dispon\u00edveis em cada plano</p>
+          </div>
+          <div style={{ display:"flex", padding:"10px 20px", borderBottom:`1px solid ${B.border}`, background:B.bg, position:"sticky", top:0, zIndex:2 }}>
+            <div style={{ flex:2, fontSize:12, fontWeight:600, color:B.muted }}>Funcionalidade</div>
+            {PLANS.map(p => <div key={p.k} style={{ flex:1, textAlign:"center", fontSize:12, fontWeight:700, color:p.k===currentPlan?LIME:B.text }}>{p.name}</div>)}
+          </div>
+          {FEATURES.map((cat,ci) => (
+            <div key={ci}>
+              <div style={{ padding:"10px 20px 6px", background:B.bg }}>
+                <p style={{ fontSize:11, fontWeight:800, color:B.muted, margin:0, textTransform:"uppercase", letterSpacing:"0.05em" }}>{cat.cat}</p>
+              </div>
+              {cat.items.map((f,fi) => (
+                <div key={fi} style={{ display:"flex", padding:"8px 20px", borderBottom:`0.5px solid ${B.border}30`, alignItems:"center" }}>
+                  <div style={{ flex:2, fontSize:13, color:B.text }}>{f.l}</div>
+                  {f.p.map((v,vi) => (
+                    <div key={vi} style={{ flex:1, textAlign:"center", fontSize:13 }}>
+                      {v === 1 ? <span style={{ color:"#10B981", fontWeight:700 }}>\u2713</span> : v === 0 ? <span style={{ color:`${B.muted}60` }}>\u2014</span> : <span style={{ fontSize:10, color:B.muted }}>{v}</span>}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+          <div style={{ padding:"16px 20px", background:B.bg, borderTop:`1px solid ${B.border}` }}>
+            <p style={{ fontSize:12, color:B.muted, margin:0, textAlign:"center" }}>Todos os planos incluem marca UniqueHub \u00b7 Desconto de 20% no plano anual \u00b7 Sem fidelidade</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HelpPage({ onBack }) {
   const isHelpDesktop = useIsDesktop();
   const [selCat, setSelCat] = useState(null);
@@ -29791,6 +29928,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "intel" && <IntelligencePage onBack={() => setSub(null)} clients={sharedClients} user={user} demands={sharedDemands} setDemands={setSharedDemands} />}
         {sub === "ai" && <AIPage onBack={() => setSub(null)} user={user} agencyIdentity={agencyIdentity} />}
         {sub === "help" && <HelpPage onBack={() => setSub(null)} />}
+        {sub === "plans" && <PlansPage onBack={() => setSub(null)} currentPlan={_currentOrgPlan} orgName={org?.name} onUpgrade={(plan, price, billing) => { showToast(`Upgrade para ${plan} — integração de pagamento em breve`); }} />}
         {sub === "inbox" && <InboxPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
         {sub === "notes" && <NotesPage onBack={() => setSub(null)} user={user} />}
         {sub === "feedplanner" && <FeedPlannerPage onBack={() => setSub(null)} clients={sharedClients} user={user} />}
