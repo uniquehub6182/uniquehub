@@ -2246,6 +2246,7 @@ function LoginPage({ onAuth, onClientAuth }) {
   const [agLoading, setAgLoading] = useState(false);
   const [agError, setAgError] = useState("");
   const [agSuccess, setAgSuccess] = useState(false);
+  const [agFocus, setAgFocus] = useState("");
   const [step, setStep] = useState(0);
   /* Login fields */
   const [email, setEmail] = useState("");
@@ -2660,59 +2661,75 @@ function LoginPage({ onAuth, onClientAuth }) {
   );
 
   /* ── AGENCY SIGNUP SCREEN ── */
-  if (agSignup) return (
+  if (agSignup) {
+    const agFields = [
+      { k:"name", v:agName, set:setAgName, label:"Seu nome completo", type:"text", auto:"name" },
+      { k:"agency", v:agAgencyName, set:setAgAgencyName, label:"Nome da sua agência", type:"text" },
+      { k:"email", v:agEmail, set:setAgEmail, label:"E-mail profissional", type:"email", auto:"email" },
+      { k:"pw", v:agPw, set:setAgPw, label:"Criar senha (mín. 6 caracteres)", type:"password" },
+    ];
+    const agValid = agName.trim() && agAgencyName.trim() && agEmail.includes("@") && agPw.length >= 6;
+    return (
     <div className="screen" style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117" }}>
-      <div style={{ padding:"calc(env(safe-area-inset-top,0px) + 40px) 28px 24px", textAlign:"center" }}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{ height:36, objectFit:"contain", marginBottom:10 }} />
-        <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase" }}>Criar minha agência</p>
+      <style>{`
+        @keyframes cardUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes logoIn{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes checkPop{0%{transform:scale(0)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+        .ag-card{animation:cardUp .5s cubic-bezier(.34,1.1,.64,1) both}
+        .ag-logo{animation:logoIn .4s ease both}
+        .ag-input{width:100%;padding:22px 18px 10px;border:1.5px solid #E8EAF0;border-radius:16px;font-size:16px;font-family:inherit;background:#F8F9FC;color:#1A1D23;outline:none;transition:border-color .2s,background .2s;box-sizing:border-box}
+        .ag-input:focus{border-color:#BBF246;background:#fff}
+        .ag-label{position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:15px;color:#9CA3AF;pointer-events:none;transition:all .18s cubic-bezier(.4,0,.2,1);font-family:inherit}
+        .ag-label.float{top:12px;transform:none;font-size:11px;font-weight:700;color:#BBF246;letter-spacing:.04em;text-transform:uppercase}
+      `}</style>
+      <div className="ag-logo" style={{ padding:"calc(env(safe-area-inset-top,0px) + 48px) 28px 32px", textAlign:"center" }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:42, objectFit:"contain", marginBottom:12 }} />
+        <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase" }}>Crie sua agência</p>
       </div>
-      <div style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
+      <div className="ag-card" style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:isDesktopLogin?"36px 44px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
         <div style={{ maxWidth:400, margin:"0 auto" }}>
         {agSuccess ? (<div style={{ textAlign:"center", padding:"40px 0" }}>
-          <div style={{ width:72, height:72, borderRadius:20, background:"linear-gradient(135deg,#BBF246,#9AE010)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <div style={{ width:80, height:80, borderRadius:22, background:"linear-gradient(135deg,#BBF246,#9AE010)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px", animation:"checkPop .5s cubic-bezier(.34,1.56,.64,1) .2s both" }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
-          <h2 style={{ fontSize:24, fontWeight:900, color:"#1A1D23" }}>Agência criada!</h2>
-          <p style={{ fontSize:14, color:"#9CA3AF", marginTop:8 }}>Redirecionando para o painel...</p>
+          <h2 style={{ fontSize:26, fontWeight:900, color:"#1A1D23", margin:"0 0 8px" }}>Agência criada!</h2>
+          <p style={{ fontSize:14, color:"#9CA3AF", lineHeight:1.5 }}>Sua agência <strong style={{ color:"#1A1D23" }}>{agAgencyName}</strong> está pronta.</p>
+          <p style={{ fontSize:13, color:"#9CA3AF", marginTop:4 }}>Redirecionando para o painel...</p>
+          <div style={{ width:32, height:32, border:"3px solid #E8EAF0", borderTopColor:"#BBF246", borderRadius:"50%", animation:"spin .8s linear infinite", margin:"20px auto 0" }} />
         </div>) : (<>
-          <h1 style={{ fontSize:26, fontWeight:900, color:"#1A1D23", margin:"0 0 6px" }}>Crie sua agência</h1>
-          <p style={{ fontSize:14, color:"#9CA3AF", margin:"0 0 24px" }}>Comece grátis com o plano Essencial (14 dias de trial)</p>
-          {agError && <div style={{ padding:"12px 14px", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:12, marginBottom:14 }}><p style={{ fontSize:13, color:"#DC2626", margin:0 }}>⚠ {agError}</p></div>}
-          <div className="lf-wrap" style={{ marginBottom:14 }}>
-            <input className="lf-input" value={agName} onChange={e=>setAgName(e.target.value)} autoCapitalize="words" />
-            <label className={`lf-label${agName?" float":""}`}>Seu nome</label>
+          <h1 style={{ fontSize:28, fontWeight:900, color:"#1A1D23", margin:"0 0 6px", letterSpacing:"-0.5px" }}>Comece agora</h1>
+          <p style={{ fontSize:14, color:"#9CA3AF", margin:"0 0 8px", lineHeight:1.5 }}>Plano Essencial grátis por 14 dias — sem cartão</p>
+          <div style={{ display:"flex", gap:8, marginBottom:24, flexWrap:"wrap" }}>
+            {["5 clientes","Agendamento IG/FB","App do cliente","Calendário"].map(f => (
+              <span key={f} style={{ fontSize:11, fontWeight:600, padding:"4px 10px", borderRadius:20, background:"#F0FDF4", color:"#16A34A", border:"1px solid #BBF7D0" }}>{f}</span>
+            ))}
           </div>
-          <div className="lf-wrap" style={{ marginBottom:14 }}>
-            <input className="lf-input" value={agAgencyName} onChange={e=>setAgAgencyName(e.target.value)} />
-            <label className={`lf-label${agAgencyName?" float":""}`}>Nome da agência</label>
-          </div>
-          <div className="lf-wrap" style={{ marginBottom:14 }}>
-            <input className="lf-input" value={agEmail} onChange={e=>setAgEmail(e.target.value)} type="email" autoCapitalize="none" autoCorrect="off" />
-            <label className={`lf-label${agEmail?" float":""}`}>E-mail</label>
-          </div>
-          <div className="lf-wrap" style={{ marginBottom:20 }}>
-            <input className="lf-input" value={agPw} onChange={e=>setAgPw(e.target.value)} type="password" />
-            <label className={`lf-label${agPw?" float":""}`}>Senha (mín. 6 caracteres)</label>
-          </div>
-          <button onClick={handleAgencySignup} disabled={agLoading || !agName.trim() || !agAgencyName.trim() || !agEmail.includes("@") || agPw.length<6} className="lsign-btn" style={{ opacity:agLoading?0.6:(!agName.trim()||!agAgencyName.trim()||!agEmail.includes("@")||agPw.length<6?0.45:1) }}>
-            {agLoading ? "Criando..." : "Criar agência grátis"}
+          {agError && <div style={{ padding:"12px 14px", background:"#FEF2F2", border:"1px solid #FECACA", borderRadius:12, marginBottom:16 }}><p style={{ fontSize:13, color:"#DC2626", margin:0 }}>⚠ {agError}</p></div>}
+          {agFields.map((f,i) => (
+            <div key={f.k} style={{ position:"relative", width:"100%", marginBottom:14 }}>
+              <input className="ag-input" value={f.v} onChange={e=>f.set(e.target.value)} onFocus={()=>setAgFocus(f.k)} onBlur={()=>setAgFocus("")} type={f.type} autoCapitalize={f.auto==="name"?"words":"none"} autoCorrect="off" autoComplete={f.auto||"off"} />
+              <label className={`ag-label${f.v||agFocus===f.k?" float":""}`}>{f.label}</label>
+            </div>
+          ))}
+          <button onClick={handleAgencySignup} disabled={agLoading || !agValid} style={{ width:"100%", padding:"18px", borderRadius:16, border:"none", background:agValid?"linear-gradient(135deg,#BBF246 0%,#9AE010 100%)":"#E8EAF0", color:agValid?"#0D1117":"#9CA3AF", fontSize:16, fontWeight:800, fontFamily:"inherit", cursor:agValid?"pointer":"not-allowed", boxShadow:agValid?"0 6px 24px rgba(187,242,70,0.35)":"none", transition:"all .2s", opacity:agLoading?0.6:1 }}>
+            {agLoading ? "Criando sua agência..." : "Criar agência grátis →"}
           </button>
-          <p style={{ fontSize:12, color:"#D1D5DB", textAlign:"center", marginTop:16 }}>
-            Ao criar sua conta, você concorda com os <a href="/terms" style={{ color:"#BBF246" }}>Termos</a> e <a href="/privacy" style={{ color:"#BBF246" }}>Privacidade</a>
+          <p style={{ fontSize:11, color:"#D1D5DB", textAlign:"center", marginTop:14, lineHeight:1.5 }}>
+            Ao criar sua conta, você concorda com os <a href="/terms" style={{ color:"#BBF246", textDecoration:"none" }}>Termos de Serviço</a> e <a href="/privacy" style={{ color:"#BBF246", textDecoration:"none" }}>Política de Privacidade</a>
           </p>
-          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"20px 0 0" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12, margin:"22px 0 16px" }}>
             <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
-            <span style={{ fontSize:12, color:"#D1D5DB" }}>ou</span>
+            <span style={{ fontSize:12, color:"#D1D5DB", fontWeight:600 }}>ou</span>
             <div style={{ flex:1, height:1, background:"#E8EAF0" }} />
           </div>
-          <button onClick={()=>{setAgSignup(false);setAgError("");}} style={{ width:"100%", padding:"14px", borderRadius:16, border:"1.5px solid #E8EAF0", background:"transparent", color:"#9CA3AF", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginTop:16 }}>
+          <button onClick={()=>{setAgSignup(false);setAgError("");}} style={{ width:"100%", padding:"16px", borderRadius:16, border:"1.5px solid #E8EAF0", background:"#fff", color:"#1A1D23", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all .15s" }}>
             Já tenho conta — fazer login
           </button>
         </>)}
         </div>
       </div>
     </div>
-  );
+  );}
 
   /* Logo inline */
   const logoJSX = (mb) => (
