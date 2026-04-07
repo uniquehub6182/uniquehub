@@ -16249,7 +16249,11 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* ═══ PLANS ═══ */
   if (sub === "plans") {
-    return <PlansPage onBack={() => setSub(null)} currentPlan={_currentOrgPlan} orgName={null} onUpgrade={(plan, price, billing) => {}} />;
+    return (
+      <SetPage title="Planos e Assinatura" wide>
+        <PlansPage onBack={() => setSub(null)} currentPlan={_currentOrgPlan} orgName={null} onUpgrade={(plan, price, billing) => {}} embedded />
+      </SetPage>
+    );
   }
 
   /* ═══ ABOUT ═══ */
@@ -23742,7 +23746,7 @@ function NotesPage({ onBack, user }) {
   );
 }
 
-function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
+function PlansPage({ onBack, currentPlan, orgName, onUpgrade, embedded }) {
   const dark = (() => { try { return localStorage.getItem("uh_dark") === "1"; } catch { return false; } })();
   const B = dark ? { text:"#E5E7EB", muted:"#9CA3AF", bg:"#0D1117", card:"#161B22", border:"#30363D", accent:"#BBF246" } : { text:"#1A1D23", muted:"#6B7280", bg:"#F3F4F6", card:"#FFFFFF", border:"#E5E7EB", accent:"#BBF246" };
   const LIME = "#BBF246";
@@ -23788,15 +23792,15 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
   const planOrder = ["free","essencial","profissional","agencia","escala","enterprise"];
   const currentIdx = planOrder.indexOf(currentPlan || "free");
   return (
-    <div style={{ minHeight:"100vh", color:B.text, padding:isDesktop?"0 32px":"0 16px" }}>
-      <div style={{ maxWidth:1400, margin:"0 auto", paddingTop:isDesktop?32:20 }}>
+    <div style={{ minHeight:embedded?"auto":"100vh", color:B.text, padding:embedded?"0":isDesktop?"0 32px":"0 16px" }}>
+      {!embedded && <div style={{ maxWidth:1400, margin:"0 auto", paddingTop:isDesktop?32:20 }}>
         <button onClick={onBack} style={{ width:40, height:40, borderRadius:12, border:`1.5px solid ${B.border}`, background:B.card, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12, color:B.text }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <p style={{ fontSize:12, fontWeight:700, color:LIME, textTransform:"uppercase", letterSpacing:"0.1em", margin:"0 0 4px" }}>Assinatura</p>
         <h1 style={{ fontSize:isDesktop?32:26, fontWeight:900, margin:"0 0 4px", letterSpacing:"-0.5px" }}>Planos</h1>
         <p style={{ fontSize:14, color:B.muted, margin:"0 0 20px" }}>{orgName||"Sua agência"} · Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
-      </div>
+      </div>}
       <div style={{ display:"flex", justifyContent:isDesktop?"flex-start":"center", padding:"0 0 16px", maxWidth:1400, margin:"0 auto" }}>
         <div style={{ display:"flex", background:B.card, borderRadius:14, padding:3, border:`1px solid ${B.border}` }}>
           {[{k:"mensal",l:"Mensal"},{k:"anual",l:"Anual",badge:"-20%"}].map(b => (
