@@ -2669,8 +2669,11 @@ function LoginPage({ onAuth, onClientAuth }) {
       { k:"pw", v:agPw, set:setAgPw, label:"Criar senha (mín. 6 caracteres)", type:"password" },
     ];
     const agValid = agName.trim() && agAgencyName.trim() && agEmail.includes("@") && agPw.length >= 6;
+    const _isDsk = typeof window !== "undefined" && window.innerWidth > 900;
     return (
-    <div className="screen" style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"#0D1117" }}>
+    <div className="screen" style={{ position:"fixed", inset:0, display:"flex", alignItems:_isDsk?"flex-end":"stretch", justifyContent:_isDsk?"center":"stretch", background:"#000" }}>
+    <div style={_isDsk ? { width:420, maxWidth:"90vw", display:"flex", flexDirection:"column", flex:1 } : { flex:1, display:"flex", flexDirection:"column" }}>
+    <div style={{ display:"flex", flexDirection:"column", flex:1, background:"#0D1117" }}>
       <style>{`
         @keyframes cardUp{from{transform:translateY(60px);opacity:0}to{transform:translateY(0);opacity:1}}
         @keyframes logoIn{from{transform:translateY(-20px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -2686,7 +2689,7 @@ function LoginPage({ onAuth, onClientAuth }) {
         <img src={LOGO_B64} alt="UniqueHub" style={{ height:42, objectFit:"contain", marginBottom:12 }} />
         <p style={{ fontSize:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase" }}>Crie sua agência</p>
       </div>
-      <div className="ag-card" style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:isDesktopLogin?"36px 44px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
+      <div className="ag-card" style={{ flex:1, background:"#fff", borderRadius:"32px 32px 0 0", padding:window.innerWidth>900?"36px 44px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
         <div style={{ maxWidth:400, margin:"0 auto" }}>
         {agSuccess ? (<div style={{ textAlign:"center", padding:"40px 0" }}>
           <div style={{ width:80, height:80, borderRadius:22, background:"linear-gradient(135deg,#BBF246,#9AE010)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px", animation:"checkPop .5s cubic-bezier(.34,1.56,.64,1) .2s both" }}>
@@ -2728,6 +2731,8 @@ function LoginPage({ onAuth, onClientAuth }) {
         </>)}
         </div>
       </div>
+    </div>
+    </div>
     </div>
   );}
 
