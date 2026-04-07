@@ -111,8 +111,8 @@ const PLAN_FEATURES = {
 const getPlanFeatures = (plan) => PLAN_FEATURES[plan] || PLAN_FEATURES.free;
 const canFeature = (feature) => { const f = getPlanFeatures(_currentOrgPlan); return f[feature] === true || f[feature] === "basic" || (typeof f[feature] === "number" && f[feature] > 0); };
 
-/* ── Org-scoped query helper: adds .eq("org_id", _currentOrgId) — blocks all data when org not loaded ── */
-const orgScope = (query) => query.eq("org_id", _currentOrgId || "00000000-0000-0000-0000-000000000000");
+/* ── Org-scoped query helper: adds .eq("org_id", _currentOrgId) when org is loaded ── */
+const orgScope = (query) => _currentOrgId ? query.eq("org_id", _currentOrgId) : query;
 
 /* Map navigation keys to required features — null means always visible */
 const NAV_FEATURE_MAP = {
@@ -29462,6 +29462,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const [sharedClients, setSharedClients] = useState([]);
   const [sharedTeam, setSharedTeam] = useState([]);
   const [clientsLoaded, setClientsLoaded] = useState(false);
+  const [orgReady, setOrgReady] = useState(false); /* Gate: data only loads after org is known */
 
   /* ── Shared demands state loaded from Supabase ── */
   const [sharedDemands, setSharedDemands] = useState([]);
@@ -29565,7 +29566,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const clearChatBadge = () => setChatUnread(0);
 
   useEffect(() => {
-    if (!supabase || clientsLoaded) return;
+    if (!supabase || clientsLoaded || !orgReady) return;
     supaLoadClients().then(async rows => {
       if (rows) {
         if (rows.length > 0) {
@@ -29608,7 +29609,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       }
       setSharedTeam(rows.map(r => ({ ...r, photo_url: pm[r.user_id]||null })));
     });
-  }, [clientsLoaded]);
+  }, [clientsLoaded, orgReady]);
 
   /* Load demands once after clients are ready */
   useEffect(() => {
@@ -30085,8 +30086,8 @@ export default function App() {
         /* Auto-create membership */
         await supabase.from("org_members").upsert({ org_id: fallbackOrg, user_id: userId, role: "member", accepted_at: new Date().toISOString() }, { onConflict: "org_id,user_id" }).catch(() => {});
       }
-      /* Trigger data reload now that org_id is known */
-      setClientsLoaded(false);
+      /* Trigger data loading now that org_id is known */
+      setOrgReady(true);
     } catch(e) { console.error("[Org] Load error:", e); }
   };
 
