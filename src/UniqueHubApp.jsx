@@ -14280,7 +14280,7 @@ const profileFieldIcon = (k) => {
   if (k==="users") return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
   return <span style={{fontSize:14}}>•</span>;
 };
-function SettingsPage({ onBack, goSub: parentGoSub, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, navPicks, setNavPicks, navTabs, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud, isClientView }) {
+function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeColor, setThemeColor, onNavEdit, navPicks, setNavPicks, navTabs, propClients, uiPrefs, updateUiPrefs, replaceUiPrefs, onAgencyUpdate, savePrefsToCloud, isClientView }) {
   const isSetDesktop = useIsDesktop();
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
@@ -14686,7 +14686,7 @@ function SettingsPage({ onBack, goSub: parentGoSub, user, setUser, onLogout, dar
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
     { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
     { k:"about", l:"Sobre", desc:"Versão e informações" },
-    { k:"plans", l:"Planos e Assinatura", desc:"Upgrade, features e pagamento", external:true },
+    { k:"plans", l:"Planos e Assinatura", desc:"Upgrade, features e pagamento" },
   ];
 
   /* ── Unified Settings wrapper — shell stays mounted, only panel content swaps ── */
@@ -14723,7 +14723,7 @@ function SettingsPage({ onBack, goSub: parentGoSub, user, setUser, onLogout, dar
               {SET_ITEMS.map(s => {
                 const isSel = sub === s.k;
                 return (
-                  <button key={s.k} onClick={()=>{if(s.external&&parentGoSub){parentGoSub(s.k);return;}if(s.k==="navmenu"){if(isSetDesktop){setSub("navmenu");}else{onNavEdit&&onNavEdit();}return;}setSub(s.k);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12.5, fontWeight:isSel?700:500, background:isSel?`${accent}10`:"transparent", color:isSel?accent:B.text, borderRadius:10, textAlign:"left", marginBottom:1, transition:"all .12s" }}
+                  <button key={s.k} onClick={()=>{if(s.k==="navmenu"){if(isSetDesktop){setSub("navmenu");}else{onNavEdit&&onNavEdit();}return;}setSub(s.k);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12.5, fontWeight:isSel?700:500, background:isSel?`${accent}10`:"transparent", color:isSel?accent:B.text, borderRadius:10, textAlign:"left", marginBottom:1, transition:"all .12s" }}
                     onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${accent}06`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
                     <span style={{ display:"flex", flexShrink:0, color:isSel?accent:B.muted }}>{setIcon(s.k, isSel?accent:B.muted)}</span>
                     <span style={{ flex:1 }}>{s.l}</span>
@@ -16247,7 +16247,10 @@ function SettingsPage({ onBack, goSub: parentGoSub, user, setUser, onLogout, dar
     );
   }
 
-  /* ═══ PLANS — handled at main app level ═══ */
+  /* ═══ PLANS ═══ */
+  if (sub === "plans") {
+    return <PlansPage onBack={() => setSub(null)} currentPlan={_currentOrgPlan} orgName={null} onUpgrade={(plan, price, billing) => {}} />;
+  }
 
   /* ═══ ABOUT ═══ */
   if (sub === "about") {
@@ -23785,19 +23788,16 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
   const planOrder = ["free","essencial","profissional","agencia","escala","enterprise"];
   const currentIdx = planOrder.indexOf(currentPlan || "free");
   return (
-    <div className="content-wide" style={{ minHeight:"100vh", color:B.text }}>
-      {/* Header matching standard UniqueHub pages */}
-      <div style={{ maxWidth:1440, margin:"0 auto", padding:isDesktop?"40px 40px 0":"24px 20px 0" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:6 }}>
-          <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer", color:B.muted, display:"flex", padding:4 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          </button>
-          <p style={{ fontSize:12, fontWeight:700, color:LIME, textTransform:"uppercase", letterSpacing:"0.1em", margin:0 }}>Assinatura</p>
-        </div>
+    <div style={{ minHeight:"100vh", color:B.text, padding:isDesktop?"0 32px":"0 16px" }}>
+      <div style={{ maxWidth:1400, margin:"0 auto", paddingTop:isDesktop?32:20 }}>
+        <button onClick={onBack} style={{ width:40, height:40, borderRadius:12, border:`1.5px solid ${B.border}`, background:B.card, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:12, color:B.text }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <p style={{ fontSize:12, fontWeight:700, color:LIME, textTransform:"uppercase", letterSpacing:"0.1em", margin:"0 0 4px" }}>Assinatura</p>
         <h1 style={{ fontSize:isDesktop?32:26, fontWeight:900, margin:"0 0 4px", letterSpacing:"-0.5px" }}>Planos</h1>
-        <p style={{ fontSize:14, color:B.muted, margin:0 }}>{orgName||"Sua agência"} · Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
+        <p style={{ fontSize:14, color:B.muted, margin:"0 0 20px" }}>{orgName||"Sua agência"} · Plano atual: <strong style={{ color:LIME }}>{(currentPlan||"free").charAt(0).toUpperCase()+(currentPlan||"free").slice(1)}</strong></p>
       </div>
-      <div style={{ display:"flex", justifyContent:isDesktop?"flex-start":"center", padding:isDesktop?"20px 40px 10px":"20px 20px 10px" }}>
+      <div style={{ display:"flex", justifyContent:isDesktop?"flex-start":"center", padding:"0 0 16px", maxWidth:1400, margin:"0 auto" }}>
         <div style={{ display:"flex", background:B.card, borderRadius:14, padding:3, border:`1px solid ${B.border}` }}>
           {[{k:"mensal",l:"Mensal"},{k:"anual",l:"Anual",badge:"-20%"}].map(b => (
             <button key={b.k} onClick={()=>setBilling(b.k)} style={{ padding:"10px 24px", borderRadius:12, border:"none", background:billing===b.k?LIME:"transparent", color:billing===b.k?"#0D1117":B.muted, fontSize:13, fontWeight:billing===b.k?800:500, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, transition:"all .2s" }}>
@@ -23807,7 +23807,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
           ))}
         </div>
       </div>
-      <div style={{ padding:isDesktop?"10px 40px 20px":"10px 16px 20px", overflowX:isDesktop?"visible":"auto", WebkitOverflowScrolling:"touch" }}>
+      <div style={{ padding:"0 0 20px", overflowX:isDesktop?"visible":"auto", WebkitOverflowScrolling:"touch", maxWidth:1400, margin:"0 auto" }}>
         <div style={{ display:"flex", gap:12, minWidth:isDesktop?"auto":"900px", justifyContent:isDesktop?"center":"flex-start" }}>
           {PLANS.map((p,pi) => {
             const price = billing === "anual" ? p.annual : p.price;
@@ -23837,7 +23837,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade }) {
           })}
         </div>
       </div>
-      <div style={{ padding:isDesktop?"0 40px 40px":"0 16px 40px" }}>
+      <div style={{ padding:"0 0 40px", maxWidth:1400, margin:"0 auto" }}>
         <div style={{ maxWidth:isDesktop?1100:"none", margin:"0 auto", background:B.card, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden" }}>
           <div style={{ padding:"20px 20px 10px" }}>
             <h2 style={{ fontSize:18, fontWeight:800, margin:0 }}>Comparativo completo de funcionalidades</h2>
@@ -29917,7 +29917,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "academy" && <AcademyPage onBack={() => setSub(null)} />}
         {sub === "financial" && <FinancialPage onBack={() => setSub(null)} clients={sharedClients} canAccess={canAccess} />}
         {sub === "notifs" && <NotifsPage onBack={() => { setSub(null); if (user?.id && supabase) supabase.from("notifications").select("*", { count:"exact", head:true }).eq("user_id", user.id).eq("read", false).then(r => setNotifCount(r.count||0)); }} user={user} navigate={(k)=>{const mainTabs=["home","content","chat","clients"];if(mainTabs.includes(k)){setSub(null);setTimeout(()=>setTab(k),50);}else{setTimeout(()=>setSub(k),50);}}} />}
-        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} goSub={(k)=>{setSub(k);}} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={() => setShowNavEdit(true)} navPicks={navPicks} setNavPicks={p => setNavPicksAndSave(p, user?.id)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
+        {sub === "settings" && <SettingsBoundary><SettingsPage onBack={() => setSub(null)} user={user} setUser={setUser} onLogout={onLogout} dark={dark} setDark={v=>{setDark(v);try{localStorage.setItem("uh_dark",v?"1":"0")}catch{}}} themeColor={themeColor} setThemeColor={v=>{setThemeColor(v);try{localStorage.setItem("uh_theme",v)}catch{}}} onNavEdit={() => setShowNavEdit(true)} navPicks={navPicks} setNavPicks={p => setNavPicksAndSave(p, user?.id)} propClients={sharedClients} uiPrefs={uiPrefs} updateUiPrefs={updateUiPrefs} replaceUiPrefs={replaceUiPrefs} onAgencyUpdate={setAgencyIdentity} savePrefsToCloud={savePrefsToCloud} /></SettingsBoundary>}
         {sub === "calendar" && <CalendarPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} user={user} canAccess={canAccess} demands={sharedDemands} />}
         {sub === "library" && <LibraryPage onBack={() => setSub(null)} clients={sharedClients} onUpdateClients={setSharedClients} />}
         {sub === "reports" && <ReportsPage onBack={() => setSub(null)} clients={sharedClients} team={sharedTeam} />}
