@@ -112,7 +112,7 @@ const getPlanFeatures = (plan) => PLAN_FEATURES[plan] || PLAN_FEATURES.free;
 const canFeature = (feature) => { const f = getPlanFeatures(_currentOrgPlan); return f[feature] === true || f[feature] === "basic" || (typeof f[feature] === "number" && f[feature] > 0); };
 
 /* ── Org-scoped query helper: adds .eq("org_id", _currentOrgId) when org is loaded ── */
-const orgScope = (query) => _currentOrgId ? query.eq("org_id", _currentOrgId) : query;
+const orgScope = (query) => _currentOrgId ? query.eq("org_id", _currentOrgId) : query; /* If no org yet, returns all data — safe for initial load */
 
 /* Map navigation keys to required features — null means always visible */
 const NAV_FEATURE_MAP = {
@@ -29566,7 +29566,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   const clearChatBadge = () => setChatUnread(0);
 
   useEffect(() => {
-    if (!supabase || clientsLoaded || !orgReady) return;
+    if (!supabase || clientsLoaded) return;
     supaLoadClients().then(async rows => {
       if (rows) {
         if (rows.length > 0) {
@@ -29609,7 +29609,7 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
       }
       setSharedTeam(rows.map(r => ({ ...r, photo_url: pm[r.user_id]||null })));
     });
-  }, [clientsLoaded, orgReady]);
+  }, [clientsLoaded]);
 
   /* Load demands once after clients are ready */
   useEffect(() => {
@@ -30086,8 +30086,8 @@ export default function App() {
         /* Auto-create membership */
         await supabase.from("org_members").upsert({ org_id: fallbackOrg, user_id: userId, role: "member", accepted_at: new Date().toISOString() }, { onConflict: "org_id,user_id" }).catch(() => {});
       }
-      /* Trigger data loading now that org_id is known */
-      setOrgReady(true);
+      /* Trigger data reload now that org_id is known */
+      setClientsLoaded(false);
     } catch(e) { console.error("[Org] Load error:", e); }
   };
 
