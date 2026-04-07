@@ -30086,7 +30086,8 @@ export default function App() {
         /* Auto-create membership */
         await supabase.from("org_members").upsert({ org_id: fallbackOrg, user_id: userId, role: "member", accepted_at: new Date().toISOString() }, { onConflict: "org_id,user_id" }).catch(() => {});
       }
-      /* org_id is now set — data loading will use it automatically */
+      /* org_id is now set — force data reload with correct filter */
+      setClientsLoaded(false);
     } catch(e) { console.error("[Org] Load error:", e); }
   };
 
@@ -30657,7 +30658,7 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && !clientUser && !onboardDone && <OnboardingSlides onDone={finishOnboard} />}
-      {!user && !clientUser && onboardDone && <LoginPage onAuth={(u) => { setUserAndRef(u); loadCloudPrefsForUser(u.id); loadOrg(u.id);
+      {!user && !clientUser && onboardDone && <LoginPage onAuth={async (u) => { await loadOrg(u.id); setUserAndRef(u); loadCloudPrefsForUser(u.id);
     const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
     const dismissed = (() => { try { return localStorage.getItem("uh_pwa_dismissed"); } catch { return null; } })();
