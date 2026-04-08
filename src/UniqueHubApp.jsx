@@ -8943,6 +8943,19 @@ REGRAS TÉCNICAS:
                 <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
                   <div style={{ width:22, height:22, borderRadius:7, background:B.accent+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:B.accent }}>2</div>
                   <p style={{ fontSize:13, fontWeight:700 }}>Planejamento</p>
+                  <div style={{ position:"relative", marginLeft:4 }}>
+                    <div onClick={e=>{e.stopPropagation();const tip=e.currentTarget.nextSibling;tip.style.display=tip.style.display==="none"?"block":"block";setTimeout(()=>{tip.style.display="none";},8000);}} style={{ width:18, height:18, borderRadius:9, background:B.muted+"20", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", fontSize:10, fontWeight:800, color:B.muted }}>?</div>
+                    <div style={{ display:"none", position:"absolute", left:-120, top:26, width:300, padding:"14px 16px", borderRadius:14, background:B.bgCard, border:"1px solid "+B.border, boxShadow:"0 8px 30px rgba(0,0,0,0.3)", zIndex:999, fontSize:11, lineHeight:1.6, color:B.text }}>
+                      <p style={{ fontWeight:800, fontSize:12, marginBottom:8, color:B.accent }}>Como preparar o PDF</p>
+                      <p style={{ marginBottom:6 }}>O arquivo deve conter o <strong>planejamento de conteúdo</strong> do mês, com informações como:</p>
+                      <p style={{ marginBottom:4 }}>• Datas de publicação previstas</p>
+                      <p style={{ marginBottom:4 }}>• Temas ou assuntos de cada post</p>
+                      <p style={{ marginBottom:4 }}>• Campanhas ou ações especiais</p>
+                      <p style={{ marginBottom:4 }}>• Datas comemorativas relevantes</p>
+                      <p style={{ marginBottom:8 }}>• Observações ou direcionamentos do cliente</p>
+                      <p style={{ color:B.muted, fontSize:10 }}>Aceita: PDF, TXT ou DOC. A IA extrai o texto e gera os posts automaticamente.</p>
+                    </div>
+                  </div>
                   {ipFile && <svg width="14" height="14" viewBox="0 0 24 24" fill={B.accent} stroke="none" style={{ marginLeft:"auto" }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
                 </div>
                 {ipFile ? (
