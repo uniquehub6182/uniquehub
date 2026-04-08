@@ -16299,7 +16299,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   if (sub === "superadmin" && _currentOrgPlan === "enterprise") {
     const planColors = { free:"#9CA3AF", essencial:"#5DCAA5", profissional:"#85B7EB", agencia:"#AFA9EC", escala:"#F0997B", enterprise:"#BBF246" };
     const planPrices = { free:0, essencial:197, profissional:397, agencia:597, escala:997, enterprise:0 };
-    const planNames = { free:"Free", essencial:"Essencial", profissional:"Profissional", agencia:"Ag\u00eancia", escala:"Escala", enterprise:"Enterprise" };
+    const planNames = { free:"Free", essencial:"Essencial", profissional:"Profissional", agencia:"Agência", escala:"Escala", enterprise:"Enterprise" };
     const totalClients = saOrgs.reduce((s,o) => s + (o.clientCount||0), 0);
     const totalDemands = saOrgs.reduce((s,o) => s + (o.demandCount||0), 0);
     const totalMembers = saOrgs.reduce((s,o) => s + (o.memberCount||0), 0);
@@ -16313,20 +16313,20 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       const l = limits[newPlan] || limits.free;
       await supabase.from("organizations").update({ plan: newPlan, max_clients: l.c, max_users: l.u }).eq("id", orgId);
       setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, plan: newPlan, max_clients: l.c, max_users: l.u } : o));
-      showToast("Plano atualizado \u2713");
+      showToast("Plano atualizado ✓");
     };
     const toggleSuspend = async (org) => {
-      if (org.id === "a0000000-0000-0000-0000-000000000001") { showToast("Unique Marketing n\u00e3o pode ser suspensa"); return; }
+      if (org.id === "a0000000-0000-0000-0000-000000000001") { showToast("Unique Marketing não pode ser suspensa"); return; }
       if (org.suspended) {
         await supabase.from("organizations").update({ suspended: false, suspended_at: null, suspended_reason: null }).eq("id", org.id);
         setSaOrgs(prev => prev.map(o => o.id === org.id ? { ...o, suspended: false, suspended_at: null, suspended_reason: null } : o));
-        showToast(org.name + " reativada \u2713");
+        showToast(org.name + " reativada ✓");
       } else {
-        const reason = prompt("Motivo da suspens\u00e3o (vis\u00edvel para a ag\u00eancia):");
+        const reason = prompt("Motivo da suspensão (visível para a agência):");
         if (reason === null) return;
         await supabase.from("organizations").update({ suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason || "Conta suspensa pelo administrador" }).eq("id", org.id);
         setSaOrgs(prev => prev.map(o => o.id === org.id ? { ...o, suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason } : o));
-        showToast(org.name + " suspensa \u2713");
+        showToast(org.name + " suspensa ✓");
       }
     };
     const extendTrial = async (orgId, days) => {
@@ -16337,21 +16337,21 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       const newEnd = new Date(base.getTime() + d * 86400000);
       await supabase.from("organizations").update({ trial_ends_at: newEnd.toISOString() }).eq("id", orgId);
       setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, trial_ends_at: newEnd.toISOString(), trialDays: Math.ceil((newEnd - Date.now()) / 86400000) } : o));
-      showToast("Trial estendido +" + d + " dias \u2713");
+      showToast("Trial estendido +" + d + " dias ✓");
     };
     const saveNotes = async (orgId, notes) => {
       await supabase.from("organizations").update({ notes }).eq("id", orgId);
       setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, notes } : o));
-      showToast("Notas salvas \u2713");
+      showToast("Notas salvas ✓");
     };
     const deleteOrg = async (orgId, orgName) => {
-      if (orgId === "a0000000-0000-0000-0000-000000000001") { showToast("Unique Marketing n\u00e3o pode ser exclu\u00edda"); return; }
-      if (!confirm("ATEN\u00c7\u00c3O: Excluir " + orgName + "? Todos os dados ser\u00e3o perdidos.")) return;
-      if (!confirm("Tem CERTEZA ABSOLUTA? Esta a\u00e7\u00e3o \u00e9 IRREVERS\u00cdVEL.")) return;
+      if (orgId === "a0000000-0000-0000-0000-000000000001") { showToast("Unique Marketing não pode ser excluída"); return; }
+      if (!confirm("ATENÇÃO: Excluir " + orgName + "? Todos os dados serão perdidos.")) return;
+      if (!confirm("Tem CERTEZA ABSOLUTA? Esta ação é IRREVERSÍVEL.")) return;
       await supabase.from("org_members").delete().eq("org_id", orgId);
       await supabase.from("organizations").delete().eq("id", orgId);
       setSaOrgs(prev => prev.filter(o => o.id !== orgId));
-      setSaSelected(null); showToast(orgName + " exclu\u00edda");
+      setSaSelected(null); showToast(orgName + " excluída");
     };
     const loadMembers = async (orgId) => {
       const { data: members } = await supabase.from("org_members").select("user_id, role, accepted_at").eq("org_id", orgId);
@@ -16370,7 +16370,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         <div style={{ padding:isSetDesktop?"0 24px":"0" }}>
           {/* Tabs */}
           <div style={{ display:"flex", gap:6, marginBottom:16, flexWrap:"wrap" }}>
-            {[{k:"overview",l:"Vis\u00e3o Geral"},{k:"orgs",l:"Ag\u00eancias"},{k:"health",l:"Sa\u00fade do Sistema"}].map(t => (
+            {[{k:"overview",l:"Visão Geral"},{k:"orgs",l:"Agências"},{k:"health",l:"Saúde do Sistema"}].map(t => (
               <button key={t.k} onClick={()=>setSaTab(t.k)} style={{ padding:"8px 16px", borderRadius:10, border:"none", background:saTab===t.k?B.accent+"20":"transparent", color:saTab===t.k?B.accent:B.muted, fontSize:12, fontWeight:saTab===t.k?700:500, cursor:"pointer", fontFamily:"inherit" }}>{t.l}</button>
             ))}
           </div>
@@ -16379,11 +16379,11 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           {saTab === "overview" && <>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))", gap:10, marginBottom:16 }}>
               {[
-                { l:"Ag\u00eancias", v:saOrgs.length, c:"#AFA9EC", sub:payingOrgs.length+" pagantes" },
-                { l:"Clientes", v:totalClients, c:"#5DCAA5", sub:"em todas as ag\u00eancias" },
-                { l:"Demandas", v:totalDemands, c:"#85B7EB", sub:"conte\u00fados criados" },
+                { l:"Agências", v:saOrgs.length, c:"#AFA9EC", sub:payingOrgs.length+" pagantes" },
+                { l:"Clientes", v:totalClients, c:"#5DCAA5", sub:"em todas as agências" },
+                { l:"Demandas", v:totalDemands, c:"#85B7EB", sub:"conteúdos criados" },
                 { l:"MRR", v:"R$ "+mrr, c:"#BBF246", sub:payingOrgs.length+" assinaturas" },
-                { l:"Suspensas", v:suspendedOrgs.length, c:suspendedOrgs.length>0?"#EF4444":"#9CA3AF", sub:suspendedOrgs.length>0?"requer aten\u00e7\u00e3o":"tudo ok" },
+                { l:"Suspensas", v:suspendedOrgs.length, c:suspendedOrgs.length>0?"#EF4444":"#9CA3AF", sub:suspendedOrgs.length>0?"requer atenção":"tudo ok" },
                 { l:"Em trial", v:trialOrgs.length, c:"#F59E0B", sub:trialOrgs.length>0?"ativas":"nenhuma" },
               ].map((card,i) => (
                 <div key={i} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid "+B.border, padding:"14px 16px" }}>
@@ -16395,7 +16395,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             </div>
             {/* Plan distribution */}
             <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid "+B.border, padding:"16px 20px", marginBottom:16 }}>
-              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>Distribui\u00e7\u00e3o por plano</p>
+              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>Distribuição por plano</p>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                 {Object.entries(byPlan).map(([plan, count]) => (
                   <div key={plan} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:10, background:(planColors[plan]||"#9CA3AF")+"15", border:"1px solid "+(planColors[plan]||"#9CA3AF")+"30" }}>
@@ -16408,7 +16408,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             </div>
             {/* Recent signups */}
             <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid "+B.border, padding:"16px 20px" }}>
-              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>\u00daltimas ag\u00eancias</p>
+              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>Últimas agências</p>
               {saOrgs.slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0,5).map((org,i) => {
                 const pc = planColors[org.plan]||"#9CA3AF";
                 const days = Math.floor((Date.now() - new Date(org.created_at).getTime())/86400000);
@@ -16416,8 +16416,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                   <div key={org.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:i<4?"1px solid "+B.border+"40":"none" }}>
                     <div style={{ width:36, height:36, borderRadius:10, background:pc+"20", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, color:pc, flexShrink:0 }}>{org.name.charAt(0)}</div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:13, fontWeight:700, margin:0 }}>{org.name}{org.suspended ? " \ud83d\udeab" : ""}</p>
-                      <p style={{ fontSize:11, color:B.muted, margin:0 }}>{org.owner?.email||"\u2014"}</p>
+                      <p style={{ fontSize:13, fontWeight:700, margin:0 }}>{org.name}{org.suspended ? " 🚫" : ""}</p>
+                      <p style={{ fontSize:11, color:B.muted, margin:0 }}>{org.owner?.email||"—"}</p>
                     </div>
                     <div style={{ textAlign:"right", flexShrink:0 }}>
                       <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:pc+"20", color:pc }}>{org.plan}</span>
@@ -16435,7 +16435,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               <input value={saSearch} onChange={e=>setSaSearch(e.target.value)} placeholder="Buscar por nome ou email..." style={{ width:"100%", padding:"10px 16px 10px 38px", borderRadius:12, border:"1px solid "+B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box" }} />
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             </div>
-            <p style={{ fontSize:12, color:B.muted, marginBottom:10 }}>{filteredOrgs.length} ag\u00eancia{filteredOrgs.length!==1?"s":""}</p>
+            <p style={{ fontSize:12, color:B.muted, marginBottom:10 }}>{filteredOrgs.length} agência{filteredOrgs.length!==1?"s":""}</p>
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {filteredOrgs.map(org => {
                 const isSel = saSelected?.id === org.id;
@@ -16448,8 +16448,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                         <div style={{ width:42, height:42, borderRadius:12, background:pc+"20", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:17, color:pc }}>{org.name.charAt(0)}</div>
                         <div>
-                          <h3 style={{ fontSize:15, fontWeight:800, margin:0 }}>{org.name}{org.suspended ? " \ud83d\udd12" : ""}</h3>
-                          <p style={{ fontSize:11, color:B.muted, margin:"2px 0 0" }}>{org.owner?.name||"Sem owner"} \u00b7 {org.owner?.email||"\u2014"}</p>
+                          <h3 style={{ fontSize:15, fontWeight:800, margin:0 }}>{org.name}{org.suspended ? " 🔒" : ""}</h3>
+                          <p style={{ fontSize:11, color:B.muted, margin:"2px 0 0" }}>{org.owner?.name||"Sem owner"} · {org.owner?.email||"—"}</p>
                         </div>
                       </div>
                       <div style={{ textAlign:"right" }}>
@@ -16473,14 +16473,14 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                       {/* Action buttons row */}
                       <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
                         <button onClick={()=>toggleSuspend(org)} style={{ padding:"8px 16px", borderRadius:10, border:"1.5px solid "+(org.suspended?"#10B981":"#EF4444"), background:"transparent", color:org.suspended?"#10B981":"#EF4444", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                          {org.suspended ? "\u2713 Reativar ag\u00eancia" : "\u26d4 Suspender ag\u00eancia"}
+                          {org.suspended ? "✓ Reativar agência" : "⛔ Suspender agência"}
                         </button>
                         <button onClick={()=>extendTrial(org.id)} style={{ padding:"8px 16px", borderRadius:10, border:"1.5px solid #F59E0B", background:"transparent", color:"#F59E0B", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                           + Estender trial
                         </button>
                         {org.id !== "a0000000-0000-0000-0000-000000000001" && (
                           <button onClick={()=>deleteOrg(org.id, org.name)} style={{ padding:"8px 16px", borderRadius:10, border:"1.5px solid #EF4444", background:"transparent", color:"#EF4444", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginLeft:"auto" }}>
-                            Excluir ag\u00eancia
+                            Excluir agência
                           </button>
                         )}
                       </div>
@@ -16507,8 +16507,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                       </div>
                       {/* Notes */}
                       <div style={{ marginBottom:16 }}>
-                        <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Notas internas (s\u00f3 vis\u00edvel para super admin)</label>
-                        <textarea defaultValue={org.notes||""} onBlur={e=>saveNotes(org.id, e.target.value)} placeholder="Adicionar observa\u00e7\u00f5es sobre esta ag\u00eancia..." style={{ width:"100%", minHeight:60, padding:"10px 12px", borderRadius:10, border:"1px solid "+B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, resize:"vertical", outline:"none", boxSizing:"border-box" }} />
+                        <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Notas internas (só visível para super admin)</label>
+                        <textarea defaultValue={org.notes||""} onBlur={e=>saveNotes(org.id, e.target.value)} placeholder="Adicionar observa\u00e7ões sobre esta agência..." style={{ width:"100%", minHeight:60, padding:"10px 12px", borderRadius:10, border:"1px solid "+B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, resize:"vertical", outline:"none", boxSizing:"border-box" }} />
                       </div>
                       {/* Members */}
                       <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:8, textTransform:"uppercase" }}>Membros ({saMembers.length})</label>
@@ -16518,8 +16518,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                             <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:B.bgCard, borderRadius:10, border:"1px solid "+B.border }}>
                               <div style={{ width:32, height:32, borderRadius:8, background:pc+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:pc, flexShrink:0 }}>{(m.profile?.name||"?").charAt(0)}</div>
                               <div style={{ flex:1, minWidth:0 }}>
-                                <p style={{ fontSize:12, fontWeight:700, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.name||"\u2014"}</p>
-                                <p style={{ fontSize:10, color:B.muted, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.email||"\u2014"}</p>
+                                <p style={{ fontSize:12, fontWeight:700, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.name||"—"}</p>
+                                <p style={{ fontSize:10, color:B.muted, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.email||"—"}</p>
                               </div>
                               <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:8, background:m.role==="owner"?B.accent+"20":B.muted+"15", color:m.role==="owner"?B.accent:B.muted }}>{m.role}</span>
                             </div>
@@ -24097,7 +24097,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade, embedded }) {
     ]},
     { cat:"Opera\u00e7ão da agência", items:[
       { l:"Chat interno da equipe", p:[1,1,1,1] },
-      { l:"Relat\u00f3rios de performance", p:["básico",1,1,1] },
+      { l:"Relatórios de performance", p:["básico",1,1,1] },
       { l:"Check-in + XP da equipe", p:[0,1,1,1] },
       { l:"Financeiro (receita, planos, faturas)", p:[0,1,1,1] },
       { l:"Academy (cursos e treinamentos)", p:[0,0,1,1] },
