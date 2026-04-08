@@ -18217,10 +18217,11 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 {dayEvents.filter(e=>!e.isDemand).sort((a,b)=>a.time.localeCompare(b.time)).map((ev,i) => {
                 const et = etCfg(ev.type);
                 return (
-                  <div key={ev.id} onClick={()=>setViewEvent(ev)} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, cursor:"pointer", border:`1px solid ${B.border}`, borderLeftWidth:4, borderLeftColor:et.c, marginBottom:6, background:"transparent", transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${et.c}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div key={ev.id} onClick={()=>setViewEvent(ev)} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, cursor:"pointer", border:`1px solid ${ev.cancelled&&ev.rescheduledTo?"#EF444430":B.border}`, borderLeftWidth:4, borderLeftColor:ev.cancelled?B.muted:et.c, marginBottom:6, background:ev.cancelled&&ev.rescheduledTo?`${B.muted}06`:"transparent", opacity:ev.cancelled?0.5:1, filter:ev.cancelled?"grayscale(0.6)":"none", transition:"all .15s", position:"relative" }} onMouseEnter={e=>{if(!ev.cancelled)e.currentTarget.style.background=`${et.c}08`;}} onMouseLeave={e=>{if(!ev.cancelled)e.currentTarget.style.background=ev.cancelled&&ev.rescheduledTo?`${B.muted}06`:"transparent";}}>
+                    {ev.cancelled && ev.rescheduledTo && <div style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50)", fontSize:10, fontWeight:700, color:"#F59E0B", background:"#F59E0B15", padding:"3px 10px", borderRadius:8, zIndex:2 }}>Remarcado p/ {ev.rescheduledTo.split("-").reverse().slice(0,2).join("/")}</div>}
                     <div style={{ width:40, height:40, borderRadius:12, background:`${et.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:et.c, flexShrink:0 }}>{et.icon}</div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:14, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ev.title}</p>
+                      <p style={{ fontSize:14, fontWeight:700, color:ev.cancelled?B.muted:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", textDecoration:ev.cancelled?"line-through":"none" }}>{ev.title}</p>
                       <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:3, flexWrap:"wrap" }}>
                         <span style={{ fontSize:11, color:B.muted, fontWeight:600 }}>{ev.time}</span>
                         <span style={{ fontSize:10, padding:"1px 6px", borderRadius:4, background:`${et.c}12`, color:et.c, fontWeight:600 }}>{et.l}</span>
@@ -23132,6 +23133,8 @@ function PresentationsPage({ onBack, clients, user, demands }) {
   const [filterType, setFilterType] = useState("all");
   const [mode, setMode] = useState("metrics");
   const [selMonth, setSelMonth] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; });
+  const [dateFrom, setDateFrom] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`; });
+  const [dateTo, setDateTo] = useState(() => { const d = new Date(); return d.toISOString().split("T")[0]; });
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfText, setPdfText] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -23247,7 +23250,7 @@ FORMATO: Responda APENAS com JSON array puro, sem markdown:
 [{"title":"...","body":"...","type":"cover|metrics|highlight|strategy|cta"}]
 Gere 10-14 slides.`
       let userPrompt;
-      if (mode === "metrics") {
+      if (mode === "metrics" || mode === "both") {
         userPrompt = `Prepare uma apresentação de RESULTADOS MENSAIS para apresentar ao cliente "${metrics.clientName}" na reunião de ${metrics.month}.
 
 DADOS REAIS PARA USAR NOS SLIDES:
@@ -23308,7 +23311,8 @@ NÃO invente campanhas que não existem no documento.`
       catch { const m = text.match(/\[[\s\S]*\]/); if (m) slides = JSON.parse(m[0]); else throw new Error("Resposta da IA sem JSON válido"); }
       if (!Array.isArray(slides) || !slides.length) throw new Error("Nenhum slide gerado");
       setSaving(true);
-      const title = mode === "metrics" ? `Resultados · ${selClient.name} · ${formatMonth(selMonth)}` : `Campanhas · ${selClient.name} · ${formatMonth(selMonth)}`;
+      const periodLabel = dateFrom && dateTo ? `${dateFrom.split("-").reverse().slice(0,2).join("/")} a ${dateTo.split("-").reverse().slice(0,2).join("/")}` : formatMonth(selMonth);
+      const title = mode === "metrics" ? `Resultados · ${selClient.name} · ${periodLabel}` : mode === "both" ? `Resultados + Campanhas · ${selClient.name} · ${periodLabel}` : `Campanhas · ${selClient.name} · ${periodLabel}`;
       const { data: saved, error } = await supabase.from("presentations").insert({ client_id: selClient.id, title, type: mode, month: selMonth, slides, created_by: user?.id, org_id: _currentOrgId }).select().single();
       if (error) throw error;
       setPresentations(prev => [saved, ...prev]);
@@ -23535,17 +23539,26 @@ NÃO invente campanhas que não existem no documento.`
             ))}
           </div>
           <label style={{ fontSize:12, fontWeight:700, color:B.muted, letterSpacing:0.5, textTransform:"uppercase", marginBottom:6, display:"block" }}>Tipo</label>
-          <div style={{ display:"flex", gap:10, marginBottom:20 }}>
-            {[{k:"metrics",l:"Métricas",d:"Resultados com dados reais"},{k:"campaigns",l:"Campanhas",d:"Planejamento a partir de PDF"}].map(m => (
+          <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap" }}>
+            {[{k:"metrics",l:"Métricas",d:"Resultados com dados reais"},{k:"campaigns",l:"Campanhas",d:"Planejamento a partir de PDF"},{k:"both",l:"Ambos",d:"Métricas + Campanhas juntos"}].map(m => (
               <div key={m.k} onClick={()=>setMode(m.k)} style={{ flex:1, padding:16, borderRadius:16, border:mode===m.k?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, background:mode===m.k?`${B.accent}10`:B.bgCard, cursor:"pointer" }}>
                 <div style={{ fontSize:15, fontWeight:700, color:mode===m.k?B.accent:B.text, marginBottom:4 }}>{m.l}</div>
                 <div style={{ fontSize:11, color:B.muted }}>{m.d}</div>
               </div>
             ))}
           </div>
-          <label style={{ fontSize:12, fontWeight:700, color:B.muted, letterSpacing:0.5, textTransform:"uppercase", marginBottom:6, display:"block" }}>Mês</label>
-          <input type="month" value={selMonth} onChange={e=>setSelMonth(e.target.value)} style={{ width:"100%", padding:12, borderRadius:12, border:`1px solid ${B.border}`, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:14, marginBottom:20, boxSizing:"border-box" }} />
-          {mode==="campaigns" && (<div style={{ marginBottom:20 }}>
+          <label style={{ fontSize:12, fontWeight:700, color:B.muted, letterSpacing:0.5, textTransform:"uppercase", marginBottom:6, display:"block" }}>Período</label>
+          <div style={{ display:"flex", gap:10, marginBottom:20 }}>
+            <div style={{ flex:1 }}>
+              <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:4 }}>De</label>
+              <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ width:"100%", padding:12, borderRadius:12, border:`1px solid ${B.border}`, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:13, boxSizing:"border-box" }} />
+            </div>
+            <div style={{ flex:1 }}>
+              <label style={{ fontSize:10, color:B.muted, display:"block", marginBottom:4 }}>Até</label>
+              <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ width:"100%", padding:12, borderRadius:12, border:`1px solid ${B.border}`, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:13, boxSizing:"border-box" }} />
+            </div>
+          </div>
+          {(mode==="campaigns" || mode==="both") && (<div style={{ marginBottom:20 }}>
             <label style={{ fontSize:12, fontWeight:700, color:B.muted, letterSpacing:0.5, textTransform:"uppercase", marginBottom:6, display:"block" }}>PDF do Calendário</label>
             <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:20, borderRadius:16, border:`2px dashed ${pdfFile?B.accent:B.border}`, background:pdfFile?`${B.accent}08`:"transparent", cursor:"pointer" }}>
               <input type="file" accept=".pdf" onChange={handlePdfUpload} style={{ display:"none" }} />
