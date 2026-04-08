@@ -5267,6 +5267,40 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     const current = sel?.socials?.[editingSocial] || {};
     const isDisconnecting = current.connected;
     const hasOAuth = current.oauth;
+    const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
+    const getFileCat = (f) => catMap[f.category] || "other";
+
+    const addFile = async () => {
+      if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
+      if (fileForm.file) {
+        try {
+        showToast("Enviando arquivo...");
+        const clientId = sel.supaId || sel.id;
+        console.log("[Library] Upload start:", clientId, fileForm.file.name, fileForm.file.size);
+        const result = await supaUploadClientFile(fileForm.file, clientId);
+        console.log("[Library] Upload done:", JSON.stringify(result));
+        if (result?.error) { showToast("Erro: " + result.error); return; }
+        const bytes = fileForm.file.size || 0;
+        const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
+        const origExt = fileForm.file.name.split(".").pop()?.toLowerCase() || "";
+        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", originalExt: origExt, mimeType: fileForm.file.type || "" };
+        const newFiles = [...files, nf];
+        const saveKey = `client_files_${clientId}`;
+        console.log("[Library] Saving metadata key:", saveKey, "files:", newFiles.length);
+        const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
+        console.log("[Library] Save result:", saved);
+        if (!saved) { console.error("[Library] SAVE FAILED key:", saveKey); showToast("Erro ao salvar metadados — tente novamente"); return; }
+        /* Update local state */
+        setSel(p => ({ ...p, files: newFiles }));
+        setClients(p => p.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, files: newFiles } : c));
+        setAddingFile(false); setFileForm({});
+        showToast("Arquivo salvo ✓");
+        } catch(err) { console.error("[Library] CRASH:", err); showToast("Erro inesperado: " + (err.message||err)); }
+      } else {
+        showToast("Selecione um arquivo para enviar");
+      }
+    };
+
     return (
       <div className="pg">
         {ToastEl}
@@ -5574,39 +5608,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
       { key:"ref", label:"Referências", icon:"💡", c:B.yellow, desc:"Moodboards, inspirações" },
       { key:"other", label:"Outros", icon:"📁", c:B.muted, desc:"Demais arquivos" },
     ];
-    const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
-    const getFileCat = (f) => catMap[f.category] || "other";
 
-    const addFile = async () => {
-      if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
-      if (fileForm.file) {
-        try {
-        showToast("Enviando arquivo...");
-        const clientId = sel.supaId || sel.id;
-        console.log("[Library] Upload start:", clientId, fileForm.file.name, fileForm.file.size);
-        const result = await supaUploadClientFile(fileForm.file, clientId);
-        console.log("[Library] Upload done:", JSON.stringify(result));
-        if (result?.error) { showToast("Erro: " + result.error); return; }
-        const bytes = fileForm.file.size || 0;
-        const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
-        const origExt = fileForm.file.name.split(".").pop()?.toLowerCase() || "";
-        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", originalExt: origExt, mimeType: fileForm.file.type || "" };
-        const newFiles = [...files, nf];
-        const saveKey = `client_files_${clientId}`;
-        console.log("[Library] Saving metadata key:", saveKey, "files:", newFiles.length);
-        const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
-        console.log("[Library] Save result:", saved);
-        if (!saved) { console.error("[Library] SAVE FAILED key:", saveKey); showToast("Erro ao salvar metadados — tente novamente"); return; }
-        /* Update local state */
-        setSel(p => ({ ...p, files: newFiles }));
-        setClients(p => p.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, files: newFiles } : c));
-        setAddingFile(false); setFileForm({});
-        showToast("Arquivo salvo ✓");
-        } catch(err) { console.error("[Library] CRASH:", err); showToast("Erro inesperado: " + (err.message||err)); }
-      } else {
-        showToast("Selecione um arquivo para enviar");
-      }
-    };
 
     const removeFile = async (fid) => {
       const newFiles = files.filter(f=>f.id!==fid);
@@ -20621,7 +20623,7 @@ REGRAS:
                       <button key={t.k} onClick={()=>setAiTone(t.k)} style={{ padding:"9px 14px", borderRadius:10, border:`1.5px solid ${aiTone===t.k?"#6366F1":B.border}`, background:aiTone===t.k?"#6366F112":"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:aiTone===t.k?700:500 }}>{t.l}</button>
                     ))}
                   </div></div>
-                  <button onClick={aiGenerateArticle} disabled={dAiLoading} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:"#6366F1", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#fff" }}>✨ Gerar</button>
+                  <button onClick={aiGenerateArticle} disabled={aiLoading} style={{ width:"100%", padding:"14px 0", borderRadius:12, background:"#6366F1", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:15, fontWeight:700, color:"#fff" }}>✨ Gerar</button>
                 </>}
                 {aiStep==="photo" && <>
                   <div style={{ textAlign:"center", marginBottom:16 }}>
@@ -30409,8 +30411,7 @@ export default function App() {
         /* Auto-create membership */
         await supabase.from("org_members").upsert({ org_id: fallbackOrg, user_id: userId, role: "member", accepted_at: new Date().toISOString() }, { onConflict: "org_id,user_id" }).catch(() => {});
       }
-      /* org_id is now set — force data reload with correct filter */
-      setClientsLoaded(false);
+      /* org_id is now set — MainApp will load data with correct filter */
     } catch(e) { console.error("[Org] Load error:", e); }
   };
 
