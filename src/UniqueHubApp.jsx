@@ -17856,7 +17856,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                     onDragEnd={e=>{e.currentTarget.style.opacity="1";}}
                     onMouseDown={e=>e.stopPropagation()}
                     onClick={e=>{e.stopPropagation();setSelDay(d);setViewEvent(ev);}}
-                    style={{fontSize:10,fontWeight:600,padding:"3px 6px",borderRadius:4,marginBottom:2,background:`${typeColor(ev.type)}15`,color:typeColor(ev.type),whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"grab",userSelect:"none"}}>{ev.time?ev.time.substring(0,5)+" ":""}{ev.title}</div>)}
+                    style={{fontSize:10,fontWeight:600,padding:"3px 6px",borderRadius:4,marginBottom:2,background:ev.cancelled?`${B.muted}10`:`${typeColor(ev.type)}15`,color:ev.cancelled?B.muted:typeColor(ev.type),whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"grab",userSelect:"none",opacity:ev.cancelled?0.45:1,textDecoration:ev.cancelled?"line-through":"none"}}>{ev.time?ev.time.substring(0,5)+" ":""}{ev.title}{ev.cancelled&&ev.rescheduledTo?" →"+ev.rescheduledTo.split("-")[2]+"/"+ev.rescheduledTo.split("-")[1]:""}</div>)}
                 </div>;
               })}
             </div>
@@ -17873,10 +17873,11 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
               </div>
               {selEvs.length===0 ? <p style={{fontSize:13,color:B.muted,padding:"20px 0",textAlign:"center"}}>Nenhum evento neste dia</p>
               : <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
-                {selEvs.map((ev,ei)=><div key={ei} onClick={()=>setViewEvent(ev)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:`1px solid ${B.border}`,cursor:"pointer",transition:"all .12s",background:`${typeColor(ev.type)}06`}} onMouseEnter={e=>{e.currentTarget.style.borderColor=typeColor(ev.type);e.currentTarget.style.background=`${typeColor(ev.type)}12`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background=`${typeColor(ev.type)}06`;}}>
-                  <div style={{width:6,height:40,borderRadius:3,background:typeColor(ev.type),flexShrink:0}}/>
+                {selEvs.map((ev,ei)=><div key={ei} onClick={()=>setViewEvent(ev)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:`1px solid ${ev.cancelled?"#EF444430":B.border}`,cursor:"pointer",transition:"all .12s",background:ev.cancelled?`${B.muted}06`:`${typeColor(ev.type)}06`,opacity:ev.cancelled?0.5:1,filter:ev.cancelled?"grayscale(0.5)":"none",position:"relative"}} onMouseEnter={e=>{if(!ev.cancelled){e.currentTarget.style.borderColor=typeColor(ev.type);e.currentTarget.style.background=`${typeColor(ev.type)}12`;}}} onMouseLeave={e=>{e.currentTarget.style.borderColor=ev.cancelled?"#EF444430":B.border;e.currentTarget.style.background=ev.cancelled?`${B.muted}06`:`${typeColor(ev.type)}06`;}}>
+                  {ev.cancelled&&ev.rescheduledTo&&<div style={{position:"absolute",right:10,top:8,fontSize:9,fontWeight:700,color:"#F59E0B",background:"#F59E0B15",padding:"2px 8px",borderRadius:6}}>Remarcado p/ {ev.rescheduledTo.split("-").reverse().slice(0,2).join("/")}</div>}
+                  <div style={{width:6,height:40,borderRadius:3,background:ev.cancelled?B.muted:typeColor(ev.type),flexShrink:0}}/>
                   <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontSize:13,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{ev.title}</p>
+                    <p style={{fontSize:13,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",textDecoration:ev.cancelled?"line-through":"none",color:ev.cancelled?B.muted:B.text}}>{ev.title}</p>
                     <div style={{display:"flex",gap:8,marginTop:3}}>
                       {ev.time&&<span style={{fontSize:11,color:B.muted,fontWeight:600}}>{ev.time.substring(0,5)}</span>}
                       <span style={{fontSize:11,color:typeColor(ev.type),fontWeight:600}}>{typeLabel(ev.type)}</span>
