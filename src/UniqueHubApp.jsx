@@ -14300,6 +14300,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [saLoading, setSaLoading] = useState(true);
   const [saSelected, setSaSelected] = useState(null);
   const [saMembers, setSaMembers] = useState([]);
+  const saTabState = useState("overview");
+  const saSearchState = useState("");
   useEffect(() => {
     if (sub !== "superadmin" || _currentOrgPlan !== "enterprise" || !supabase) return;
     setSaLoading(true);
@@ -16296,17 +16298,29 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   if (sub === "superadmin" && _currentOrgPlan === "enterprise") {
     const planColors = { free:"#9CA3AF", essencial:"#5DCAA5", profissional:"#85B7EB", agencia:"#AFA9EC", escala:"#F0997B", enterprise:"#BBF246" };
     const planPrices = { free:0, essencial:197, profissional:397, agencia:597, escala:997, enterprise:0 };
+    const planNames = { free:"Free", essencial:"Essencial", profissional:"Profissional", agencia:"Agência", escala:"Escala", enterprise:"Enterprise" };
     const totalClients = saOrgs.reduce((s,o) => s + (o.clientCount||0), 0);
     const totalDemands = saOrgs.reduce((s,o) => s + (o.demandCount||0), 0);
     const totalMembers = saOrgs.reduce((s,o) => s + (o.memberCount||0), 0);
-    const mrr = saOrgs.filter(o=>o.plan!=="enterprise").reduce((s,o) => s + (planPrices[o.plan]||0), 0);
+    const payingOrgs = saOrgs.filter(o => o.plan !== "enterprise" && o.plan !== "free");
+    const mrr = payingOrgs.reduce((s,o) => s + (planPrices[o.plan]||0), 0);
     const changePlan = async (orgId, newPlan) => {
-      if (!confirm(`Alterar plano para "${newPlan}"?`)) return;
+      if (!confirm("Alterar plano para " + newPlan + "?")) return;
       const limits = { free:{c:1,u:1}, essencial:{c:5,u:2}, profissional:{c:10,u:5}, agencia:{c:20,u:15}, escala:{c:40,u:999}, enterprise:{c:999,u:999} };
       const l = limits[newPlan] || limits.free;
       await supabase.from("organizations").update({ plan: newPlan, max_clients: l.c, max_users: l.u }).eq("id", orgId);
       setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, plan: newPlan, max_clients: l.c, max_users: l.u } : o));
-      showToast("Plano atualizado ✓");
+      showToast("Plano atualizado para " + newPlan + " ✓");
+    };
+    const deleteOrg = async (orgId, orgName) => {
+      if (orgId === "a0000000-0000-0000-0000-000000000001") { showToast("Não é possível excluir a Unique Marketing"); return; }
+      if (!confirm("ATENÇÃO: Excluir a agência " + orgName + "? Todos os dados serão perdidos.")) return;
+      if (!confirm("Tem certeza ABSOLUTA? Esta ação é irreversível.")) return;
+      await supabase.from("org_members").delete().eq("org_id", orgId);
+      await supabase.from("organizations").delete().eq("id", orgId);
+      setSaOrgs(prev => prev.filter(o => o.id !== orgId));
+      setSaSelected(null);
+      showToast("Agência " + orgName + " excluída");
     };
     const loadMembers = async (orgId) => {
       const { data: members } = await supabase.from("org_members").select("user_id, role, accepted_at").eq("org_id", orgId);
@@ -16316,91 +16330,169 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       setSaMembers(members.map(m => ({ ...m, profile: pMap[m.user_id] || null })));
     };
     const selectOrg = (org) => { if (saSelected?.id === org.id) { setSaSelected(null); setSaMembers([]); } else { setSaSelected(org); loadMembers(org.id); } };
+    const [saTab, setSaTab] = saTabState;
+    const [saSearch, setSaSearch] = saSearchState;
+    const filteredOrgs = saSearch.trim() ? saOrgs.filter(o => o.name.toLowerCase().includes(saSearch.toLowerCase()) || (o.owner?.email||"").toLowerCase().includes(saSearch.toLowerCase())) : saOrgs;
+    const byPlan = {};
+    saOrgs.forEach(o => { byPlan[o.plan] = (byPlan[o.plan]||0) + 1; });
     return (
       <SetPage title="Super Admin" wide>
         <div style={{ padding:isSetDesktop?"0 24px":"0" }}>
-          {/* Summary cards */}
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))", gap:10, marginBottom:20 }}>
-            {[
-              { l:"Agências", v:saOrgs.length, c:"#AFA9EC" },
-              { l:"Clientes total", v:totalClients, c:"#5DCAA5" },
-              { l:"Demandas total", v:totalDemands, c:"#85B7EB" },
-              { l:"Membros total", v:totalMembers, c:"#F0997B" },
-              { l:"MRR estimado", v:`R$ ${mrr}`, c:"#BBF246" },
-            ].map((card,i) => (
-              <div key={i} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:`1px solid ${B.border}`, padding:"14px 16px" }}>
-                <p style={{ fontSize:11, color:B.muted, margin:"0 0 4px", textTransform:"uppercase", letterSpacing:"0.04em", fontWeight:600 }}>{card.l}</p>
-                <p style={{ fontSize:22, fontWeight:900, margin:0, color:card.c }}>{saLoading ? "..." : card.v}</p>
-              </div>
+          {/* Tabs */}
+          <div style={{ display:"flex", gap:6, marginBottom:16, flexWrap:"wrap" }}>
+            {[{k:"overview",l:"Visão Geral"},{k:"orgs",l:"Agências"},{k:"health",l:"Saúde do Sistema"}].map(t => (
+              <button key={t.k} onClick={()=>setSaTab(t.k)} style={{ padding:"8px 16px", borderRadius:10, border:"none", background:saTab===t.k?B.accent+"20":"transparent", color:saTab===t.k?B.accent:B.muted, fontSize:12, fontWeight:saTab===t.k?700:500, cursor:"pointer", fontFamily:"inherit" }}>{t.l}</button>
             ))}
           </div>
-          {/* Org list */}
-          {saLoading ? <p style={{ fontSize:13, color:B.muted }}>Carregando agências...</p> : (
+
+          {/* ── OVERVIEW TAB ── */}
+          {saTab === "overview" && <>
+            {/* Metric cards */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))", gap:10, marginBottom:20 }}>
+              {[
+                { l:"Agências", v:saOrgs.length, c:"#AFA9EC", sub:payingOrgs.length + " pagantes" },
+                { l:"Clientes", v:totalClients, c:"#5DCAA5", sub:"em todas as agências" },
+                { l:"Demandas", v:totalDemands, c:"#85B7EB", sub:"conteúdos criados" },
+                { l:"Membros", v:totalMembers, c:"#F0997B", sub:"usuários ativos" },
+                { l:"MRR", v:"R$ " + mrr, c:"#BBF246", sub:payingOrgs.length + " assinaturas" },
+              ].map((card,i) => (
+                <div key={i} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"14px 16px" }}>
+                  <p style={{ fontSize:10, color:B.muted, margin:"0 0 4px", textTransform:"uppercase", letterSpacing:"0.05em", fontWeight:700 }}>{card.l}</p>
+                  <p style={{ fontSize:22, fontWeight:900, margin:"0 0 2px", color:card.c }}>{saLoading ? "..." : card.v}</p>
+                  <p style={{ fontSize:10, color:B.muted, margin:0 }}>{card.sub}</p>
+                </div>
+              ))}
+            </div>
+            {/* Distribution by plan */}
+            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"16px 20px", marginBottom:16 }}>
+              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>Distribuição por plano</p>
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                {Object.entries(byPlan).map(([plan, count]) => (
+                  <div key={plan} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:10, background:(planColors[plan]||"#9CA3AF") + "15", border:"1px solid " + (planColors[plan]||"#9CA3AF") + "30" }}>
+                    <div style={{ width:10, height:10, borderRadius:3, background:planColors[plan]||"#9CA3AF" }} />
+                    <span style={{ fontSize:12, fontWeight:600, color:B.text }}>{planNames[plan]||plan}</span>
+                    <span style={{ fontSize:14, fontWeight:800, color:planColors[plan]||"#9CA3AF" }}>{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Recent signups */}
+            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"16px 20px" }}>
+              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>Últimas agências cadastradas</p>
+              {saOrgs.slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0,5).map((org,i) => {
+                const pc = planColors[org.plan]||"#9CA3AF";
+                const days = Math.floor((Date.now() - new Date(org.created_at).getTime())/86400000);
+                return (
+                  <div key={org.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:i<4?"1px solid " + B.border + "40":"none" }}>
+                    <div style={{ width:36, height:36, borderRadius:10, background:pc + "20", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, color:pc, flexShrink:0 }}>{org.name.charAt(0)}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:13, fontWeight:700, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{org.name}</p>
+                      <p style={{ fontSize:11, color:B.muted, margin:0 }}>{org.owner?.email || "—"}</p>
+                    </div>
+                    <div style={{ textAlign:"right", flexShrink:0 }}>
+                      <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:pc + "20", color:pc }}>{org.plan}</span>
+                      <p style={{ fontSize:10, color:B.muted, margin:"4px 0 0" }}>{days === 0 ? "hoje" : days + "d atrás"}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>}
+
+          {/* ── AGENCIES TAB ── */}
+          {saTab === "orgs" && <>
+            {/* Search */}
+            <div style={{ position:"relative", marginBottom:16 }}>
+              <input value={saSearch} onChange={e => setSaSearch(e.target.value)} placeholder="Buscar agência por nome ou email..." style={{ width:"100%", padding:"10px 16px 10px 38px", borderRadius:12, border:"1px solid " + B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box" }} />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </div>
+            <p style={{ fontSize:12, color:B.muted, marginBottom:10 }}>{filteredOrgs.length} agência{filteredOrgs.length !== 1 ? "s" : ""}</p>
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {saOrgs.map(org => {
+              {filteredOrgs.map(org => {
                 const isSel = saSelected?.id === org.id;
                 const pc = planColors[org.plan] || "#9CA3AF";
                 const daysAgo = Math.floor((Date.now() - new Date(org.created_at).getTime()) / 86400000);
+                const usageClients = org.max_clients > 0 ? Math.round((org.clientCount / org.max_clients) * 100) : 0;
+                const usageMembers = org.max_users > 0 ? Math.round((org.memberCount / org.max_users) * 100) : 0;
                 return (
-                <div key={org.id} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:`1px solid ${isSel?pc:B.border}`, overflow:"hidden", transition:"all .15s" }}>
+                <div key={org.id} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + (isSel?pc:B.border), overflow:"hidden", transition:"border-color .15s" }}>
                   <div onClick={() => selectOrg(org)} style={{ padding:"16px 20px", cursor:"pointer" }}>
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
                       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                        <div style={{ width:40, height:40, borderRadius:12, background:`${pc}20`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:16, color:pc }}>{org.name.charAt(0)}</div>
+                        <div style={{ width:42, height:42, borderRadius:12, background:pc + "20", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:17, color:pc }}>{org.name.charAt(0)}</div>
                         <div>
                           <h3 style={{ fontSize:15, fontWeight:800, margin:0 }}>{org.name}</h3>
-                          <p style={{ fontSize:11, color:B.muted, margin:"2px 0 0" }}>{org.owner?.name || "—"} · {org.owner?.email || "—"}</p>
+                          <p style={{ fontSize:11, color:B.muted, margin:"2px 0 0" }}>{org.owner?.name || "Sem owner"} · {org.owner?.email || "—"}</p>
                         </div>
                       </div>
                       <div style={{ textAlign:"right" }}>
-                        <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:20, background:`${pc}20`, color:pc, display:"inline-block" }}>{org.plan}</span>
-                        <p style={{ fontSize:10, color:B.muted, margin:"4px 0 0" }}>{daysAgo === 0 ? "hoje" : `há ${daysAgo}d`}</p>
+                        <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:20, background:pc + "20", color:pc }}>{planNames[org.plan]||org.plan}</span>
+                        {planPrices[org.plan] > 0 && <p style={{ fontSize:11, color:B.muted, margin:"4px 0 0" }}>R$ {planPrices[org.plan]}/mês</p>}
                       </div>
                     </div>
-                    <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-                      {[ { l:"Clientes", v:org.clientCount, max:org.max_clients }, { l:"Demandas", v:org.demandCount }, { l:"Membros", v:org.memberCount, max:org.max_users } ].map((s,i) => (
-                        <div key={i} style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text }}>{s.v}</strong>{s.max ? `/${s.max}` : ""} {s.l.toLowerCase()}</div>
-                      ))}
-                      {planPrices[org.plan] > 0 && <div style={{ fontSize:12, color:B.muted }}>R$ <strong style={{ color:B.text }}>{planPrices[org.plan]}</strong>/mês</div>}
+                    {/* Usage bars */}
+                    <div style={{ display:"flex", gap:16 }}>
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                          <span style={{ fontSize:10, color:B.muted }}>Clientes</span>
+                          <span style={{ fontSize:10, fontWeight:700, color:usageClients > 80 ? "#EF4444" : B.text }}>{org.clientCount}/{org.max_clients}</span>
+                        </div>
+                        <div style={{ height:4, borderRadius:2, background:B.border }}>
+                          <div style={{ height:"100%", borderRadius:2, background:usageClients > 80 ? "#EF4444" : pc, width:Math.min(100,usageClients) + "%", transition:"width .3s" }} />
+                        </div>
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                          <span style={{ fontSize:10, color:B.muted }}>Membros</span>
+                          <span style={{ fontSize:10, fontWeight:700, color:usageMembers > 80 ? "#EF4444" : B.text }}>{org.memberCount}/{org.max_users}</span>
+                        </div>
+                        <div style={{ height:4, borderRadius:2, background:B.border }}>
+                          <div style={{ height:"100%", borderRadius:2, background:usageMembers > 80 ? "#EF4444" : pc, width:Math.min(100,usageMembers) + "%", transition:"width .3s" }} />
+                        </div>
+                      </div>
+                      <div style={{ minWidth:80, textAlign:"right" }}>
+                        <span style={{ fontSize:10, color:B.muted }}>Demandas</span>
+                        <p style={{ fontSize:14, fontWeight:800, margin:0 }}>{org.demandCount}</p>
+                      </div>
                     </div>
                   </div>
-                  {/* Expanded detail */}
+                  {/* Expanded */}
                   {isSel && (
-                    <div style={{ borderTop:`1px solid ${B.border}`, padding:"16px 20px", background:B.bg }}>
-                      <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginBottom:16 }}>
-                        {/* Change plan */}
+                    <div style={{ borderTop:"1px solid " + B.border, padding:"16px 20px", background:B.bg }}>
+                      <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:16, alignItems:"flex-end" }}>
                         <div>
                           <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Alterar plano</label>
-                          <select value={org.plan} onChange={e => changePlan(org.id, e.target.value)} style={{ padding:"8px 12px", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                            {["free","essencial","profissional","agencia","escala","enterprise"].map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
+                          <select value={org.plan} onChange={e => changePlan(org.id, e.target.value)} style={{ padding:"8px 12px", borderRadius:10, border:"1px solid " + B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                            {["free","essencial","profissional","agencia","escala","enterprise"].map(p => <option key={p} value={p}>{planNames[p]}</option>)}
                           </select>
                         </div>
-                        {/* Org info */}
                         <div>
-                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>ID da org</label>
-                          <p style={{ fontSize:11, color:B.text, margin:0, fontFamily:"monospace" }}>{org.id.substring(0,8)}...</p>
+                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Org ID</label>
+                          <p style={{ fontSize:11, color:B.text, margin:0, fontFamily:"monospace", background:B.bgCard, padding:"6px 10px", borderRadius:8, border:"1px solid " + B.border }}>{org.id.substring(0,18)}...</p>
                         </div>
                         <div>
                           <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Slug</label>
-                          <p style={{ fontSize:11, color:B.text, margin:0 }}>{org.slug}</p>
+                          <p style={{ fontSize:11, color:B.text, margin:0, background:B.bgCard, padding:"6px 10px", borderRadius:8, border:"1px solid " + B.border }}>{org.slug}</p>
                         </div>
                         <div>
                           <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Criada em</label>
-                          <p style={{ fontSize:11, color:B.text, margin:0 }}>{new Date(org.created_at).toLocaleDateString("pt-BR")} {new Date(org.created_at).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"})}</p>
+                          <p style={{ fontSize:11, color:B.text, margin:0, background:B.bgCard, padding:"6px 10px", borderRadius:8, border:"1px solid " + B.border }}>{new Date(org.created_at).toLocaleDateString("pt-BR")} {new Date(org.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
                         </div>
+                        {org.id !== "a0000000-0000-0000-0000-000000000001" && (
+                          <button onClick={() => deleteOrg(org.id, org.name)} style={{ padding:"8px 16px", borderRadius:10, border:"1.5px solid #EF4444", background:"transparent", color:"#EF4444", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginLeft:"auto" }}>Excluir agência</button>
+                        )}
                       </div>
-                      {/* Members list */}
                       <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:8, textTransform:"uppercase" }}>Membros ({saMembers.length})</label>
                       {saMembers.length === 0 ? <p style={{ fontSize:12, color:B.muted }}>Carregando...</p> : (
-                        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:8 }}>
                           {saMembers.map((m,i) => (
-                            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", background:B.bgCard, borderRadius:10, border:`1px solid ${B.border}` }}>
-                              <div style={{ width:30, height:30, borderRadius:8, background:`${pc}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:pc }}>{(m.profile?.name||"?").charAt(0)}</div>
-                              <div style={{ flex:1 }}>
-                                <p style={{ fontSize:12, fontWeight:700, margin:0 }}>{m.profile?.name || "—"}</p>
-                                <p style={{ fontSize:10, color:B.muted, margin:0 }}>{m.profile?.email || "—"}</p>
+                            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:B.bgCard, borderRadius:10, border:"1px solid " + B.border }}>
+                              <div style={{ width:32, height:32, borderRadius:8, background:pc + "15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:pc, flexShrink:0 }}>{(m.profile?.name||"?").charAt(0)}</div>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <p style={{ fontSize:12, fontWeight:700, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.name || "—"}</p>
+                                <p style={{ fontSize:10, color:B.muted, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.email || "—"}</p>
                               </div>
-                              <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:8, background:m.role==="owner"?`${B.accent}20`:`${B.muted}15`, color:m.role==="owner"?B.accent:B.muted }}>{m.role}</span>
+                              <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:8, background:m.role==="owner"?B.accent + "20":B.muted + "15", color:m.role==="owner"?B.accent:B.muted }}>{m.role}</span>
                             </div>
                           ))}
                         </div>
@@ -16410,13 +16502,40 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                 </div>
               );})}
             </div>
-          )}
+          </>}
+
+          {/* ── HEALTH TAB ── */}
+          {saTab === "health" && <>
+            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"16px 20px", marginBottom:16 }}>
+              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 4px" }}>Status dos tokens Meta</p>
+              <p style={{ fontSize:11, color:B.muted, margin:"0 0 12px" }}>Verifique em Clientes → Redes para reconectar tokens expirados</p>
+              <p style={{ fontSize:12, color:B.muted }}>Use o verificador de tokens no terminal para checar o status em tempo real.</p>
+            </div>
+            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"16px 20px" }}>
+              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 4px" }}>Informações do sistema</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:10 }}>
+                {[
+                  { l:"Supabase Project", v:"kyoenyglyayfxtihlewb" },
+                  { l:"Deploy", v:"Vercel (auto-deploy via GitHub)" },
+                  { l:"Storage", v:"Cloudflare R2" },
+                  { l:"Cron", v:"pg_cron (publish-scheduled a cada 1min)" },
+                  { l:"Edge Functions", v:"publish-scheduled, token-health-check" },
+                  { l:"Meta API", v:"Graph API v21.0" },
+                ].map((item,i) => (
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:i<5?"1px solid " + B.border + "30":"none" }}>
+                    <span style={{ fontSize:12, color:B.muted }}>{item.l}</span>
+                    <span style={{ fontSize:12, fontWeight:600, color:B.text, fontFamily:"monospace" }}>{item.v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>}
         </div>
       </SetPage>
     );
   }
 
-  /* ═══ ABOUT ═══ */
+    /* ═══ ABOUT ═══ */
   if (sub === "about") {
     const isAdmin = user?.supaRole === "admin";
     const defAboutItems = [
