@@ -162,12 +162,15 @@ const parseBRL = (s) => {
 const supaCreateClient = async (c) => {
   if (!supabase) return { data: null, err: "no supabase" };
   try {
+    /* Auto-generate access code */
+    const genCode = () => { const chars = "ABCDEF0123456789"; let code = ""; for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)]; return code; };
     const payload = {
       name: c.name, contact_name: c.contact || null, contact_email: c.email || null,
       contact_phone: c.phone || null, plan: PLAN_MAP_TO_DB[c.plan] || "traction",
       monthly_value: parseBRL(c.monthly),
       status: c.status === "trial" ? "ativo" : (c.status || "ativo"), score: c.score || 0, segment: c.segment || null, website: c.website || null,
       org_id: _currentOrgId,
+      access_code: genCode(),
     };
     const { data, error } = await supabase.from("clients").insert(payload).select().single();
     if (error) { console.error("Supa create client error:", error); return { data: null, err: error.message || error.code }; }
