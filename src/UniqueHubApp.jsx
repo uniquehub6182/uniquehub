@@ -14698,6 +14698,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
     { k:"about", l:"Sobre", desc:"Versão e informações" },
     { k:"plans", l:"Planos e Assinatura", desc:"Upgrade, features e pagamento" },
+    ...(_currentOrgPlan === "enterprise" ? [{ k:"superadmin", l:"Super Admin", desc:"Gerenciar todas as agências" }] : []),
   ];
 
   /* ── Unified Settings wrapper — shell stays mounted, only panel content swaps ── */
@@ -16263,6 +16264,63 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     return (
       <SetPage title="Planos e Assinatura" wide>
         <PlansPage onBack={() => setSub(null)} currentPlan={_currentOrgPlan} orgName={null} onUpgrade={(plan, price, billing) => {}} embedded />
+      </SetPage>
+    );
+  }
+
+  /* ═══ SUPER ADMIN ═══ */
+  if (sub === "superadmin" && _currentOrgPlan === "enterprise") {
+    const [saOrgs, setSaOrgs] = useState([]);
+    const [saLoading, setSaLoading] = useState(true);
+    useEffect(() => {
+      if (!supabase) return;
+      (async () => {
+        const { data: orgs } = await supabase.from("organizations").select("*").order("created_at", { ascending: true });
+        if (!orgs) { setSaLoading(false); return; }
+        const enriched = [];
+        for (const org of orgs) {
+          const { data: members } = await supabase.from("org_members").select("user_id, role").eq("org_id", org.id);
+          const { count: clientCount } = await supabase.from("clients").select("id", { count: "exact", head: true }).eq("org_id", org.id);
+          const { count: demandCount } = await supabase.from("demands").select("id", { count: "exact", head: true }).eq("org_id", org.id);
+          const owner = (members || []).find(m => m.role === "owner");
+          let ownerEmail = null;
+          if (owner) {
+            const { data: profile } = await supabase.from("profiles").select("email, name").eq("id", owner.user_id).maybeSingle();
+            ownerEmail = profile;
+          }
+          enriched.push({ ...org, memberCount: (members || []).length, clientCount: clientCount || 0, demandCount: demandCount || 0, owner: ownerEmail });
+        }
+        setSaOrgs(enriched);
+        setSaLoading(false);
+      })();
+    }, []);
+    return (
+      <SetPage title="Super Admin" wide>
+        <div style={{ padding:isSetDesktop?"0 24px":"0" }}>
+          <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Todas as agências cadastradas no UniqueHub</p>
+          {saLoading ? <p style={{ fontSize:13, color:B.muted }}>Carregando...</p> : (
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {saOrgs.map(org => (
+                <div key={org.id} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:`1px solid ${B.border}`, padding:"16px 20px" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                    <div>
+                      <h3 style={{ fontSize:16, fontWeight:800, margin:0 }}>{org.name}</h3>
+                      <p style={{ fontSize:12, color:B.muted, margin:"2px 0 0" }}>{org.owner?.name || "—"} · {org.owner?.email || "—"}</p>
+                    </div>
+                    <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:20, background:org.plan==="enterprise"?"#BBF24620":"#10B98120", color:org.plan==="enterprise"?"#BBF246":"#10B981" }}>{org.plan}</span>
+                  </div>
+                  <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
+                    <div style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text }}>{org.clientCount}</strong> clientes</div>
+                    <div style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text }}>{org.demandCount}</strong> demandas</div>
+                    <div style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text }}>{org.memberCount}</strong> membros</div>
+                    <div style={{ fontSize:12, color:B.muted }}>Máx: {org.max_clients} cli / {org.max_users} users</div>
+                    <div style={{ fontSize:12, color:B.muted }}>Criada: {new Date(org.created_at).toLocaleDateString("pt-BR")}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </SetPage>
     );
   }
