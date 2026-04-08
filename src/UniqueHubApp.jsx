@@ -16355,7 +16355,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     };
     const deleteOrg = async (orgId, orgName) => {
       if (orgId === "a0000000-0000-0000-0000-000000000001") { showToast("Unique Marketing não pode ser excluída"); return; }
-      setSaModal({ type:"confirm", title:"Excluir agência", msg:"ATENÇÃO: Excluir "" + orgName + ""? Todos os dados (clientes, demandas, membros) serão perdidos permanentemente.", danger:true, confirmLabel:"Sim, excluir permanentemente", onConfirm: async () => {
+      setSaModal({ type:"confirm", title:"Excluir agência", msg:"ATENÇÃO: Excluir " + orgName + "? Todos os dados (clientes, demandas, membros) serão perdidos permanentemente.", danger:true, confirmLabel:"Sim, excluir permanentemente", onConfirm: async () => {
         await supabase.from("org_members").delete().eq("org_id", orgId);
         await supabase.from("organizations").delete().eq("id", orgId);
         setSaOrgs(prev => prev.filter(o => o.id !== orgId));
