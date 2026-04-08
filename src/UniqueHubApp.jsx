@@ -23655,20 +23655,39 @@ function NotesPage({ onBack, user }) {
   const notesKey = `uh_notes_list_${user?.id || "anon"}`;
   const [notes, setNotes] = useState(() => {
     try {
-      /* Try new key first, then migrate from old key */
+      /* Try new key first */
       const newData = localStorage.getItem(notesKey);
       if (newData) return JSON.parse(newData);
+      /* Try old key (migration) */
       const oldData = localStorage.getItem("uh_notes_list");
       if (oldData) {
         const parsed = JSON.parse(oldData);
         if (parsed.length > 0) {
-          localStorage.setItem(notesKey, oldData); /* migrate */
+          localStorage.setItem(notesKey, oldData);
           return parsed;
         }
       }
       return [];
     } catch { return []; }
   });
+
+  /* Re-run migration when user.id becomes available */
+  useEffect(() => {
+    if (!user?.id) return;
+    const correctKey = `uh_notes_list_${user.id}`;
+    try {
+      const existing = localStorage.getItem(correctKey);
+      if (existing) return; /* already migrated */
+      const oldData = localStorage.getItem("uh_notes_list");
+      if (oldData) {
+        const parsed = JSON.parse(oldData);
+        if (parsed.length > 0) {
+          localStorage.setItem(correctKey, oldData);
+          setNotes(parsed);
+        }
+      }
+    } catch {}
+  }, [user?.id]);
   const [selNote, setSelNote] = useState(null);
   const [editText, setEditText] = useState("");
   const [editTitle, setEditTitle] = useState("");
