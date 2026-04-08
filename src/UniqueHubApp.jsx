@@ -16508,7 +16508,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                       {/* Notes */}
                       <div style={{ marginBottom:16 }}>
                         <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Notas internas (só visível para super admin)</label>
-                        <textarea defaultValue={org.notes||""} onBlur={e=>saveNotes(org.id, e.target.value)} placeholder="Adicionar observa\u00e7ões sobre esta agência..." style={{ width:"100%", minHeight:60, padding:"10px 12px", borderRadius:10, border:"1px solid "+B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, resize:"vertical", outline:"none", boxSizing:"border-box" }} />
+                        <textarea defaultValue={org.notes||""} onBlur={e=>saveNotes(org.id, e.target.value)} placeholder="Adicionar observações sobre esta agência..." style={{ width:"100%", minHeight:60, padding:"10px 12px", borderRadius:10, border:"1px solid "+B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, resize:"vertical", outline:"none", boxSizing:"border-box" }} />
                       </div>
                       {/* Members */}
                       <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:8, textTransform:"uppercase" }}>Membros ({saMembers.length})</label>
@@ -24077,25 +24077,25 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade, embedded }) {
   const FEATURES = [
     { cat:"Gestão de conteúdo", items:[
       { l:"Pipeline de demandas (7 etapas)", p:[1,1,1,1] },
-      { l:"App do cliente (aprova\u00e7ão, chat, dashboard)", p:[1,1,1,1] },
+      { l:"App do cliente (aprovação, chat, dashboard)", p:[1,1,1,1] },
       { l:"Agendamento Instagram + Facebook", p:[1,1,1,1] },
       { l:"Calendário editorial", p:[1,1,1,1] },
       { l:"Biblioteca de assets + Feed Planner", p:[1,1,1,1] },
     ]},
     { cat:"Inteligência e IA", items:[
       { l:"Assistente IA (GPT-4o + Gemini + Claude)", p:[0,1,1,1] },
-      { l:"Gera\u00e7ão de conteúdo e legendas com IA", p:[0,1,1,1] },
+      { l:"Geração de conteúdo e legendas com IA", p:[0,1,1,1] },
       { l:"Comentários IA + News auto-gen", p:[0,1,1,1] },
       { l:"Inteligência de mercado + concorrentes", p:[0,0,1,1] },
-      { l:"Apresenta\u00e7ões automáticas (slides IA)", p:[0,0,1,1] },
+      { l:"Apresentações automáticas (slides IA)", p:[0,0,1,1] },
     ]},
-    { cat:"Engajamento e reten\u00e7ão", items:[
-      { l:"Growth Score (gamifica\u00e7ão do cliente)", p:[0,1,1,1] },
+    { cat:"Engajamento e retenção", items:[
+      { l:"Growth Score (gamificação do cliente)", p:[0,1,1,1] },
       { l:"Match4Biz (networking entre clientes)", p:[0,0,1,1] },
       { l:"CRM de leads + Meta Lead Ads", p:[0,0,1,1] },
       { l:"WhatsApp automático (resumos e alertas)", p:[0,0,0,1] },
     ]},
-    { cat:"Opera\u00e7ão da agência", items:[
+    { cat:"Operação da agência", items:[
       { l:"Chat interno da equipe", p:[1,1,1,1] },
       { l:"Relatórios de performance", p:["básico",1,1,1] },
       { l:"Check-in + XP da equipe", p:[0,1,1,1] },
