@@ -23653,7 +23653,22 @@ function NotesPage({ onBack, user }) {
   const isNotesDesktop = useIsDesktop();
   const TOP = 70;
   const notesKey = `uh_notes_list_${user?.id || "anon"}`;
-  const [notes, setNotes] = useState(() => { try { return JSON.parse(localStorage.getItem(notesKey)||"[]"); } catch { return []; } });
+  const [notes, setNotes] = useState(() => {
+    try {
+      /* Try new key first, then migrate from old key */
+      const newData = localStorage.getItem(notesKey);
+      if (newData) return JSON.parse(newData);
+      const oldData = localStorage.getItem("uh_notes_list");
+      if (oldData) {
+        const parsed = JSON.parse(oldData);
+        if (parsed.length > 0) {
+          localStorage.setItem(notesKey, oldData); /* migrate */
+          return parsed;
+        }
+      }
+      return [];
+    } catch { return []; }
+  });
   const [selNote, setSelNote] = useState(null);
   const [editText, setEditText] = useState("");
   const [editTitle, setEditTitle] = useState("");
