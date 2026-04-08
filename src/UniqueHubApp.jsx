@@ -5256,7 +5256,43 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     showToast("Rede conectada! ✓");
   };
 
-  const GoogleIcon = ({sz=18}) => <svg width={sz} height={sz} viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
+  const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
+  const getFileCat = (f) => catMap[f.category] || "other";
+
+  const addFile = async () => {
+    if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
+    if (fileForm.file) {
+      try {
+      showToast("Enviando arquivo...");
+      const clientId = sel.supaId || sel.id;
+      console.log("[Library] Upload start:", clientId, fileForm.file.name, fileForm.file.size);
+      const result = await supaUploadClientFile(fileForm.file, clientId);
+      console.log("[Library] Upload done:", JSON.stringify(result));
+      if (result?.error) { showToast("Erro: " + result.error); return; }
+      const bytes = fileForm.file.size || 0;
+      const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
+      const origExt = fileForm.file.name.split(".").pop()?.toLowerCase() || "";
+      const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", originalExt: origExt, mimeType: fileForm.file.type || "" };
+      const currentFiles = sel.files || [];
+      const newFiles = [...currentFiles, nf];
+      const saveKey = `client_files_${clientId}`;
+      console.log("[Library] Saving metadata key:", saveKey, "files:", newFiles.length);
+      const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
+      console.log("[Library] Save result:", saved);
+      if (!saved) { console.error("[Library] SAVE FAILED key:", saveKey); showToast("Erro ao salvar metadados — tente novamente"); return; }
+      /* Update local state */
+      setSel(p => ({ ...p, files: newFiles }));
+      setClients(p => p.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, files: newFiles } : c));
+      setAddingFile(false); setFileForm({});
+      showToast("Arquivo salvo ✓");
+      } catch(err) { console.error("[Library] CRASH:", err); showToast("Erro inesperado: " + (err.message||err)); }
+    } else {
+      showToast("Selecione um arquivo para enviar");
+    }
+  };
+
+
+    const GoogleIcon = ({sz=18}) => <svg width={sz} height={sz} viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>;
   const PinterestIcon = ({sz=18}) => <svg width={sz} height={sz} viewBox="0 0 24 24" fill="#E60023"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.15 9.42 7.6 11.18-.1-.95-.2-2.42.04-3.46.22-.94 1.4-5.95 1.4-5.95s-.36-.72-.36-1.78c0-1.66.97-2.9 2.17-2.9 1.02 0 1.52.77 1.52 1.7 0 1.03-.66 2.58-1 4.01-.28 1.2.6 2.18 1.78 2.18 2.13 0 3.77-2.25 3.77-5.5 0-2.87-2.06-4.88-5.01-4.88-3.41 0-5.42 2.56-5.42 5.21 0 1.03.4 2.14.89 2.74.1.12.11.22.08.34-.09.37-.29 1.2-.33 1.36-.05.22-.18.26-.4.16-1.5-.7-2.43-2.88-2.43-4.64 0-3.78 2.75-7.25 7.92-7.25 4.16 0 7.4 2.97 7.4 6.93 0 4.14-2.61 7.46-6.23 7.46-1.22 0-2.36-.63-2.75-1.38l-.75 2.85c-.27 1.04-1 2.35-1.49 3.15C9.57 23.81 10.76 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg>;
 
   /* ── SOCIAL CONNECTION MODAL ── */
@@ -5267,40 +5303,6 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     const current = sel?.socials?.[editingSocial] || {};
     const isDisconnecting = current.connected;
     const hasOAuth = current.oauth;
-    const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
-    const getFileCat = (f) => catMap[f.category] || "other";
-
-    const addFile = async () => {
-      if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
-      if (fileForm.file) {
-        try {
-        showToast("Enviando arquivo...");
-        const clientId = sel.supaId || sel.id;
-        console.log("[Library] Upload start:", clientId, fileForm.file.name, fileForm.file.size);
-        const result = await supaUploadClientFile(fileForm.file, clientId);
-        console.log("[Library] Upload done:", JSON.stringify(result));
-        if (result?.error) { showToast("Erro: " + result.error); return; }
-        const bytes = fileForm.file.size || 0;
-        const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
-        const origExt = fileForm.file.name.split(".").pop()?.toLowerCase() || "";
-        const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", originalExt: origExt, mimeType: fileForm.file.type || "" };
-        const currentFiles = sel.files || [];
-        const newFiles = [...currentFiles, nf];
-        const saveKey = `client_files_${clientId}`;
-        console.log("[Library] Saving metadata key:", saveKey, "files:", newFiles.length);
-        const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
-        console.log("[Library] Save result:", saved);
-        if (!saved) { console.error("[Library] SAVE FAILED key:", saveKey); showToast("Erro ao salvar metadados — tente novamente"); return; }
-        /* Update local state */
-        setSel(p => ({ ...p, files: newFiles }));
-        setClients(p => p.map(c => (c.id === sel.id || c.supaId === sel.supaId) ? { ...c, files: newFiles } : c));
-        setAddingFile(false); setFileForm({});
-        showToast("Arquivo salvo ✓");
-        } catch(err) { console.error("[Library] CRASH:", err); showToast("Erro inesperado: " + (err.message||err)); }
-      } else {
-        showToast("Selecione um arquivo para enviar");
-      }
-    };
 
     return (
       <div className="pg">
