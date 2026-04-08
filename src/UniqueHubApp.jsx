@@ -23652,42 +23652,8 @@ function FeedPlannerPage({ onBack, clients, user }) {
 function NotesPage({ onBack, user }) {
   const isNotesDesktop = useIsDesktop();
   const TOP = 70;
-  const notesKey = `uh_notes_list_${user?.id || "anon"}`;
-  const [notes, setNotes] = useState(() => {
-    try {
-      /* Try new key first */
-      const newData = localStorage.getItem(notesKey);
-      if (newData) return JSON.parse(newData);
-      /* Try old key (migration) */
-      const oldData = localStorage.getItem("uh_notes_list");
-      if (oldData) {
-        const parsed = JSON.parse(oldData);
-        if (parsed.length > 0) {
-          localStorage.setItem(notesKey, oldData);
-          return parsed;
-        }
-      }
-      return [];
-    } catch { return []; }
-  });
-
-  /* Re-run migration when user.id becomes available */
-  useEffect(() => {
-    if (!user?.id) return;
-    const correctKey = `uh_notes_list_${user.id}`;
-    try {
-      const existing = localStorage.getItem(correctKey);
-      if (existing) return; /* already migrated */
-      const oldData = localStorage.getItem("uh_notes_list");
-      if (oldData) {
-        const parsed = JSON.parse(oldData);
-        if (parsed.length > 0) {
-          localStorage.setItem(correctKey, oldData);
-          setNotes(parsed);
-        }
-      }
-    } catch {}
-  }, [user?.id]);
+  const notesKey = "uh_notes_list";
+  const [notes, setNotes] = useState(() => { try { return JSON.parse(localStorage.getItem(notesKey)||"[]"); } catch { return []; } });
   const [selNote, setSelNote] = useState(null);
   const [editText, setEditText] = useState("");
   const [editTitle, setEditTitle] = useState("");
