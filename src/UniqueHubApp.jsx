@@ -23563,7 +23563,21 @@ NÃO invente campanhas que não existem no documento.`
   if (view === "create") {
     const createForm = (
       <div style={isPDesktop ? { flex:1, background:B.bgCard, borderRadius:20, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" } : {}}>
-        {isPDesktop && <div style={{ padding:"14px 18px", borderBottom:`1px solid ${B.border}` }}><p style={{ fontSize:18, fontWeight:800 }}>Configurar apresentação</p></div>}
+        {isPDesktop && <div style={{ padding:"14px 18px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}><p style={{ fontSize:18, fontWeight:800 }}>Configurar apresentação</p>
+          <div style={{ position:"relative" }}>
+            <div onClick={e=>{e.stopPropagation();const tip=e.currentTarget.nextSibling;tip.style.display=tip.style.display==="none"?"block":"block";setTimeout(()=>{tip.style.display="none";},10000);}} style={{ width:28, height:28, borderRadius:14, background:B.accent+"15", border:"1.5px solid "+B.accent+"40", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", fontSize:13, fontWeight:800, color:B.accent }}>?</div>
+            <div style={{ display:"none", position:"absolute", right:0, top:36, width:340, padding:"18px 20px", borderRadius:16, background:B.bgCard, border:"1.5px solid "+B.border, boxShadow:"0 12px 40px rgba(0,0,0,0.35)", zIndex:9999, fontSize:12, lineHeight:1.7, color:B.text }}>
+              <p style={{ fontWeight:800, fontSize:15, marginBottom:12, color:B.accent }}>💡 Como funciona</p>
+              <p style={{ fontWeight:700, marginBottom:6 }}>Métricas</p>
+              <p style={{ color:B.muted, marginBottom:10 }}>Puxa dados reais do sistema (demandas, publicações, crescimento) e gera slides com resultados do período selecionado.</p>
+              <p style={{ fontWeight:700, marginBottom:6 }}>Campanhas</p>
+              <p style={{ color:B.muted, marginBottom:10 }}>Envie um PDF com o calendário editorial contendo: datas de publicação, temas, campanhas, datas comemorativas e metas.</p>
+              <p style={{ fontWeight:700, marginBottom:6 }}>Ambos</p>
+              <p style={{ color:B.muted, marginBottom:10 }}>Combina os dados reais de performance com o planejamento do PDF numa apresentação completa.</p>
+              <div style={{ padding:"10px 14px", borderRadius:12, background:B.accent+"10", fontSize:11, color:B.accent, fontWeight:600 }}>📄 Aceita PDF, TXT ou DOC · A IA gera os slides automaticamente</div>
+            </div>
+          </div>
+        </div>}
         <div style={{ padding:isPDesktop?"20px 24px":"0 16px", flex:1, overflowY:"auto" }}>
           <label style={{ fontSize:12, fontWeight:700, color:B.muted, letterSpacing:0.5, textTransform:"uppercase", marginBottom:6, display:"block" }}>Cliente</label>
           <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:20 }}>
@@ -23592,23 +23606,7 @@ NÃO invente campanhas que não existem no documento.`
             </div>
           </div>
           {(mode==="campaigns" || mode==="both") && (<div style={{ marginBottom:20 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-              <label style={{ fontSize:12, fontWeight:700, color:B.muted, letterSpacing:0.5, textTransform:"uppercase" }}>PDF do Calendário</label>
-              <div style={{ position:"relative" }}>
-                <div onClick={e=>{e.stopPropagation();const tip=e.currentTarget.nextSibling;tip.style.display=tip.style.display==="none"?"block":"block";setTimeout(()=>{tip.style.display="none";},10000);}} style={{ width:20, height:20, borderRadius:10, background:B.accent+"20", border:"1.5px solid "+B.accent+"50", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", fontSize:10, fontWeight:800, color:B.accent }}>?</div>
-                <div style={{ display:"none", position:"absolute", left:"50%", transform:"translateX(-50%)", top:28, width:320, padding:"16px 18px", borderRadius:16, background:B.bgCard, border:"1.5px solid "+B.border, boxShadow:"0 12px 40px rgba(0,0,0,0.35)", zIndex:9999, fontSize:12, lineHeight:1.7, color:B.text }}>
-                  <div style={{ position:"absolute", top:-6, left:"50%", transform:"translateX(-50%)", width:12, height:12, background:B.bgCard, border:"1.5px solid "+B.border, borderRight:"none", borderBottom:"none", rotate:"45deg" }} />
-                  <p style={{ fontWeight:800, fontSize:14, marginBottom:10, color:B.accent }}>📄 Como preparar o PDF</p>
-                  <p style={{ marginBottom:8, color:B.muted }}>Envie o calendário editorial do mês com:</p>
-                  <p style={{ marginBottom:5 }}>📅 Datas de publicação de cada post</p>
-                  <p style={{ marginBottom:5 }}>📝 Temas ou editoria de cada conteúdo</p>
-                  <p style={{ marginBottom:5 }}>🎯 Campanhas e ações promocionais</p>
-                  <p style={{ marginBottom:5 }}>🗓️ Datas comemorativas do mês</p>
-                  <p style={{ marginBottom:10 }}>📊 Metas e objetivos do período</p>
-                  <div style={{ padding:"8px 12px", borderRadius:10, background:B.accent+"10", fontSize:11, color:B.accent, fontWeight:600 }}>A IA vai gerar os slides da apresentação com base neste planejamento</div>
-                </div>
-              </div>
-            </div>
+            <label style={{ fontSize:12, fontWeight:700, color:B.muted, letterSpacing:0.5, textTransform:"uppercase", marginBottom:6, display:"block" }}>PDF do Calendário</label>
             <label style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:20, borderRadius:16, border:`2px dashed ${pdfFile?B.accent:B.border}`, background:pdfFile?`${B.accent}08`:"transparent", cursor:"pointer" }}>
               <input type="file" accept=".pdf" onChange={handlePdfUpload} style={{ display:"none" }} />
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={pdfFile?B.accent:B.muted} strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
