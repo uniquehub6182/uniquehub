@@ -16400,7 +16400,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                                 <p style={{ fontSize:12, fontWeight:700, margin:0 }}>{m.profile?.name || "—"}</p>
                                 <p style={{ fontSize:10, color:B.muted, margin:0 }}>{m.profile?.email || "—"}</p>
                               </div>
-                              <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:8, background:m.role==="owner"?`${LIME}20`:`${B.muted}15`, color:m.role==="owner"?LIME:B.muted }}>{m.role}</span>
+                              <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:8, background:m.role==="owner"?`${B.accent}20`:`${B.muted}15`, color:m.role==="owner"?B.accent:B.muted }}>{m.role}</span>
                             </div>
                           ))}
                         </div>
