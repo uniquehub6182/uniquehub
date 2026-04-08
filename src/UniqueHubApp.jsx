@@ -14298,6 +14298,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   /* Super admin states (must be at top level for hooks rules) */
   const [saOrgs, setSaOrgs] = useState([]);
   const [saLoading, setSaLoading] = useState(true);
+  const [saSelected, setSaSelected] = useState(null);
+  const [saMembers, setSaMembers] = useState([]);
   useEffect(() => {
     if (sub !== "superadmin" || _currentOrgPlan !== "enterprise" || !supabase) return;
     setSaLoading(true);
@@ -16292,30 +16294,121 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* ═══ SUPER ADMIN ═══ */
   if (sub === "superadmin" && _currentOrgPlan === "enterprise") {
+    const planColors = { free:"#9CA3AF", essencial:"#5DCAA5", profissional:"#85B7EB", agencia:"#AFA9EC", escala:"#F0997B", enterprise:"#BBF246" };
+    const planPrices = { free:0, essencial:197, profissional:397, agencia:597, escala:997, enterprise:0 };
+    const totalClients = saOrgs.reduce((s,o) => s + (o.clientCount||0), 0);
+    const totalDemands = saOrgs.reduce((s,o) => s + (o.demandCount||0), 0);
+    const totalMembers = saOrgs.reduce((s,o) => s + (o.memberCount||0), 0);
+    const mrr = saOrgs.filter(o=>o.plan!=="enterprise").reduce((s,o) => s + (planPrices[o.plan]||0), 0);
+    const changePlan = async (orgId, newPlan) => {
+      if (!confirm(`Alterar plano para "${newPlan}"?`)) return;
+      const limits = { free:{c:1,u:1}, essencial:{c:5,u:2}, profissional:{c:10,u:5}, agencia:{c:20,u:15}, escala:{c:40,u:999}, enterprise:{c:999,u:999} };
+      const l = limits[newPlan] || limits.free;
+      await supabase.from("organizations").update({ plan: newPlan, max_clients: l.c, max_users: l.u }).eq("id", orgId);
+      setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, plan: newPlan, max_clients: l.c, max_users: l.u } : o));
+      showToast("Plano atualizado ✓");
+    };
+    const loadMembers = async (orgId) => {
+      const { data: members } = await supabase.from("org_members").select("user_id, role, accepted_at").eq("org_id", orgId);
+      if (!members?.length) { setSaMembers([]); return; }
+      const { data: profiles } = await supabase.from("profiles").select("id, name, email, photo_url, role").in("id", members.map(m => m.user_id));
+      const pMap = {}; (profiles||[]).forEach(p => pMap[p.id] = p);
+      setSaMembers(members.map(m => ({ ...m, profile: pMap[m.user_id] || null })));
+    };
+    const selectOrg = (org) => { if (saSelected?.id === org.id) { setSaSelected(null); setSaMembers([]); } else { setSaSelected(org); loadMembers(org.id); } };
     return (
       <SetPage title="Super Admin" wide>
         <div style={{ padding:isSetDesktop?"0 24px":"0" }}>
-          <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Todas as agências cadastradas no UniqueHub</p>
-          {saLoading ? <p style={{ fontSize:13, color:B.muted }}>Carregando...</p> : (
+          {/* Summary cards */}
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))", gap:10, marginBottom:20 }}>
+            {[
+              { l:"Agências", v:saOrgs.length, c:"#AFA9EC" },
+              { l:"Clientes total", v:totalClients, c:"#5DCAA5" },
+              { l:"Demandas total", v:totalDemands, c:"#85B7EB" },
+              { l:"Membros total", v:totalMembers, c:"#F0997B" },
+              { l:"MRR estimado", v:`R$ ${mrr}`, c:"#BBF246" },
+            ].map((card,i) => (
+              <div key={i} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:`1px solid ${B.border}`, padding:"14px 16px" }}>
+                <p style={{ fontSize:11, color:B.muted, margin:"0 0 4px", textTransform:"uppercase", letterSpacing:"0.04em", fontWeight:600 }}>{card.l}</p>
+                <p style={{ fontSize:22, fontWeight:900, margin:0, color:card.c }}>{saLoading ? "..." : card.v}</p>
+              </div>
+            ))}
+          </div>
+          {/* Org list */}
+          {saLoading ? <p style={{ fontSize:13, color:B.muted }}>Carregando agências...</p> : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {saOrgs.map(org => (
-                <div key={org.id} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:`1px solid ${B.border}`, padding:"16px 20px" }}>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-                    <div>
-                      <h3 style={{ fontSize:16, fontWeight:800, margin:0 }}>{org.name}</h3>
-                      <p style={{ fontSize:12, color:B.muted, margin:"2px 0 0" }}>{org.owner?.name || "—"} · {org.owner?.email || "—"}</p>
+              {saOrgs.map(org => {
+                const isSel = saSelected?.id === org.id;
+                const pc = planColors[org.plan] || "#9CA3AF";
+                const daysAgo = Math.floor((Date.now() - new Date(org.created_at).getTime()) / 86400000);
+                return (
+                <div key={org.id} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:`1px solid ${isSel?pc:B.border}`, overflow:"hidden", transition:"all .15s" }}>
+                  <div onClick={() => selectOrg(org)} style={{ padding:"16px 20px", cursor:"pointer" }}>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                        <div style={{ width:40, height:40, borderRadius:12, background:`${pc}20`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:16, color:pc }}>{org.name.charAt(0)}</div>
+                        <div>
+                          <h3 style={{ fontSize:15, fontWeight:800, margin:0 }}>{org.name}</h3>
+                          <p style={{ fontSize:11, color:B.muted, margin:"2px 0 0" }}>{org.owner?.name || "—"} · {org.owner?.email || "—"}</p>
+                        </div>
+                      </div>
+                      <div style={{ textAlign:"right" }}>
+                        <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:20, background:`${pc}20`, color:pc, display:"inline-block" }}>{org.plan}</span>
+                        <p style={{ fontSize:10, color:B.muted, margin:"4px 0 0" }}>{daysAgo === 0 ? "hoje" : `há ${daysAgo}d`}</p>
+                      </div>
                     </div>
-                    <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:20, background:org.plan==="enterprise"?"#BBF24620":"#10B98120", color:org.plan==="enterprise"?"#BBF246":"#10B981" }}>{org.plan}</span>
+                    <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+                      {[ { l:"Clientes", v:org.clientCount, max:org.max_clients }, { l:"Demandas", v:org.demandCount }, { l:"Membros", v:org.memberCount, max:org.max_users } ].map((s,i) => (
+                        <div key={i} style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text }}>{s.v}</strong>{s.max ? `/${s.max}` : ""} {s.l.toLowerCase()}</div>
+                      ))}
+                      {planPrices[org.plan] > 0 && <div style={{ fontSize:12, color:B.muted }}>R$ <strong style={{ color:B.text }}>{planPrices[org.plan]}</strong>/mês</div>}
+                    </div>
                   </div>
-                  <div style={{ display:"flex", gap:16, flexWrap:"wrap" }}>
-                    <div style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text }}>{org.clientCount}</strong> clientes</div>
-                    <div style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text }}>{org.demandCount}</strong> demandas</div>
-                    <div style={{ fontSize:12, color:B.muted }}><strong style={{ color:B.text }}>{org.memberCount}</strong> membros</div>
-                    <div style={{ fontSize:12, color:B.muted }}>Máx: {org.max_clients} cli / {org.max_users} users</div>
-                    <div style={{ fontSize:12, color:B.muted }}>Criada: {new Date(org.created_at).toLocaleDateString("pt-BR")}</div>
-                  </div>
+                  {/* Expanded detail */}
+                  {isSel && (
+                    <div style={{ borderTop:`1px solid ${B.border}`, padding:"16px 20px", background:B.bg }}>
+                      <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginBottom:16 }}>
+                        {/* Change plan */}
+                        <div>
+                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Alterar plano</label>
+                          <select value={org.plan} onChange={e => changePlan(org.id, e.target.value)} style={{ padding:"8px 12px", borderRadius:10, border:`1px solid ${B.border}`, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                            {["free","essencial","profissional","agencia","escala","enterprise"].map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase()+p.slice(1)}</option>)}
+                          </select>
+                        </div>
+                        {/* Org info */}
+                        <div>
+                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>ID da org</label>
+                          <p style={{ fontSize:11, color:B.text, margin:0, fontFamily:"monospace" }}>{org.id.substring(0,8)}...</p>
+                        </div>
+                        <div>
+                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Slug</label>
+                          <p style={{ fontSize:11, color:B.text, margin:0 }}>{org.slug}</p>
+                        </div>
+                        <div>
+                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Criada em</label>
+                          <p style={{ fontSize:11, color:B.text, margin:0 }}>{new Date(org.created_at).toLocaleDateString("pt-BR")} {new Date(org.created_at).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"})}</p>
+                        </div>
+                      </div>
+                      {/* Members list */}
+                      <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:8, textTransform:"uppercase" }}>Membros ({saMembers.length})</label>
+                      {saMembers.length === 0 ? <p style={{ fontSize:12, color:B.muted }}>Carregando...</p> : (
+                        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                          {saMembers.map((m,i) => (
+                            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", background:B.bgCard, borderRadius:10, border:`1px solid ${B.border}` }}>
+                              <div style={{ width:30, height:30, borderRadius:8, background:`${pc}15`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:pc }}>{(m.profile?.name||"?").charAt(0)}</div>
+                              <div style={{ flex:1 }}>
+                                <p style={{ fontSize:12, fontWeight:700, margin:0 }}>{m.profile?.name || "—"}</p>
+                                <p style={{ fontSize:10, color:B.muted, margin:0 }}>{m.profile?.email || "—"}</p>
+                              </div>
+                              <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:8, background:m.role==="owner"?`${LIME}20`:`${B.muted}15`, color:m.role==="owner"?LIME:B.muted }}>{m.role}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>
