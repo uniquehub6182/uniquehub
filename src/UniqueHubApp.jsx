@@ -5284,7 +5284,8 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
         const origExt = fileForm.file.name.split(".").pop()?.toLowerCase() || "";
         const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", originalExt: origExt, mimeType: fileForm.file.type || "" };
-        const newFiles = [...files, nf];
+        const currentFiles = sel.files || [];
+        const newFiles = [...currentFiles, nf];
         const saveKey = `client_files_${clientId}`;
         console.log("[Library] Saving metadata key:", saveKey, "files:", newFiles.length);
         const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
