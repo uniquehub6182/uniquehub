@@ -14316,7 +14316,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         const owner = (members || []).find(m => m.role === "owner");
         let ownerEmail = null;
         if (owner) { const { data: profile } = await supabase.from("profiles").select("email, name").eq("id", owner.user_id).maybeSingle(); ownerEmail = profile; }
-        enriched.push({ ...org, memberCount: (members || []).length, clientCount: clientCount || 0, demandCount: demandCount || 0, owner: ownerEmail });
+        const trialDays = org.trial_ends_at ? Math.ceil((new Date(org.trial_ends_at) - Date.now()) / 86400000) : null;
+        enriched.push({ ...org, memberCount: (members || []).length, clientCount: clientCount || 0, demandCount: demandCount || 0, owner: ownerEmail, trialDays });
       }
       setSaOrgs(enriched); setSaLoading(false);
     })();
@@ -16298,11 +16299,13 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   if (sub === "superadmin" && _currentOrgPlan === "enterprise") {
     const planColors = { free:"#9CA3AF", essencial:"#5DCAA5", profissional:"#85B7EB", agencia:"#AFA9EC", escala:"#F0997B", enterprise:"#BBF246" };
     const planPrices = { free:0, essencial:197, profissional:397, agencia:597, escala:997, enterprise:0 };
-    const planNames = { free:"Free", essencial:"Essencial", profissional:"Profissional", agencia:"Agência", escala:"Escala", enterprise:"Enterprise" };
+    const planNames = { free:"Free", essencial:"Essencial", profissional:"Profissional", agencia:"Ag\u00eancia", escala:"Escala", enterprise:"Enterprise" };
     const totalClients = saOrgs.reduce((s,o) => s + (o.clientCount||0), 0);
     const totalDemands = saOrgs.reduce((s,o) => s + (o.demandCount||0), 0);
     const totalMembers = saOrgs.reduce((s,o) => s + (o.memberCount||0), 0);
     const payingOrgs = saOrgs.filter(o => o.plan !== "enterprise" && o.plan !== "free");
+    const suspendedOrgs = saOrgs.filter(o => o.suspended);
+    const trialOrgs = saOrgs.filter(o => o.trialDays !== null && o.trialDays > 0 && !o.suspended);
     const mrr = payingOrgs.reduce((s,o) => s + (planPrices[o.plan]||0), 0);
     const changePlan = async (orgId, newPlan) => {
       if (!confirm("Alterar plano para " + newPlan + "?")) return;
@@ -16310,17 +16313,45 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       const l = limits[newPlan] || limits.free;
       await supabase.from("organizations").update({ plan: newPlan, max_clients: l.c, max_users: l.u }).eq("id", orgId);
       setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, plan: newPlan, max_clients: l.c, max_users: l.u } : o));
-      showToast("Plano atualizado para " + newPlan + " ✓");
+      showToast("Plano atualizado \u2713");
+    };
+    const toggleSuspend = async (org) => {
+      if (org.id === "a0000000-0000-0000-0000-000000000001") { showToast("Unique Marketing n\u00e3o pode ser suspensa"); return; }
+      if (org.suspended) {
+        await supabase.from("organizations").update({ suspended: false, suspended_at: null, suspended_reason: null }).eq("id", org.id);
+        setSaOrgs(prev => prev.map(o => o.id === org.id ? { ...o, suspended: false, suspended_at: null, suspended_reason: null } : o));
+        showToast(org.name + " reativada \u2713");
+      } else {
+        const reason = prompt("Motivo da suspens\u00e3o (vis\u00edvel para a ag\u00eancia):");
+        if (reason === null) return;
+        await supabase.from("organizations").update({ suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason || "Conta suspensa pelo administrador" }).eq("id", org.id);
+        setSaOrgs(prev => prev.map(o => o.id === org.id ? { ...o, suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason } : o));
+        showToast(org.name + " suspensa \u2713");
+      }
+    };
+    const extendTrial = async (orgId, days) => {
+      const d = parseInt(prompt("Quantos dias de trial adicionar?", "14"));
+      if (!d || isNaN(d)) return;
+      const org = saOrgs.find(o => o.id === orgId);
+      const base = org?.trial_ends_at ? new Date(org.trial_ends_at) : new Date();
+      const newEnd = new Date(base.getTime() + d * 86400000);
+      await supabase.from("organizations").update({ trial_ends_at: newEnd.toISOString() }).eq("id", orgId);
+      setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, trial_ends_at: newEnd.toISOString(), trialDays: Math.ceil((newEnd - Date.now()) / 86400000) } : o));
+      showToast("Trial estendido +" + d + " dias \u2713");
+    };
+    const saveNotes = async (orgId, notes) => {
+      await supabase.from("organizations").update({ notes }).eq("id", orgId);
+      setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, notes } : o));
+      showToast("Notas salvas \u2713");
     };
     const deleteOrg = async (orgId, orgName) => {
-      if (orgId === "a0000000-0000-0000-0000-000000000001") { showToast("Não é possível excluir a Unique Marketing"); return; }
-      if (!confirm("ATENÇÃO: Excluir a agência " + orgName + "? Todos os dados serão perdidos.")) return;
-      if (!confirm("Tem certeza ABSOLUTA? Esta ação é irreversível.")) return;
+      if (orgId === "a0000000-0000-0000-0000-000000000001") { showToast("Unique Marketing n\u00e3o pode ser exclu\u00edda"); return; }
+      if (!confirm("ATEN\u00c7\u00c3O: Excluir " + orgName + "? Todos os dados ser\u00e3o perdidos.")) return;
+      if (!confirm("Tem CERTEZA ABSOLUTA? Esta a\u00e7\u00e3o \u00e9 IRREVERS\u00cdVEL.")) return;
       await supabase.from("org_members").delete().eq("org_id", orgId);
       await supabase.from("organizations").delete().eq("id", orgId);
       setSaOrgs(prev => prev.filter(o => o.id !== orgId));
-      setSaSelected(null);
-      showToast("Agência " + orgName + " excluída");
+      setSaSelected(null); showToast(orgName + " exclu\u00edda");
     };
     const loadMembers = async (orgId) => {
       const { data: members } = await supabase.from("org_members").select("user_id, role, accepted_at").eq("org_id", orgId);
@@ -16333,42 +16364,41 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const [saTab, setSaTab] = saTabState;
     const [saSearch, setSaSearch] = saSearchState;
     const filteredOrgs = saSearch.trim() ? saOrgs.filter(o => o.name.toLowerCase().includes(saSearch.toLowerCase()) || (o.owner?.email||"").toLowerCase().includes(saSearch.toLowerCase())) : saOrgs;
-    const byPlan = {};
-    saOrgs.forEach(o => { byPlan[o.plan] = (byPlan[o.plan]||0) + 1; });
+    const byPlan = {}; saOrgs.forEach(o => { byPlan[o.plan] = (byPlan[o.plan]||0) + 1; });
     return (
       <SetPage title="Super Admin" wide>
         <div style={{ padding:isSetDesktop?"0 24px":"0" }}>
           {/* Tabs */}
           <div style={{ display:"flex", gap:6, marginBottom:16, flexWrap:"wrap" }}>
-            {[{k:"overview",l:"Visão Geral"},{k:"orgs",l:"Agências"},{k:"health",l:"Saúde do Sistema"}].map(t => (
+            {[{k:"overview",l:"Vis\u00e3o Geral"},{k:"orgs",l:"Ag\u00eancias"},{k:"health",l:"Sa\u00fade do Sistema"}].map(t => (
               <button key={t.k} onClick={()=>setSaTab(t.k)} style={{ padding:"8px 16px", borderRadius:10, border:"none", background:saTab===t.k?B.accent+"20":"transparent", color:saTab===t.k?B.accent:B.muted, fontSize:12, fontWeight:saTab===t.k?700:500, cursor:"pointer", fontFamily:"inherit" }}>{t.l}</button>
             ))}
           </div>
 
-          {/* ── OVERVIEW TAB ── */}
+          {/* ── OVERVIEW ── */}
           {saTab === "overview" && <>
-            {/* Metric cards */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))", gap:10, marginBottom:20 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))", gap:10, marginBottom:16 }}>
               {[
-                { l:"Agências", v:saOrgs.length, c:"#AFA9EC", sub:payingOrgs.length + " pagantes" },
-                { l:"Clientes", v:totalClients, c:"#5DCAA5", sub:"em todas as agências" },
-                { l:"Demandas", v:totalDemands, c:"#85B7EB", sub:"conteúdos criados" },
-                { l:"Membros", v:totalMembers, c:"#F0997B", sub:"usuários ativos" },
-                { l:"MRR", v:"R$ " + mrr, c:"#BBF246", sub:payingOrgs.length + " assinaturas" },
+                { l:"Ag\u00eancias", v:saOrgs.length, c:"#AFA9EC", sub:payingOrgs.length+" pagantes" },
+                { l:"Clientes", v:totalClients, c:"#5DCAA5", sub:"em todas as ag\u00eancias" },
+                { l:"Demandas", v:totalDemands, c:"#85B7EB", sub:"conte\u00fados criados" },
+                { l:"MRR", v:"R$ "+mrr, c:"#BBF246", sub:payingOrgs.length+" assinaturas" },
+                { l:"Suspensas", v:suspendedOrgs.length, c:suspendedOrgs.length>0?"#EF4444":"#9CA3AF", sub:suspendedOrgs.length>0?"requer aten\u00e7\u00e3o":"tudo ok" },
+                { l:"Em trial", v:trialOrgs.length, c:"#F59E0B", sub:trialOrgs.length>0?"ativas":"nenhuma" },
               ].map((card,i) => (
-                <div key={i} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"14px 16px" }}>
+                <div key={i} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid "+B.border, padding:"14px 16px" }}>
                   <p style={{ fontSize:10, color:B.muted, margin:"0 0 4px", textTransform:"uppercase", letterSpacing:"0.05em", fontWeight:700 }}>{card.l}</p>
-                  <p style={{ fontSize:22, fontWeight:900, margin:"0 0 2px", color:card.c }}>{saLoading ? "..." : card.v}</p>
+                  <p style={{ fontSize:22, fontWeight:900, margin:"0 0 2px", color:card.c }}>{saLoading?"...":card.v}</p>
                   <p style={{ fontSize:10, color:B.muted, margin:0 }}>{card.sub}</p>
                 </div>
               ))}
             </div>
-            {/* Distribution by plan */}
-            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"16px 20px", marginBottom:16 }}>
-              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>Distribuição por plano</p>
+            {/* Plan distribution */}
+            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid "+B.border, padding:"16px 20px", marginBottom:16 }}>
+              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>Distribui\u00e7\u00e3o por plano</p>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                 {Object.entries(byPlan).map(([plan, count]) => (
-                  <div key={plan} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:10, background:(planColors[plan]||"#9CA3AF") + "15", border:"1px solid " + (planColors[plan]||"#9CA3AF") + "30" }}>
+                  <div key={plan} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:10, background:(planColors[plan]||"#9CA3AF")+"15", border:"1px solid "+(planColors[plan]||"#9CA3AF")+"30" }}>
                     <div style={{ width:10, height:10, borderRadius:3, background:planColors[plan]||"#9CA3AF" }} />
                     <span style={{ fontSize:12, fontWeight:600, color:B.text }}>{planNames[plan]||plan}</span>
                     <span style={{ fontSize:14, fontWeight:800, color:planColors[plan]||"#9CA3AF" }}>{count}</span>
@@ -16377,21 +16407,21 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               </div>
             </div>
             {/* Recent signups */}
-            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"16px 20px" }}>
-              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>Últimas agências cadastradas</p>
+            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid "+B.border, padding:"16px 20px" }}>
+              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>\u00daltimas ag\u00eancias</p>
               {saOrgs.slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0,5).map((org,i) => {
                 const pc = planColors[org.plan]||"#9CA3AF";
                 const days = Math.floor((Date.now() - new Date(org.created_at).getTime())/86400000);
                 return (
-                  <div key={org.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:i<4?"1px solid " + B.border + "40":"none" }}>
-                    <div style={{ width:36, height:36, borderRadius:10, background:pc + "20", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, color:pc, flexShrink:0 }}>{org.name.charAt(0)}</div>
+                  <div key={org.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0", borderBottom:i<4?"1px solid "+B.border+"40":"none" }}>
+                    <div style={{ width:36, height:36, borderRadius:10, background:pc+"20", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:14, color:pc, flexShrink:0 }}>{org.name.charAt(0)}</div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:13, fontWeight:700, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{org.name}</p>
-                      <p style={{ fontSize:11, color:B.muted, margin:0 }}>{org.owner?.email || "—"}</p>
+                      <p style={{ fontSize:13, fontWeight:700, margin:0 }}>{org.name}{org.suspended ? " \ud83d\udeab" : ""}</p>
+                      <p style={{ fontSize:11, color:B.muted, margin:0 }}>{org.owner?.email||"\u2014"}</p>
                     </div>
                     <div style={{ textAlign:"right", flexShrink:0 }}>
-                      <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:pc + "20", color:pc }}>{org.plan}</span>
-                      <p style={{ fontSize:10, color:B.muted, margin:"4px 0 0" }}>{days === 0 ? "hoje" : days + "d atrás"}</p>
+                      <span style={{ fontSize:10, fontWeight:700, padding:"3px 10px", borderRadius:8, background:pc+"20", color:pc }}>{org.plan}</span>
+                      <p style={{ fontSize:10, color:B.muted, margin:"4px 0 0" }}>{days===0?"hoje":days+"d"}</p>
                     </div>
                   </div>
                 );
@@ -16401,98 +16431,97 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
           {/* ── AGENCIES TAB ── */}
           {saTab === "orgs" && <>
-            {/* Search */}
             <div style={{ position:"relative", marginBottom:16 }}>
-              <input value={saSearch} onChange={e => setSaSearch(e.target.value)} placeholder="Buscar agência por nome ou email..." style={{ width:"100%", padding:"10px 16px 10px 38px", borderRadius:12, border:"1px solid " + B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box" }} />
+              <input value={saSearch} onChange={e=>setSaSearch(e.target.value)} placeholder="Buscar por nome ou email..." style={{ width:"100%", padding:"10px 16px 10px 38px", borderRadius:12, border:"1px solid "+B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box" }} />
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             </div>
-            <p style={{ fontSize:12, color:B.muted, marginBottom:10 }}>{filteredOrgs.length} agência{filteredOrgs.length !== 1 ? "s" : ""}</p>
+            <p style={{ fontSize:12, color:B.muted, marginBottom:10 }}>{filteredOrgs.length} ag\u00eancia{filteredOrgs.length!==1?"s":""}</p>
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {filteredOrgs.map(org => {
                 const isSel = saSelected?.id === org.id;
-                const pc = planColors[org.plan] || "#9CA3AF";
-                const daysAgo = Math.floor((Date.now() - new Date(org.created_at).getTime()) / 86400000);
-                const usageClients = org.max_clients > 0 ? Math.round((org.clientCount / org.max_clients) * 100) : 0;
-                const usageMembers = org.max_users > 0 ? Math.round((org.memberCount / org.max_users) * 100) : 0;
+                const pc = planColors[org.plan]||"#9CA3AF";
+                const usageClients = org.max_clients > 0 ? Math.round((org.clientCount/org.max_clients)*100) : 0;
                 return (
-                <div key={org.id} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + (isSel?pc:B.border), overflow:"hidden", transition:"border-color .15s" }}>
-                  <div onClick={() => selectOrg(org)} style={{ padding:"16px 20px", cursor:"pointer" }}>
+                <div key={org.id} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid "+(isSel?pc:org.suspended?"#EF4444":B.border), overflow:"hidden" }}>
+                  <div onClick={()=>selectOrg(org)} style={{ padding:"16px 20px", cursor:"pointer", opacity:org.suspended?0.7:1 }}>
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
                       <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                        <div style={{ width:42, height:42, borderRadius:12, background:pc + "20", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:17, color:pc }}>{org.name.charAt(0)}</div>
+                        <div style={{ width:42, height:42, borderRadius:12, background:pc+"20", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:17, color:pc }}>{org.name.charAt(0)}</div>
                         <div>
-                          <h3 style={{ fontSize:15, fontWeight:800, margin:0 }}>{org.name}</h3>
-                          <p style={{ fontSize:11, color:B.muted, margin:"2px 0 0" }}>{org.owner?.name || "Sem owner"} · {org.owner?.email || "—"}</p>
+                          <h3 style={{ fontSize:15, fontWeight:800, margin:0 }}>{org.name}{org.suspended ? " \ud83d\udd12" : ""}</h3>
+                          <p style={{ fontSize:11, color:B.muted, margin:"2px 0 0" }}>{org.owner?.name||"Sem owner"} \u00b7 {org.owner?.email||"\u2014"}</p>
                         </div>
                       </div>
                       <div style={{ textAlign:"right" }}>
-                        <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:20, background:pc + "20", color:pc }}>{planNames[org.plan]||org.plan}</span>
-                        {planPrices[org.plan] > 0 && <p style={{ fontSize:11, color:B.muted, margin:"4px 0 0" }}>R$ {planPrices[org.plan]}/mês</p>}
+                        <span style={{ fontSize:11, fontWeight:700, padding:"4px 12px", borderRadius:20, background:org.suspended?"#EF444420":pc+"20", color:org.suspended?"#EF4444":pc }}>{org.suspended?"SUSPENSA":planNames[org.plan]||org.plan}</span>
+                        {org.trialDays !== null && org.trialDays > 0 && <p style={{ fontSize:10, color:"#F59E0B", fontWeight:600, margin:"4px 0 0" }}>Trial: {org.trialDays}d restantes</p>}
+                        {org.trialDays !== null && org.trialDays <= 0 && <p style={{ fontSize:10, color:"#EF4444", fontWeight:600, margin:"4px 0 0" }}>Trial expirado</p>}
                       </div>
                     </div>
-                    {/* Usage bars */}
                     <div style={{ display:"flex", gap:16 }}>
                       <div style={{ flex:1 }}>
-                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                          <span style={{ fontSize:10, color:B.muted }}>Clientes</span>
-                          <span style={{ fontSize:10, fontWeight:700, color:usageClients > 80 ? "#EF4444" : B.text }}>{org.clientCount}/{org.max_clients}</span>
-                        </div>
-                        <div style={{ height:4, borderRadius:2, background:B.border }}>
-                          <div style={{ height:"100%", borderRadius:2, background:usageClients > 80 ? "#EF4444" : pc, width:Math.min(100,usageClients) + "%", transition:"width .3s" }} />
-                        </div>
+                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}><span style={{ fontSize:10, color:B.muted }}>Clientes</span><span style={{ fontSize:10, fontWeight:700, color:usageClients>80?"#EF4444":B.text }}>{org.clientCount}/{org.max_clients}</span></div>
+                        <div style={{ height:4, borderRadius:2, background:B.border }}><div style={{ height:"100%", borderRadius:2, background:usageClients>80?"#EF4444":pc, width:Math.min(100,usageClients)+"%" }} /></div>
                       </div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                          <span style={{ fontSize:10, color:B.muted }}>Membros</span>
-                          <span style={{ fontSize:10, fontWeight:700, color:usageMembers > 80 ? "#EF4444" : B.text }}>{org.memberCount}/{org.max_users}</span>
-                        </div>
-                        <div style={{ height:4, borderRadius:2, background:B.border }}>
-                          <div style={{ height:"100%", borderRadius:2, background:usageMembers > 80 ? "#EF4444" : pc, width:Math.min(100,usageMembers) + "%", transition:"width .3s" }} />
-                        </div>
-                      </div>
-                      <div style={{ minWidth:80, textAlign:"right" }}>
-                        <span style={{ fontSize:10, color:B.muted }}>Demandas</span>
-                        <p style={{ fontSize:14, fontWeight:800, margin:0 }}>{org.demandCount}</p>
-                      </div>
+                      <div style={{ minWidth:60, textAlign:"right" }}><span style={{ fontSize:10, color:B.muted }}>Membros</span><p style={{ fontSize:13, fontWeight:800, margin:0 }}>{org.memberCount}</p></div>
+                      <div style={{ minWidth:70, textAlign:"right" }}><span style={{ fontSize:10, color:B.muted }}>Demandas</span><p style={{ fontSize:13, fontWeight:800, margin:0 }}>{org.demandCount}</p></div>
                     </div>
                   </div>
-                  {/* Expanded */}
+                  {/* ── EXPANDED ── */}
                   {isSel && (
-                    <div style={{ borderTop:"1px solid " + B.border, padding:"16px 20px", background:B.bg }}>
-                      <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:16, alignItems:"flex-end" }}>
+                    <div style={{ borderTop:"1px solid "+B.border, padding:"16px 20px", background:B.bg }}>
+                      {/* Action buttons row */}
+                      <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
+                        <button onClick={()=>toggleSuspend(org)} style={{ padding:"8px 16px", borderRadius:10, border:"1.5px solid "+(org.suspended?"#10B981":"#EF4444"), background:"transparent", color:org.suspended?"#10B981":"#EF4444", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                          {org.suspended ? "\u2713 Reativar ag\u00eancia" : "\u26d4 Suspender ag\u00eancia"}
+                        </button>
+                        <button onClick={()=>extendTrial(org.id)} style={{ padding:"8px 16px", borderRadius:10, border:"1.5px solid #F59E0B", background:"transparent", color:"#F59E0B", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                          + Estender trial
+                        </button>
+                        {org.id !== "a0000000-0000-0000-0000-000000000001" && (
+                          <button onClick={()=>deleteOrg(org.id, org.name)} style={{ padding:"8px 16px", borderRadius:10, border:"1.5px solid #EF4444", background:"transparent", color:"#EF4444", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginLeft:"auto" }}>
+                            Excluir ag\u00eancia
+                          </button>
+                        )}
+                      </div>
+                      {/* Controls grid */}
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))", gap:12, marginBottom:16 }}>
                         <div>
-                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Alterar plano</label>
-                          <select value={org.plan} onChange={e => changePlan(org.id, e.target.value)} style={{ padding:"8px 12px", borderRadius:10, border:"1px solid " + B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Plano</label>
+                          <select value={org.plan} onChange={e=>changePlan(org.id,e.target.value)} style={{ width:"100%", padding:"8px 12px", borderRadius:10, border:"1px solid "+B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, fontWeight:600, cursor:"pointer" }}>
                             {["free","essencial","profissional","agencia","escala","enterprise"].map(p => <option key={p} value={p}>{planNames[p]}</option>)}
                           </select>
                         </div>
                         <div>
-                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Org ID</label>
-                          <p style={{ fontSize:11, color:B.text, margin:0, fontFamily:"monospace", background:B.bgCard, padding:"6px 10px", borderRadius:8, border:"1px solid " + B.border }}>{org.id.substring(0,18)}...</p>
+                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Trial expira em</label>
+                          <p style={{ fontSize:13, fontWeight:600, margin:0, padding:"8px 12px", borderRadius:10, background:B.bgCard, border:"1px solid "+B.border, color:org.trialDays!==null?(org.trialDays>0?"#F59E0B":"#EF4444"):B.muted }}>{org.trialDays !== null ? (org.trialDays > 0 ? org.trialDays+" dias" : "Expirado") : "Sem trial"}</p>
                         </div>
                         <div>
-                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Slug</label>
-                          <p style={{ fontSize:11, color:B.text, margin:0, background:B.bgCard, padding:"6px 10px", borderRadius:8, border:"1px solid " + B.border }}>{org.slug}</p>
+                          <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Org ID</label>
+                          <p style={{ fontSize:10, margin:0, padding:"8px 12px", borderRadius:10, background:B.bgCard, border:"1px solid "+B.border, fontFamily:"monospace", color:B.text, overflow:"hidden", textOverflow:"ellipsis" }}>{org.id}</p>
                         </div>
                         <div>
                           <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Criada em</label>
-                          <p style={{ fontSize:11, color:B.text, margin:0, background:B.bgCard, padding:"6px 10px", borderRadius:8, border:"1px solid " + B.border }}>{new Date(org.created_at).toLocaleDateString("pt-BR")} {new Date(org.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
+                          <p style={{ fontSize:12, margin:0, padding:"8px 12px", borderRadius:10, background:B.bgCard, border:"1px solid "+B.border, color:B.text }}>{new Date(org.created_at).toLocaleDateString("pt-BR")} {new Date(org.created_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</p>
                         </div>
-                        {org.id !== "a0000000-0000-0000-0000-000000000001" && (
-                          <button onClick={() => deleteOrg(org.id, org.name)} style={{ padding:"8px 16px", borderRadius:10, border:"1.5px solid #EF4444", background:"transparent", color:"#EF4444", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", marginLeft:"auto" }}>Excluir agência</button>
-                        )}
                       </div>
+                      {/* Notes */}
+                      <div style={{ marginBottom:16 }}>
+                        <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Notas internas (s\u00f3 vis\u00edvel para super admin)</label>
+                        <textarea defaultValue={org.notes||""} onBlur={e=>saveNotes(org.id, e.target.value)} placeholder="Adicionar observa\u00e7\u00f5es sobre esta ag\u00eancia..." style={{ width:"100%", minHeight:60, padding:"10px 12px", borderRadius:10, border:"1px solid "+B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, resize:"vertical", outline:"none", boxSizing:"border-box" }} />
+                      </div>
+                      {/* Members */}
                       <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:8, textTransform:"uppercase" }}>Membros ({saMembers.length})</label>
                       {saMembers.length === 0 ? <p style={{ fontSize:12, color:B.muted }}>Carregando...</p> : (
                         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:8 }}>
                           {saMembers.map((m,i) => (
-                            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:B.bgCard, borderRadius:10, border:"1px solid " + B.border }}>
-                              <div style={{ width:32, height:32, borderRadius:8, background:pc + "15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:pc, flexShrink:0 }}>{(m.profile?.name||"?").charAt(0)}</div>
+                            <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", background:B.bgCard, borderRadius:10, border:"1px solid "+B.border }}>
+                              <div style={{ width:32, height:32, borderRadius:8, background:pc+"15", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:700, color:pc, flexShrink:0 }}>{(m.profile?.name||"?").charAt(0)}</div>
                               <div style={{ flex:1, minWidth:0 }}>
-                                <p style={{ fontSize:12, fontWeight:700, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.name || "—"}</p>
-                                <p style={{ fontSize:10, color:B.muted, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.email || "—"}</p>
+                                <p style={{ fontSize:12, fontWeight:700, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.name||"\u2014"}</p>
+                                <p style={{ fontSize:10, color:B.muted, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{m.profile?.email||"\u2014"}</p>
                               </div>
-                              <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:8, background:m.role==="owner"?B.accent + "20":B.muted + "15", color:m.role==="owner"?B.accent:B.muted }}>{m.role}</span>
+                              <span style={{ fontSize:10, fontWeight:600, padding:"2px 8px", borderRadius:8, background:m.role==="owner"?B.accent+"20":B.muted+"15", color:m.role==="owner"?B.accent:B.muted }}>{m.role}</span>
                             </div>
                           ))}
                         </div>
@@ -16506,28 +16535,36 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
           {/* ── HEALTH TAB ── */}
           {saTab === "health" && <>
-            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"16px 20px", marginBottom:16 }}>
-              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 4px" }}>Status dos tokens Meta</p>
-              <p style={{ fontSize:11, color:B.muted, margin:"0 0 12px" }}>Verifique em Clientes → Redes para reconectar tokens expirados</p>
-              <p style={{ fontSize:12, color:B.muted }}>Use o verificador de tokens no terminal para checar o status em tempo real.</p>
-            </div>
-            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid " + B.border, padding:"16px 20px" }}>
-              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 4px" }}>Informações do sistema</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:10 }}>
-                {[
-                  { l:"Supabase Project", v:"kyoenyglyayfxtihlewb" },
-                  { l:"Deploy", v:"Vercel (auto-deploy via GitHub)" },
-                  { l:"Storage", v:"Cloudflare R2" },
-                  { l:"Cron", v:"pg_cron (publish-scheduled a cada 1min)" },
-                  { l:"Edge Functions", v:"publish-scheduled, token-health-check" },
-                  { l:"Meta API", v:"Graph API v21.0" },
-                ].map((item,i) => (
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:i<5?"1px solid " + B.border + "30":"none" }}>
-                    <span style={{ fontSize:12, color:B.muted }}>{item.l}</span>
-                    <span style={{ fontSize:12, fontWeight:600, color:B.text, fontFamily:"monospace" }}>{item.v}</span>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:10, marginBottom:16 }}>
+              {[
+                { l:"Supabase", v:"kyoenyglyayfxtihlewb", s:"Online", c:"#10B981" },
+                { l:"Deploy", v:"Vercel (auto-deploy)", s:"Ativo", c:"#10B981" },
+                { l:"Storage", v:"Cloudflare R2", s:"Ativo", c:"#10B981" },
+                { l:"Cron", v:"publish-scheduled", s:"A cada 1min", c:"#10B981" },
+              ].map((item,i) => (
+                <div key={i} style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid "+B.border, padding:"14px 16px" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                    <p style={{ fontSize:12, fontWeight:700, margin:0 }}>{item.l}</p>
+                    <span style={{ fontSize:9, fontWeight:700, padding:"3px 8px", borderRadius:6, background:item.c+"20", color:item.c }}>{item.s}</span>
                   </div>
-                ))}
-              </div>
+                  <p style={{ fontSize:11, color:B.muted, margin:"4px 0 0", fontFamily:"monospace" }}>{item.v}</p>
+                </div>
+              ))}
+            </div>
+            <div style={{ background:B.bgCard, borderRadius:"var(--uh-radius)", border:"1px solid "+B.border, padding:"16px 20px", marginBottom:16 }}>
+              <p style={{ fontSize:13, fontWeight:700, margin:"0 0 12px" }}>Infraestrutura</p>
+              {[
+                { l:"Edge Functions", v:"publish-scheduled, token-health-check, social-insights" },
+                { l:"Meta API", v:"Graph API v21.0" },
+                { l:"IA Models", v:"GPT-4o, Gemini, Claude" },
+                { l:"Banco", v:"PostgreSQL (Supabase)" },
+                { l:"Arquivo", v:"~30.900 linhas (UniqueHubApp.jsx)" },
+              ].map((item,i) => (
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:i<4?"1px solid "+B.border+"30":"none" }}>
+                  <span style={{ fontSize:12, color:B.muted }}>{item.l}</span>
+                  <span style={{ fontSize:12, fontWeight:600, color:B.text }}>{item.v}</span>
+                </div>
+              ))}
             </div>
           </>}
         </div>
@@ -16535,7 +16572,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     );
   }
 
-    /* ═══ ABOUT ═══ */
+      /* ═══ ABOUT ═══ */
   if (sub === "about") {
     const isAdmin = user?.supaRole === "admin";
     const defAboutItems = [
@@ -30343,6 +30380,7 @@ export default function App() {
   /* ── Multi-tenant: Organization ── */
   const [orgId, setOrgId] = useState(null);
   const [org, setOrg] = useState(null);
+  const [orgSuspended, setOrgSuspended] = useState(null); /* null=not checked, false=ok, {reason,at}=suspended */
   const orgRef = React.useRef(null);
   const loadOrg = async (userId) => {
     if (!supabase || !userId) return;
@@ -30354,6 +30392,12 @@ export default function App() {
         _currentOrgId = membership.org_id;
         _currentOrgPlan = membership.organizations?.plan || "free";
         setOrg({ ...membership.organizations, memberRole: membership.role });
+        /* Check suspension */
+        if (membership.organizations?.suspended) {
+          setOrgSuspended({ reason: membership.organizations.suspended_reason || "Conta suspensa pelo administrador", at: membership.organizations.suspended_at });
+        } else {
+          setOrgSuspended(false);
+        }
         console.log("[Org] Loaded:", membership.organizations?.name, "role:", membership.role);
       } else {
         /* Fallback: assign to Unique Marketing for existing users without membership */
@@ -30954,7 +30998,22 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
   }} />}
       {clientUser && clientUser.registering && <ClientOnboarding onComplete={(u) => setClientUser(u)} onBack={() => setClientUser(null)} />}
       {clientUser && !clientUser.registering && <MainClientApp user={clientUser} onLogout={() => { setClientUser(null); if(supabase) supabase.auth.signOut(); }} dark={dark} />}
-      {user && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} cloudDash={cloudDash} cloudNav={cloudNav}
+      {/* Suspension block screen */}
+      {user && orgSuspended && orgSuspended !== false && _currentOrgPlan !== "enterprise" && (
+        <div style={{ position:"fixed", inset:0, background:"#0D1117", display:"flex", alignItems:"center", justifyContent:"center", zIndex:99999 }}>
+          <div style={{ maxWidth:420, textAlign:"center", padding:32 }}>
+            <div style={{ width:72, height:72, borderRadius:20, background:"#EF444420", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px" }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            </div>
+            <h1 style={{ fontSize:24, fontWeight:900, color:"#fff", margin:"0 0 8px" }}>Conta suspensa</h1>
+            <p style={{ fontSize:14, color:"#9CA3AF", lineHeight:1.6, margin:"0 0 16px" }}>{orgSuspended.reason || "Sua conta foi suspensa pelo administrador."}</p>
+            {orgSuspended.at && <p style={{ fontSize:12, color:"#6B7280", margin:"0 0 24px" }}>Suspensa em: {new Date(orgSuspended.at).toLocaleDateString("pt-BR")}</p>}
+            <p style={{ fontSize:13, color:"#9CA3AF", margin:"0 0 20px" }}>Entre em contato com o suporte UniqueHub para mais informações.</p>
+            <button onClick={handleLogout} style={{ padding:"12px 32px", borderRadius:12, border:"none", background:"#EF4444", color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>Sair da conta</button>
+          </div>
+        </div>
+      )}
+      {user && (!orgSuspended || orgSuspended === false || _currentOrgPlan === "enterprise") && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} cloudDash={cloudDash} cloudNav={cloudNav}
     setDark={(v) => { _setDark(v); savePrefsToCloud(v, themeColor, uiPrefs, user?.id); }}
     themeColor={themeColor}
     setThemeColor={(v) => { _setThemeColor(v); savePrefsToCloud(dark, v, uiPrefs, user?.id); }}
