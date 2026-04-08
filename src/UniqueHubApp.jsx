@@ -17592,8 +17592,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                 /* 1. Mark current as cancelled */
                 const updated = events.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), cancelledBy: propUser?.name || "", rescheduledTo: cancelFlow.newDate } : e);
                 if (ev.supaId) await supabase.from("events").update({ cancelled: true, cancelled_at: new Date().toISOString(), rescheduled_to: cancelFlow.newDate }).eq("id", ev.supaId);
-                const newD = new Date(cancelFlow.newDate);
-                const newEvent = { ...ev, id: Date.now(), supaId: undefined, day: newD.getDate(), month: newD.getMonth(), year: newD.getFullYear(), time: cancelFlow.newTime || ev.time, cancelled: false, cancelledAt: undefined, rescheduledFrom: `${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}/${ev.year}`, createdBy: propUser?.name || ev.createdBy, notes: ev.notes ? `${ev.notes}\n\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` : `📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` };
+                const [ny, nm, nd] = cancelFlow.newDate.split("-").map(Number);
+                const newEvent = { ...ev, id: Date.now(), supaId: undefined, day: nd, month: nm - 1, year: ny, date: cancelFlow.newDate, time: cancelFlow.newTime || ev.time, cancelled: false, cancelledAt: undefined, rescheduledFrom: `${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}/${ev.year}`, createdBy: propUser?.name || ev.createdBy, notes: ev.notes ? `${ev.notes}\n\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` : `📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` };
                 const saved = await supaCreateEvent(newEvent);
                 if (saved?.id) newEvent.supaId = saved.id;
                 setEvents([...updated, newEvent]);
@@ -17917,9 +17917,9 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                     </div>
                     <button disabled={!cancelFlow.newDate} onClick={async()=>{
                       setEvents(p=>p.map(e=>e.id===ev.id?{...e,cancelled:true,cancelledAt:new Date().toISOString(),rescheduledTo:cancelFlow.newDate}:e));
-                      if(ev.supaId) await supabase.from("events").update({cancelled:true,cancelled_at:new Date().toISOString()}).eq("id",ev.supaId);
-                      const newD=new Date(cancelFlow.newDate);
-                      const newEvent={...ev,id:Date.now(),supaId:undefined,day:newD.getDate(),month:newD.getMonth(),year:newD.getFullYear(),time:cancelFlow.newTime||ev.time,cancelled:false,notes:ev.notes?`${ev.notes}\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}`:`📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}`};
+                      if(ev.supaId) await supabase.from("events").update({cancelled:true,cancelled_at:new Date().toISOString(),rescheduled_to:cancelFlow.newDate}).eq("id",ev.supaId);
+                      const [ny,nm,nd]=cancelFlow.newDate.split("-").map(Number);
+                      const newEvent={...ev,id:Date.now(),supaId:undefined,day:nd,month:nm-1,year:ny,date:cancelFlow.newDate,time:cancelFlow.newTime||ev.time,cancelled:false,notes:ev.notes?`${ev.notes}\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}`:`📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}`};
                       const saved=await supaCreateEvent(newEvent);if(saved?.id)newEvent.supaId=saved.id;
                       setEvents(p=>[...p,newEvent]);setCancelFlow(null);setViewEvent(newEvent);
                       showToast(`✅ Reagendado para ${cancelFlow.newDate.split("-").reverse().join("/")} às ${cancelFlow.newTime||ev.time}`);
@@ -18068,8 +18068,8 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
                         <button disabled={!cancelFlow.newDate} onClick={async () => {
                           setEvents(p => p.map(e => e.id === ev.id ? { ...e, cancelled: true, cancelledAt: new Date().toISOString(), rescheduledTo: cancelFlow.newDate } : e));
                           if (ev.supaId) await supabase.from("events").update({ cancelled: true, cancelled_at: new Date().toISOString(), rescheduled_to: cancelFlow.newDate }).eq("id", ev.supaId);
-                          const newD = new Date(cancelFlow.newDate);
-                          const newEvent = { ...ev, id: Date.now(), supaId: undefined, day: newD.getDate(), month: newD.getMonth(), year: newD.getFullYear(), time: cancelFlow.newTime || ev.time, cancelled: false, notes: ev.notes ? `${ev.notes}\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` : `📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` };
+                          const [ny, nm, nd] = cancelFlow.newDate.split("-").map(Number);
+                          const newEvent = { ...ev, id: Date.now(), supaId: undefined, day: nd, month: nm - 1, year: ny, date: cancelFlow.newDate, time: cancelFlow.newTime || ev.time, cancelled: false, notes: ev.notes ? `${ev.notes}\n📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` : `📅 Reagendado de ${ev.day}/${String((ev.month||0)+1).padStart(2,"0")}` };
                           const saved = await supaCreateEvent(newEvent);
                           if (saved?.id) newEvent.supaId = saved.id;
                           setEvents(p => [...p, newEvent]);
