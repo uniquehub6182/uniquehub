@@ -14295,6 +14295,28 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const isSetDesktop = useIsDesktop();
   const [sub, setSub] = useState(null);
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
+  /* Super admin states (must be at top level for hooks rules) */
+  const [saOrgs, setSaOrgs] = useState([]);
+  const [saLoading, setSaLoading] = useState(true);
+  useEffect(() => {
+    if (sub !== "superadmin" || _currentOrgPlan !== "enterprise" || !supabase) return;
+    setSaLoading(true);
+    (async () => {
+      const { data: orgs } = await supabase.from("organizations").select("*").order("created_at", { ascending: true });
+      if (!orgs) { setSaLoading(false); return; }
+      const enriched = [];
+      for (const org of orgs) {
+        const { data: members } = await supabase.from("org_members").select("user_id, role").eq("org_id", org.id);
+        const { count: clientCount } = await supabase.from("clients").select("id", { count: "exact", head: true }).eq("org_id", org.id);
+        const { count: demandCount } = await supabase.from("demands").select("id", { count: "exact", head: true }).eq("org_id", org.id);
+        const owner = (members || []).find(m => m.role === "owner");
+        let ownerEmail = null;
+        if (owner) { const { data: profile } = await supabase.from("profiles").select("email, name").eq("id", owner.user_id).maybeSingle(); ownerEmail = profile; }
+        enriched.push({ ...org, memberCount: (members || []).length, clientCount: clientCount || 0, demandCount: demandCount || 0, owner: ownerEmail });
+      }
+      setSaOrgs(enriched); setSaLoading(false);
+    })();
+  }, [sub]);
   /* Gamify edit states (must be at top level for hooks rules) */
   const [gTab, setGTab] = useState("ranking");
   const [gRankData, setGRankData] = useState(null);
@@ -16270,30 +16292,6 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
 
   /* ═══ SUPER ADMIN ═══ */
   if (sub === "superadmin" && _currentOrgPlan === "enterprise") {
-    const [saOrgs, setSaOrgs] = useState([]);
-    const [saLoading, setSaLoading] = useState(true);
-    useEffect(() => {
-      if (!supabase) return;
-      (async () => {
-        const { data: orgs } = await supabase.from("organizations").select("*").order("created_at", { ascending: true });
-        if (!orgs) { setSaLoading(false); return; }
-        const enriched = [];
-        for (const org of orgs) {
-          const { data: members } = await supabase.from("org_members").select("user_id, role").eq("org_id", org.id);
-          const { count: clientCount } = await supabase.from("clients").select("id", { count: "exact", head: true }).eq("org_id", org.id);
-          const { count: demandCount } = await supabase.from("demands").select("id", { count: "exact", head: true }).eq("org_id", org.id);
-          const owner = (members || []).find(m => m.role === "owner");
-          let ownerEmail = null;
-          if (owner) {
-            const { data: profile } = await supabase.from("profiles").select("email, name").eq("id", owner.user_id).maybeSingle();
-            ownerEmail = profile;
-          }
-          enriched.push({ ...org, memberCount: (members || []).length, clientCount: clientCount || 0, demandCount: demandCount || 0, owner: ownerEmail });
-        }
-        setSaOrgs(enriched);
-        setSaLoading(false);
-      })();
-    }, []);
     return (
       <SetPage title="Super Admin" wide>
         <div style={{ padding:isSetDesktop?"0 24px":"0" }}>
