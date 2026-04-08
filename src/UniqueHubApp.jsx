@@ -14307,6 +14307,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [saMembers, setSaMembers] = useState([]);
   const saTabState = useState("overview");
   const saSearchState = useState("");
+  const [saModal, setSaModal] = useState(null); /* {type, orgId, orgName, value} */
   useEffect(() => {
     if (sub !== "superadmin" || _currentOrgPlan !== "enterprise" || !supabase) return;
     setSaLoading(true);
@@ -16313,12 +16314,13 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const trialOrgs = saOrgs.filter(o => o.trialDays !== null && o.trialDays > 0 && !o.suspended);
     const mrr = payingOrgs.reduce((s,o) => s + (planPrices[o.plan]||0), 0);
     const changePlan = async (orgId, newPlan) => {
-      if (!confirm("Alterar plano para " + newPlan + "?")) return;
-      const limits = { free:{c:1,u:1}, essencial:{c:5,u:2}, profissional:{c:10,u:5}, agencia:{c:20,u:15}, escala:{c:40,u:999}, enterprise:{c:999,u:999} };
-      const l = limits[newPlan] || limits.free;
-      await supabase.from("organizations").update({ plan: newPlan, max_clients: l.c, max_users: l.u }).eq("id", orgId);
-      setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, plan: newPlan, max_clients: l.c, max_users: l.u } : o));
-      showToast("Plano atualizado ✓");
+      setSaModal({ type:"confirm", title:"Alterar plano", msg:`Alterar plano para "${planNames[newPlan]||newPlan}"?`, onConfirm: async () => {
+        const limits = { free:{c:1,u:1}, essencial:{c:5,u:2}, profissional:{c:10,u:5}, agencia:{c:20,u:15}, escala:{c:40,u:999}, enterprise:{c:999,u:999} };
+        const l = limits[newPlan] || limits.free;
+        await supabase.from("organizations").update({ plan: newPlan, max_clients: l.c, max_users: l.u }).eq("id", orgId);
+        setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, plan: newPlan, max_clients: l.c, max_users: l.u } : o));
+        showToast("Plano atualizado ✓"); setSaModal(null);
+      }});
     };
     const toggleSuspend = async (org) => {
       if (org.id === "a0000000-0000-0000-0000-000000000001") { showToast("Unique Marketing não pode ser suspensa"); return; }
@@ -16327,22 +16329,24 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         setSaOrgs(prev => prev.map(o => o.id === org.id ? { ...o, suspended: false, suspended_at: null, suspended_reason: null } : o));
         showToast(org.name + " reativada ✓");
       } else {
-        const reason = prompt("Motivo da suspensão (visível para a agência):");
-        if (reason === null) return;
-        await supabase.from("organizations").update({ suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason || "Conta suspensa pelo administrador" }).eq("id", org.id);
-        setSaOrgs(prev => prev.map(o => o.id === org.id ? { ...o, suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason } : o));
-        showToast(org.name + " suspensa ✓");
+        setSaModal({ type:"input", title:"Suspender agência", msg:"Motivo da suspensão (visível para a agência):", placeholder:"Ex: Pagamento em atraso, violação de termos...", onConfirm: async (reason) => {
+          await supabase.from("organizations").update({ suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason || "Conta suspensa pelo administrador" }).eq("id", org.id);
+          setSaOrgs(prev => prev.map(o => o.id === org.id ? { ...o, suspended: true, suspended_at: new Date().toISOString(), suspended_reason: reason } : o));
+          showToast(org.name + " suspensa ✓"); setSaModal(null);
+        }});
       }
     };
-    const extendTrial = async (orgId, days) => {
-      const d = parseInt(prompt("Quantos dias de trial adicionar?", "14"));
-      if (!d || isNaN(d)) return;
-      const org = saOrgs.find(o => o.id === orgId);
-      const base = org?.trial_ends_at ? new Date(org.trial_ends_at) : new Date();
-      const newEnd = new Date(base.getTime() + d * 86400000);
-      await supabase.from("organizations").update({ trial_ends_at: newEnd.toISOString() }).eq("id", orgId);
-      setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, trial_ends_at: newEnd.toISOString(), trialDays: Math.ceil((newEnd - Date.now()) / 86400000) } : o));
-      showToast("Trial estendido +" + d + " dias ✓");
+    const extendTrial = async (orgId) => {
+      setSaModal({ type:"input", title:"Estender trial", msg:"Quantos dias de trial adicionar?", placeholder:"14", inputType:"number", onConfirm: async (val) => {
+        const d = parseInt(val);
+        if (!d || isNaN(d)) return;
+        const org = saOrgs.find(o => o.id === orgId);
+        const base = org?.trial_ends_at ? new Date(org.trial_ends_at) : new Date();
+        const newEnd = new Date(base.getTime() + d * 86400000);
+        await supabase.from("organizations").update({ trial_ends_at: newEnd.toISOString() }).eq("id", orgId);
+        setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, trial_ends_at: newEnd.toISOString(), trialDays: Math.ceil((newEnd - Date.now()) / 86400000) } : o));
+        showToast("Trial estendido +" + d + " dias ✓"); setSaModal(null);
+      }});
     };
     const saveNotes = async (orgId, notes) => {
       await supabase.from("organizations").update({ notes }).eq("id", orgId);
@@ -16351,12 +16355,12 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     };
     const deleteOrg = async (orgId, orgName) => {
       if (orgId === "a0000000-0000-0000-0000-000000000001") { showToast("Unique Marketing não pode ser excluída"); return; }
-      if (!confirm("ATENÇÃO: Excluir " + orgName + "? Todos os dados serão perdidos.")) return;
-      if (!confirm("Tem CERTEZA ABSOLUTA? Esta ação é IRREVERSÍVEL.")) return;
-      await supabase.from("org_members").delete().eq("org_id", orgId);
-      await supabase.from("organizations").delete().eq("id", orgId);
-      setSaOrgs(prev => prev.filter(o => o.id !== orgId));
-      setSaSelected(null); showToast(orgName + " excluída");
+      setSaModal({ type:"confirm", title:"Excluir agência", msg:"ATENÇÃO: Excluir "" + orgName + ""? Todos os dados (clientes, demandas, membros) serão perdidos permanentemente.", danger:true, confirmLabel:"Sim, excluir permanentemente", onConfirm: async () => {
+        await supabase.from("org_members").delete().eq("org_id", orgId);
+        await supabase.from("organizations").delete().eq("id", orgId);
+        setSaOrgs(prev => prev.filter(o => o.id !== orgId));
+        setSaSelected(null); showToast(orgName + " excluída"); setSaModal(null);
+      }});
     };
     const loadMembers = async (orgId) => {
       const { data: members } = await supabase.from("org_members").select("user_id, role, accepted_at").eq("org_id", orgId);
@@ -16372,6 +16376,18 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const byPlan = {}; saOrgs.forEach(o => { byPlan[o.plan] = (byPlan[o.plan]||0) + 1; });
     return (
       <SetPage title="Super Admin" wide>
+        {/* ── Custom Modal ── */}
+        {saModal && <div onClick={()=>setSaModal(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:99999, backdropFilter:"blur(4px)" }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:B.bgCard, borderRadius:20, padding:"28px 24px", width:420, maxWidth:"90vw", border:`1px solid ${B.border}`, boxShadow:"0 20px 60px rgba(0,0,0,0.4)" }}>
+            <h3 style={{ fontSize:18, fontWeight:800, margin:"0 0 8px", color:saModal.danger?"#EF4444":B.text }}>{saModal.title}</h3>
+            <p style={{ fontSize:13, color:B.muted, margin:"0 0 20px", lineHeight:1.5 }}>{saModal.msg}</p>
+            {saModal.type === "input" && <input ref={el=>{if(el)setTimeout(()=>el.focus(),100);}} type={saModal.inputType||"text"} defaultValue={saModal.placeholder||""} placeholder={saModal.placeholder||""} onKeyDown={e=>{if(e.key==="Enter")saModal.onConfirm(e.target.value);}} id="sa-modal-input" style={{ width:"100%", padding:"12px 16px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bg, color:B.text, fontFamily:"inherit", fontSize:14, outline:"none", boxSizing:"border-box", marginBottom:16 }} />}
+            <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+              <button onClick={()=>setSaModal(null)} style={{ padding:"10px 24px", borderRadius:12, border:`1.5px solid ${B.border}`, background:"transparent", color:B.muted, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Cancelar</button>
+              <button onClick={()=>{if(saModal.type==="input"){const v=document.getElementById("sa-modal-input")?.value||"";saModal.onConfirm(v);}else{saModal.onConfirm();}}} style={{ padding:"10px 24px", borderRadius:12, border:"none", background:saModal.danger?"#EF4444":B.accent, color:saModal.danger?"#fff":B.dark, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>{saModal.confirmLabel||"Confirmar"}</button>
+            </div>
+          </div>
+        </div>}
         <div style={{ padding:isSetDesktop?"0 24px":"0" }}>
           {/* Tabs */}
           <div style={{ display:"flex", gap:6, marginBottom:16, flexWrap:"wrap" }}>
