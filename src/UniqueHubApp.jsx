@@ -3362,7 +3362,26 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
   const [checkinElapsed, setCheckinElapsed] = useState(0);
   useEffect(() => {
     if (!user?.id) return;
-    supaGetActiveCheckin(user.id).then(c => { if (c) setActiveCheckin(c); });
+    supaGetActiveCheckin(user.id).then(async (c) => {
+      if (c) {
+        /* Check for orphan (browser was closed) */
+        try {
+          const stored = localStorage.getItem("uh_checkin_last_seen");
+          if (stored) {
+            const orphan = JSON.parse(stored);
+            if (orphan.id === c.id && orphan.last_seen) {
+              const lastSeen = new Date(orphan.last_seen);
+              const durMin = Math.max(1, Math.round((lastSeen - new Date(c.check_in_at)) / 60000));
+              await supabase.from("checkins").update({ check_out_at: orphan.last_seen, duration_minutes: durMin }).eq("id", c.id);
+              localStorage.removeItem("uh_checkin_last_seen");
+              setActiveCheckin(null);
+              return;
+            }
+          }
+        } catch(e) {}
+        setActiveCheckin(c);
+      }
+    });
   }, [user?.id]);
 
 
@@ -4499,6 +4518,28 @@ function CheckinPage({ onBack, user }) {
     const load = async () => {
       setLoading(true);
       const [active, hist] = await Promise.all([supaGetActiveCheckin(user.id), supaGetCheckinHistory(user.id)]);
+      /* Orphan detection: if browser was closed while checkin was active */
+      if (active) {
+        try {
+          const stored = localStorage.getItem("uh_checkin_last_seen");
+          if (stored) {
+            const orphan = JSON.parse(stored);
+            if (orphan.id === active.id && orphan.last_seen) {
+              /* Browser was closed — auto-checkout with last_seen time */
+              const lastSeen = new Date(orphan.last_seen);
+              const durMin = Math.max(1, Math.round((lastSeen - new Date(active.check_in_at)) / 60000));
+              await supabase.from("checkins").update({ check_out_at: orphan.last_seen, duration_minutes: durMin }).eq("id", active.id);
+              localStorage.removeItem("uh_checkin_last_seen");
+              const updatedHist = await supaGetCheckinHistory(user.id);
+              setActiveCheckin(null);
+              setHistory(updatedHist);
+              setLoading(false);
+              showToast("Check-out automático registrado (browser fechado)");
+              return;
+            }
+          }
+        } catch(e) { console.warn("[Checkin] Orphan check error:", e); }
+      } else { localStorage.removeItem("uh_checkin_last_seen"); }
       setActiveCheckin(active);
       setHistory(hist);
       setLoading(false);
@@ -4539,11 +4580,17 @@ function CheckinPage({ onBack, user }) {
     return () => clearInterval(iv);
   }, [activeCheckin]);
 
-  /* Auto-checkout when tab closes (#18) */
+  /* Save last_seen to localStorage every 30s + on visibility hidden + on beforeunload */
   useEffect(() => {
-    const handleUnload = () => { if (activeCheckin?.id) supaCheckout(activeCheckin.id); };
-    window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
+    if (!activeCheckin?.id) { localStorage.removeItem("uh_checkin_last_seen"); return; }
+    const save = () => localStorage.setItem("uh_checkin_last_seen", JSON.stringify({ id: activeCheckin.id, check_in_at: activeCheckin.check_in_at, last_seen: new Date().toISOString() }));
+    save(); /* save immediately */
+    const iv = setInterval(save, 30000);
+    const onVis = () => { if (document.visibilityState === "hidden") save(); };
+    const onUnload = () => save();
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("beforeunload", onUnload);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); window.removeEventListener("beforeunload", onUnload); };
   }, [activeCheckin]);
 
   const formatTime = (s) => { const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`; };
@@ -4564,7 +4611,7 @@ function CheckinPage({ onBack, user }) {
     setActionLoading(true);
     showToast("Registrando saída...");
     const result = await supaCheckout(activeCheckin.id);
-    if (result) { setActiveCheckin(null); setHistory(prev => [result, ...prev]); showToast("Check-out registrado ✓"); }
+    if (result) { setActiveCheckin(null); localStorage.removeItem("uh_checkin_last_seen"); setHistory(prev => [result, ...prev]); showToast("Check-out registrado ✓"); }
     else showToast("Erro ao registrar check-out");
     setActionLoading(false);
   };
