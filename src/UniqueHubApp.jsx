@@ -973,18 +973,12 @@ const handleMetaOAuthCallback = async (code, capturedRedirectUri) => {
 };
 
 const saveMetaSelectedPage = async (clientId, page) => {
-  if (!supabase || !SUPA_URL) return { error: "Supabase não configurado" };
+  if (!supabase) return { error: "Supabase não configurado" };
   try {
-    const res = await fetch(`${SUPA_URL}/functions/v1/meta-oauth-callback`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ action: "save_page", client_id: clientId, page_id: page.page_id, page_name: page.page_name, page_token: page.page_token, ig_user_id: page.ig_user_id, ig_username: page.ig_username })
-    });
-    const data = await res.json();
-    if (data.error) return { error: data.error };
-    /* Also save to app_settings for local use */
-    await saveMetaToken(clientId, page);
-    return data;
+    /* Save directly to app_settings — no need to call edge function again */
+    const saved = await saveMetaToken(clientId, page);
+    if (!saved) return { error: "Erro ao salvar token" };
+    return { success: true, page_name: page.page_name, ig_username: page.ig_username };
   } catch(e) { return { error: e.message }; }
 };
 
