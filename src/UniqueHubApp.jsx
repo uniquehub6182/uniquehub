@@ -97,7 +97,8 @@ const _metaOAuthCapture = (() => {
 
 const supabase = SUPA_URL && SUPA_KEY ? createClient(SUPA_URL, SUPA_KEY) : null;
 let _currentOrgId = null; /* Module-level org ID for use in top-level supabase helpers */
-let _currentOrgPlan = "enterprise"; /* Module-level org plan — defaults to enterprise for Unique Marketing */
+let _currentOrgPlan = "escala"; /* Module-level org plan — defaults to escala for Unique Marketing */
+let _isSuperAdmin = false; /* true if user belongs to Unique Marketing org */
 
 /* ── Feature gating: what each plan unlocks ── */
 const PLAN_FEATURES = {
@@ -106,7 +107,6 @@ const PLAN_FEATURES = {
   profissional:{ clients: 10, users: 5,  scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: true,  contentAi: true,  reports: true,    gamification: true,  checkin: true,  financial: true,  crm: false, match4biz: false, whatsapp: false, academy: false, permissions: false, intelligence: false, presentations: false, newsAutogen: true,  commentAi: true  },
   agencia:     { clients: 20, users: 15, scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: true,  contentAi: true,  reports: true,    gamification: true,  checkin: true,  financial: true,  crm: true,  match4biz: true,  whatsapp: false, academy: true,  permissions: true,  intelligence: true,  presentations: true,  newsAutogen: true,  commentAi: true  },
   escala:      { clients: 40, users: 999,scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: true,  contentAi: true,  reports: true,    gamification: true,  checkin: true,  financial: true,  crm: true,  match4biz: true,  whatsapp: true,  academy: true,  permissions: true,  intelligence: true,  presentations: true,  newsAutogen: true,  commentAi: true  },
-  enterprise:  { clients: 999,users: 999,scheduling: true,  calendar: true,  chat: true,  library: true,  feedplanner: true,  ai: true,  contentAi: true,  reports: true,    gamification: true,  checkin: true,  financial: true,  crm: true,  match4biz: true,  whatsapp: true,  academy: true,  permissions: true,  intelligence: true,  presentations: true,  newsAutogen: true,  commentAi: true  },
 };
 const getPlanFeatures = (plan) => PLAN_FEATURES[plan] || PLAN_FEATURES.free;
 const canFeature = (feature) => { const f = getPlanFeatures(_currentOrgPlan); return f[feature] === true || f[feature] === "basic" || (typeof f[feature] === "number" && f[feature] > 0); };
@@ -14323,7 +14323,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const saSearchState = useState("");
   const [saModal, setSaModal] = useState(null); /* {type, orgId, orgName, value} */
   useEffect(() => {
-    if (sub !== "superadmin" || _currentOrgPlan !== "enterprise" || !supabase) return;
+    if (sub !== "superadmin" || !_isSuperAdmin || !supabase) return;
     setSaLoading(true);
     (async () => {
       const { data: orgs } = await supabase.from("organizations").select("*").order("created_at", { ascending: true });
@@ -14745,7 +14745,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
     { k:"about", l:"Sobre", desc:"Versão e informações" },
     { k:"plans", l:"Planos e Assinatura", desc:"Upgrade, features e pagamento" },
-    ...(_currentOrgPlan === "enterprise" ? [{ k:"superadmin", l:"Super Admin", desc:"Gerenciar todas as agências" }] : []),
+    ...(_isSuperAdmin ? [{ k:"superadmin", l:"Super Admin", desc:"Gerenciar todas as agências" }] : []),
   ];
 
   /* ── Unified Settings wrapper — shell stays mounted, only panel content swaps ── */
@@ -16316,20 +16316,20 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   }
 
   /* ═══ SUPER ADMIN ═══ */
-  if (sub === "superadmin" && _currentOrgPlan === "enterprise") {
-    const planColors = { free:"#9CA3AF", essencial:"#5DCAA5", profissional:"#85B7EB", agencia:"#AFA9EC", escala:"#F0997B", enterprise:"#BBF246" };
-    const planPrices = { free:0, essencial:197, profissional:397, agencia:597, escala:997, enterprise:0 };
-    const planNames = { free:"Free", essencial:"Essencial", profissional:"Profissional", agencia:"Agência", escala:"Escala", enterprise:"Enterprise" };
+  if (sub === "superadmin" && _isSuperAdmin) {
+    const planColors = { free:"#9CA3AF", essencial:"#5DCAA5", profissional:"#85B7EB", agencia:"#AFA9EC", escala:"#F0997B" };
+    const planPrices = { free:0, essencial:197, profissional:397, agencia:597, escala:997 };
+    const planNames = { free:"Free", essencial:"Essencial", profissional:"Profissional", agencia:"Agência", escala:"Escala" };
     const totalClients = saOrgs.reduce((s,o) => s + (o.clientCount||0), 0);
     const totalDemands = saOrgs.reduce((s,o) => s + (o.demandCount||0), 0);
     const totalMembers = saOrgs.reduce((s,o) => s + (o.memberCount||0), 0);
-    const payingOrgs = saOrgs.filter(o => o.plan !== "enterprise" && o.plan !== "free");
+    const payingOrgs = saOrgs.filter(o => o.plan !== "free");
     const suspendedOrgs = saOrgs.filter(o => o.suspended);
     const trialOrgs = saOrgs.filter(o => o.trialDays !== null && o.trialDays > 0 && !o.suspended);
     const mrr = payingOrgs.reduce((s,o) => s + (planPrices[o.plan]||0), 0);
     const changePlan = async (orgId, newPlan) => {
       setSaModal({ type:"confirm", title:"Alterar plano", msg:`Alterar plano para "${planNames[newPlan]||newPlan}"?`, onConfirm: async () => {
-        const limits = { free:{c:1,u:1}, essencial:{c:5,u:2}, profissional:{c:10,u:5}, agencia:{c:20,u:15}, escala:{c:40,u:999}, enterprise:{c:999,u:999} };
+        const limits = { free:{c:1,u:1}, essencial:{c:5,u:2}, profissional:{c:10,u:5}, agencia:{c:20,u:15}, escala:{c:40,u:999} };
         const l = limits[newPlan] || limits.free;
         await supabase.from("organizations").update({ plan: newPlan, max_clients: l.c, max_users: l.u }).eq("id", orgId);
         setSaOrgs(prev => prev.map(o => o.id === orgId ? { ...o, plan: newPlan, max_clients: l.c, max_users: l.u } : o));
@@ -16524,7 +16524,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                         <div>
                           <label style={{ fontSize:10, fontWeight:700, color:B.muted, display:"block", marginBottom:4, textTransform:"uppercase" }}>Plano</label>
                           <select value={org.plan} onChange={e=>changePlan(org.id,e.target.value)} style={{ width:"100%", padding:"8px 12px", borderRadius:10, border:"1px solid "+B.border, background:B.bgCard, color:B.text, fontFamily:"inherit", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                            {["free","essencial","profissional","agencia","escala","enterprise"].map(p => <option key={p} value={p}>{planNames[p]}</option>)}
+                            {["free","essencial","profissional","agencia","escala"].map(p => <option key={p} value={p}>{planNames[p]}</option>)}
                           </select>
                         </div>
                         <div>
@@ -16644,7 +16644,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             </div>
           ))}
         </Card>
-        {isAdmin && _currentOrgPlan === "enterprise" && <button onClick={() => setEditAbout(true)} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>Editar informações</button>}
+        {isAdmin && _isSuperAdmin && <button onClick={() => setEditAbout(true)} style={{ width:"100%", padding:"10px 0", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.muted, marginBottom:8 }}>Editar informações</button>}
       </> : <>
         <p style={{ fontSize:11, color:B.muted, marginBottom:10 }}>Edite as informações exibidas na tela "Sobre" do app.</p>
         {aboutItems.map((item,i) => (
@@ -17416,7 +17416,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   const toggleArr = (arr, val) => arr.includes(val) ? arr.filter(x=>x!==val) : [...arr, val];
 
   /* ── Meeting limits per plan ── */
-  const MEETING_LIMITS = { partner: 2, enterprise: 2 }; /* All other plans = 1 */
+  const MEETING_LIMITS = { partner: 2 }; /* All other plans = 1 */
   const getMeetingLimit = () => {
     if (!isClientView) return 999; /* Agency has no limit */
     const cl = (propClients || []).find(c => c.name === clientFilter || c.contact_email === propUser?.email);
@@ -24168,7 +24168,7 @@ function PlansPage({ onBack, currentPlan, orgName, onUpgrade, embedded }) {
       { l:"Suporte prioritário + onboarding", p:[0,0,0,1] },
     ]},
   ];
-  const planOrder = ["free","essencial","profissional","agencia","escala","enterprise"];
+  const planOrder = ["free","essencial","profissional","agencia","escala"];
   const currentIdx = planOrder.indexOf(currentPlan || "free");
   return (
     <div style={{ minHeight:embedded?"auto":"100vh", color:B.text, padding:embedded?"0":isDesktop?"0 32px":"0 16px" }}>
@@ -30454,6 +30454,7 @@ export default function App() {
         orgRef.current = membership.org_id;
         _currentOrgId = membership.org_id;
         _currentOrgPlan = membership.organizations?.plan || "free";
+        _isSuperAdmin = _currentOrgId === 'a0000000-0000-0000-0000-000000000001';
         setOrg({ ...membership.organizations, memberRole: membership.role });
         /* Check suspension */
         if (membership.organizations?.suspended) {
@@ -31061,7 +31062,7 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
       {clientUser && clientUser.registering && <ClientOnboarding onComplete={(u) => setClientUser(u)} onBack={() => setClientUser(null)} />}
       {clientUser && !clientUser.registering && <MainClientApp user={clientUser} onLogout={() => { setClientUser(null); if(supabase) supabase.auth.signOut(); }} dark={dark} />}
       {/* Suspension block screen */}
-      {user && orgSuspended && orgSuspended !== false && _currentOrgPlan !== "enterprise" && (
+      {user && orgSuspended && orgSuspended !== false && !_isSuperAdmin && (
         <div style={{ position:"fixed", inset:0, background:"#0D1117", display:"flex", alignItems:"center", justifyContent:"center", zIndex:99999 }}>
           <div style={{ maxWidth:420, textAlign:"center", padding:32 }}>
             <div style={{ width:72, height:72, borderRadius:20, background:"#EF444420", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 24px" }}>
@@ -31075,7 +31076,7 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
           </div>
         </div>
       )}
-      {user && (!orgSuspended || orgSuspended === false || _currentOrgPlan === "enterprise") && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} cloudDash={cloudDash} cloudNav={cloudNav}
+      {user && (!orgSuspended || orgSuspended === false || _isSuperAdmin) && <MainApp user={user} setUser={setUser} onLogout={handleLogout} dark={dark} cloudDash={cloudDash} cloudNav={cloudNav}
     setDark={(v) => { _setDark(v); savePrefsToCloud(v, themeColor, uiPrefs, user?.id); }}
     themeColor={themeColor}
     setThemeColor={(v) => { _setThemeColor(v); savePrefsToCloud(dark, v, uiPrefs, user?.id); }}
