@@ -834,7 +834,7 @@ const supaSetSetting = async (key, value) => {
   if (!supabase) { console.warn("[setSetting] supabase is null!"); return false; }
   try {
     console.log("[setSetting] upserting key:", key, "value length:", value?.length);
-    const { error } = await supabase.from("app_settings").upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    const { error } = await supabase.from("app_settings").upsert({ key, value, org_id: _currentOrgId, updated_at: new Date().toISOString() }, { onConflict: "key" });
     if (error) { console.error("[setSetting] ERROR:", key, error.message, error.code); return false; }
     console.log("[setSetting] OK:", key);
     return true;
