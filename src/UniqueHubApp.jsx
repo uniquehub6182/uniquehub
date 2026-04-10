@@ -5742,12 +5742,34 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         <Card style={{ marginTop:10 }}>
           <label className="sl" style={{ display:"block", marginBottom:6 }}>Selecionar arquivo</label>
           <label htmlFor="client-file-input" style={{ display:"block", border:`2px dashed ${fileForm.file?B.green:B.accent}30`, borderRadius:12, padding:20, textAlign:"center", background:fileForm.file?`${B.green}06`:`${B.accent}04`, cursor:"pointer" }}>
-            <input id="client-file-input" type="file" style={{ display:"none" }} onChange={e => {
-              const f = e.target.files?.[0];
-              if (f) {
-                setFileForm(p => ({ ...p, file: f, name: p.name || f.name }));
-                showToast(`Arquivo selecionado: ${f.name}`);
+            <input id="client-file-input" type="file" multiple style={{ display:"none" }} onChange={async(e) => {
+              const files = Array.from(e.target.files || []);
+              if (!files.length) return;
+              if (files.length === 1) {
+                setFileForm(p => ({ ...p, file: files[0], name: p.name || files[0].name }));
+                showToast(`Arquivo selecionado: ${files[0].name}`);
+                return;
               }
+              /* Multi-file batch upload */
+              const clientId = sel.supaId || sel.id;
+              const cat = fileForm.category || "Outros";
+              let added = [];
+              for (let i = 0; i < files.length; i++) {
+                showToast(`Enviando ${i+1}/${files.length}...`);
+                const r = await supaUploadClientFile(files[i], clientId);
+                if (r?.error) { showToast("Erro: " + files[i].name); continue; }
+                const b = files[i].size || 0;
+                added.push({ id: Date.now()+i, name: files[i].name, category: cat, date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size: b>=1048576?(b/1048576).toFixed(1)+"MB":b>=1024?(b/1024).toFixed(0)+"KB":b+"B", url: r.url||"", storagePath: r.path||"", originalExt: files[i].name.split(".").pop()?.toLowerCase()||"", mimeType: files[i].type||"" });
+              }
+              if (added.length) {
+                const nf = [...(sel.files||[]), ...added];
+                await supaSetSetting("client_files_"+clientId, JSON.stringify(nf));
+                setSel(p => ({...p, files: nf}));
+                setClients(p => p.map(c => (c.id===sel.id||c.supaId===sel.supaId)?{...c,files:nf}:c));
+                setAddingFile(false); setFileForm({});
+                showToast(added.length + " arquivo(s) ✓");
+              }
+              e.target.value = "";
             }} />
             {fileForm.file ? <>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><polyline points="20 6 9 17 4 12"/></svg>
@@ -6650,7 +6672,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                       {["Manual de Marca","Posts Feed","Stories","Capas de Reels","Vídeos","Artes Digitais","Material Impresso","Documentos","Referências","Outros"].map(c=><button key={c} onClick={()=>setFileForm(p=>({...p,category:c}))} style={{ padding:"4px 10px", borderRadius:6, border:`1px solid ${fileForm.category===c?B.accent:B.border}`, background:fileForm.category===c?`${B.accent}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:10, fontWeight:600, color:fileForm.category===c?B.accent:B.muted }}>{c}</button>)}
                     </div>
                     <label style={{ display:"block", border:`2px dashed ${fileForm.file?B.green:B.accent}25`, borderRadius:10, padding:14, textAlign:"center", cursor:"pointer", background:fileForm.file?`${B.green}04`:`${B.accent}02` }}>
-                      <input type="file" style={{ display:"none" }} onChange={e=>{const f=e.target.files?.[0];if(f)setFileForm(p=>({...p,file:f,name:p.name||f.name}));}} />
+                      <input type="file" multiple style={{ display:"none" }} onChange={async(e)=>{const files=Array.from(e.target.files||[]);if(!files.length)return;if(files.length===1){setFileForm(p=>({...p,file:files[0],name:p.name||files[0].name}));return;}const cid=sel.supaId||sel.id;const cat=fileForm.category||"Outros";let added=[];for(let i=0;i<files.length;i++){showToast("Enviando "+(i+1)+"/"+files.length+"...");const r=await supaUploadClientFile(files[i],cid);if(r?.error){showToast("Erro: "+files[i].name);continue;}const b=files[i].size||0;added.push({id:Date.now()+i,name:files[i].name,category:cat,date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}),size:b>=1048576?(b/1048576).toFixed(1)+"MB":b>=1024?(b/1024).toFixed(0)+"KB":b+"B",url:r.url||"",storagePath:r.path||"",originalExt:files[i].name.split(".").pop()?.toLowerCase()||"",mimeType:files[i].type||""});}if(added.length){const nf=[...(sel.files||[]),...added];await supaSetSetting("client_files_"+cid,JSON.stringify(nf));setSel(p=>({...p,files:nf}));setClients(p=>p.map(c=>(c.id===sel.id||c.supaId===sel.supaId)?{...c,files:nf}:c));setAddingFile(false);setFileForm({});showToast(added.length+" arquivo(s) ✓");}e.target.value="";}} />
                       {fileForm.file ? <p style={{ fontSize:11, fontWeight:600, color:B.green }}>✓ {fileForm.file.name} ({(fileForm.file.size/1048576).toFixed(1)}MB)</p> : <p style={{ fontSize:11, color:B.muted }}>Clique para selecionar arquivo</p>}
                     </label>
                     <button onClick={addFile} style={{ width:"100%", marginTop:10, padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:"#0D0D0D" }}>Enviar Arquivo</button>
@@ -18625,30 +18647,32 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   const uploadLibFile = async () => {
     const cid = isClientView ? (CDATA.find(c => (c.contact_email||"").toLowerCase() === (clientFilter||"").toLowerCase() || (c.name||"").toLowerCase() === (clientFilter||"").toLowerCase())?.id || fileForm.clientId) : fileForm.clientId;
     if (!cid) return showToast("Selecione o cliente");
-    if (!fileForm.name?.trim()) return showToast("Informe o nome do arquivo");
     if (!fileForm.file) return showToast("Selecione um arquivo");
-    setUploading(true);
-    showToast("Enviando arquivo...");
-    const result = await supaUploadClientFile(fileForm.file, cid);
-    setUploading(false);
-    if (result?.error) return showToast("Erro: " + result.error);
-    const bytes = fileForm.file.size || 0;
-    const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
-    const origExt = fileForm.file.name.split(".").pop()?.toLowerCase() || "";
-    const nf = { id: Date.now(), name: fileForm.name.trim(), category: fileForm.category || "Outros", date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url || "", storagePath: result.path || "", uploadedBy: isClientView ? "cliente" : "agencia", originalExt: origExt, mimeType: fileForm.file.type || "" };
     const client = CDATA.find(c => c.id === cid);
-    if (client) {
-      const newFiles = [...(client.files||[]), nf];
+    if (!client) return showToast("Cliente não encontrado");
+    setUploading(true);
+    const filesToUpload = fileForm._multiFiles ? Array.from(fileForm._multiFiles) : [fileForm.file];
+    const cat = fileForm.category || "Outros";
+    let added = [];
+    for (let i = 0; i < filesToUpload.length; i++) {
+      showToast(`Enviando ${i+1}/${filesToUpload.length}...`);
+      const f = filesToUpload[i];
+      const result = await supaUploadClientFile(f, cid);
+      if (result?.error) { showToast("Erro: " + f.name); continue; }
+      const bytes = f.size || 0;
+      const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
+      added.push({ id: Date.now()+i, name: filesToUpload.length === 1 ? (fileForm.name?.trim() || f.name) : f.name, category: cat, date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url||"", storagePath: result.path||"", uploadedBy: isClientView ? "cliente" : "agencia", originalExt: f.name.split(".").pop()?.toLowerCase()||"", mimeType: f.type||"" });
+    }
+    setUploading(false);
+    if (added.length) {
+      const newFiles = [...(client.files||[]), ...added];
       const saveKey = `client_files_${client.supaId || client.id}`;
       const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
-      if (!saved) { showToast("Erro ao salvar metadados — tente novamente"); return; }
-      if (onUpdateClients) {
-        const updatedClient = { ...client, files: newFiles };
-        onUpdateClients(CDATA.map(c => c.id === cid ? updatedClient : c));
-      }
+      if (!saved) { showToast("Erro ao salvar metadados"); return; }
+      if (onUpdateClients) onUpdateClients(CDATA.map(c => c.id === cid ? { ...c, files: newFiles } : c));
     }
     setAddingFile(false); setFileForm({});
-    showToast("Arquivo enviado ✓");
+    showToast(added.length + " arquivo(s) enviado(s) ✓");
   };
 
   /* ── DESKTOP LIBRARY — FULL REDESIGN ── */
@@ -18789,7 +18813,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                     {/* Drop zone */}
                     <label onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=B.accent;}} onDragLeave={e=>{e.currentTarget.style.borderColor=`${B.accent}30`;}} onDrop={e=>{e.preventDefault();const file=e.dataTransfer?.files?.[0];if(file)setFileForm(p=>({...p,file,name:p.name||file.name}));}} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:"28px 16px", borderRadius:14, border:`2px dashed ${fileForm.file?B.green:`${B.accent}30`}`, background:fileForm.file?`${B.green}04`:`${B.accent}02`, cursor:"pointer", marginBottom:14, transition:"all .2s" }}>
                       {fileForm.file ? <><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p style={{ fontSize:12, fontWeight:700, color:B.green }}>Arquivo selecionado</p><p style={{ fontSize:10, color:B.muted, wordBreak:"break-all", textAlign:"center" }}>{fileForm.file.name}</p><p style={{ fontSize:9, color:B.muted }}>{(fileForm.file.size/1024/1024).toFixed(1)} MB</p></> : <><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p style={{ fontSize:12, fontWeight:600, color:B.accent }}>Arraste ou clique</p><p style={{ fontSize:9, color:B.muted }}>Imagens, vídeos, PDF, PSD...</p></>}
-                      <input type="file" style={{display:"none"}} onChange={e=>{const file=e.target.files?.[0];if(file)setFileForm(p=>({...p,file,name:p.name||file.name}));}} />
+                      <input type="file" multiple style={{display:"none"}} onChange={e=>{const files=Array.from(e.target.files||[]);if(files.length===1)setFileForm(p=>({...p,file:files[0],name:p.name||files[0].name}));else if(files.length>1){setFileForm(p=>({...p,file:files[0],name:p.name||files[0].name,_multiFiles:files}));}}} />
                     </label>
                     {!isClientView && <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Cliente *</label><select value={fileForm.clientId||""} onChange={e=>setFileForm(p=>({...p,clientId:e.target.value}))} className="tinput" style={{ fontSize:12 }}>{["",...CDATA.map(c=>({id:c.id,name:c.name}))].map(c=>typeof c==="string"?<option key="" value="">Selecionar...</option>:<option key={c.id} value={c.id}>{c.name}</option>)}</select></div>}
                     <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Nome</label><input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Nome do arquivo" className="tinput" style={{ fontSize:12 }} /></div>
