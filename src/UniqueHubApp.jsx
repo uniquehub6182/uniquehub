@@ -24605,16 +24605,6 @@ function HelpPage({ onBack }) {
 
         {/* Form */}
         <Card>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, marginBottom:14 }}>
-            <div>
-              <p style={{ fontSize:12, fontWeight:600, marginBottom:6, color:B.muted }}>Seu nome</p>
-              <input value={user?.user_metadata?.name || user?.email || ""} disabled style={{ width:"100%", padding:12, borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, background:`${B.border}30`, color:B.muted }} />
-            </div>
-            <div>
-              <p style={{ fontSize:12, fontWeight:600, marginBottom:6, color:B.muted }}>Seu e-mail</p>
-              <input value={user?.email || ""} disabled style={{ width:"100%", padding:12, borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, background:`${B.border}30`, color:B.muted }} />
-            </div>
-          </div>
           <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Assunto *</p>
           <select value={cTopic} onChange={e=>setCTopic(e.target.value)} style={{ width:"100%", padding:12, borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, marginBottom:14, background:B.bgCard, color:B.text }}>
             <option value="">Selecione o assunto...</option>
