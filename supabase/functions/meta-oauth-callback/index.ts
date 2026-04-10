@@ -72,6 +72,7 @@ serve(async (req) => {
           const igUrl = `https://graph.facebook.com/v21.0/${page.id}?fields=instagram_business_account{id,username,profile_picture_url,followers_count}&access_token=${pageToken}`;
           const igRes = await fetch(igUrl);
           const igData = await igRes.json();
+          console.log(`IG check for page ${page.id}:`, JSON.stringify(igData));
           if (igData.instagram_business_account) {
             igUserId = igData.instagram_business_account.id;
             igUsername = igData.instagram_business_account.username || null;
