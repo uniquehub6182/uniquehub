@@ -975,9 +975,21 @@ const handleMetaOAuthCallback = async (code, capturedRedirectUri) => {
 const saveMetaSelectedPage = async (clientId, page) => {
   if (!supabase) return { error: "Supabase não configurado" };
   try {
-    /* Save directly to app_settings — no need to call edge function again */
-    const saved = await saveMetaToken(clientId, page);
-    if (!saved) return { error: "Erro ao salvar token" };
+    /* Save to app_settings */
+    await saveMetaToken(clientId, page);
+    /* Save to social_tokens table (used by getMetaConnection and edge functions) */
+    const tokenRow = {
+      client_id: clientId,
+      platform: "meta",
+      page_id: page.page_id,
+      page_name: page.page_name,
+      access_token: page.page_token,
+      ig_user_id: page.ig_user_id || null,
+      ig_username: page.ig_username || null,
+      updated_at: new Date().toISOString()
+    };
+    if (_currentOrgId) tokenRow.org_id = _currentOrgId;
+    await supabase.from("social_tokens").upsert(tokenRow, { onConflict: "client_id,platform" });
     return { success: true, page_name: page.page_name, ig_username: page.ig_username };
   } catch(e) { return { error: e.message }; }
 };
@@ -31055,7 +31067,7 @@ export default function App() {
           </div>
           {!metaOAuthResult.igUsername && metaOAuthResult.pageName && <p style={{color:"#F59E0B",fontSize:11,marginTop:12,padding:"8px 14px",borderRadius:10,background:"#F59E0B08",border:"1px solid #F59E0B20"}}>⚠️ Instagram não vinculado a esta página. Vincule pelo Facebook para publicar no Instagram.</p>}
           <p style={{color:"#8B8F92",fontSize:12,marginTop:14}}>Token salvo. Abra o cliente para ver as redes conectadas.</p>
-          <button onClick={() => { setMetaOAuthResult(null); setMetaPagePicker(null); }} style={{marginTop:20,padding:"14px 36px",borderRadius:14,background:"linear-gradient(135deg,#C6F135 0%,#A8D810 100%)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:800,color:"#192126",boxShadow:"0 4px 16px rgba(198,241,53,0.3)"}}>Continuar</button>
+          <button onClick={() => { window.location.href = window.location.pathname; }} style={{marginTop:20,padding:"14px 36px",borderRadius:14,background:"linear-gradient(135deg,#C6F135 0%,#A8D810 100%)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:800,color:"#192126",boxShadow:"0 4px 16px rgba(198,241,53,0.3)"}}>Continuar</button>
         </> : null}
 
         {/* Error */}
