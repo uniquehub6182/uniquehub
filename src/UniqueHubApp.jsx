@@ -24558,6 +24558,24 @@ function HelpPage({ onBack }) {
 
   /* ── DESKTOP HELP ── */
   if (isHelpDesktop) {
+    /* Contact form on desktop */
+    if (contactForm) return (
+      <div className="content-wide" style={{ paddingTop:TOP, maxWidth:700, margin:"0 auto" }}>
+        {ToastEl}
+        <CollapseHeader icon={IC.help} label="Suporte" title="Falar com Suporte" onBack={() => setContactForm(false)} collapsed={false} />
+        <Card style={{ marginTop:12 }}>
+          <p style={{ fontSize:13, color:B.muted, marginBottom:16 }}>Envie sua dúvida ou problema e nossa equipe responderá o mais rápido possível.</p>
+          <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Assunto</p>
+          <select value={cTopic} onChange={e=>setCTopic(e.target.value)} style={{ width:"100%", padding:12, borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, marginBottom:14, background:B.bgCard, color:B.text }}>
+            <option value="">Selecione...</option>
+            {["Dúvida sobre funcionalidade","Problema técnico / Bug","Solicitação de recurso","Financeiro / Cobrança","Outro"].map(o=><option key={o} value={o}>{o}</option>)}
+          </select>
+          <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Mensagem</p>
+          <textarea value={cMsg} onChange={e=>setCMsg(e.target.value)} rows={6} placeholder="Descreva sua dúvida ou problema..." style={{ width:"100%", padding:12, borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, resize:"vertical", background:B.bgCard, color:B.text }} />
+          <button onClick={() => { if(!cTopic) return showToast("Selecione um assunto"); if(!cMsg.trim()) return showToast("Escreva a mensagem"); setContactForm(false); setCMsg(""); setCTopic(""); showToast("Mensagem enviada ao suporte ✓"); }} className="pill full accent" style={{ padding:"14px 0", marginTop:16 }}>Enviar Mensagem</button>
+        </Card>
+      </div>
+    );
     const allQ = FAQ.flatMap((cat, ci) => cat.questions.map((q, qi) => ({ ...q, catIdx:ci, qIdx:qi, catName:cat.cat, color:cat.color, icon:cat.icon })));
     const sRes = searchQ.trim().length >= 2 ? allQ.filter(q => q.q.toLowerCase().includes(searchQ.toLowerCase()) || q.a.toLowerCase().includes(searchQ.toLowerCase())) : [];
     const showSearch = searchQ.trim().length >= 2;
