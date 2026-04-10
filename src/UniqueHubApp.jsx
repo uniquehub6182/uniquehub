@@ -24669,7 +24669,7 @@ function HelpPage({ onBack }) {
               <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}` }}><p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Categorias ({FAQ.length})</p></div>
               {FAQ.map((cat, ci) => (
                 <button key={ci} onClick={()=>{setSelCat(ci);setSelQ(null);}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"11px 14px", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:selCat===ci?700:500, background:selCat===ci?`${cat.color}08`:"transparent", color:selCat===ci?cat.color:B.text, borderLeft:selCat===ci?`3px solid ${cat.color}`:"3px solid transparent" }}>
-                  <div style={{ width:24, height:24, borderRadius:6, background:`${cat.color}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><span style={{ display:"flex", transform:"scale(0.6)" }}>{typeof cat.icon==="function"?cat.icon(cat.color):cat.icon}</span></div>
+                  <div style={{ width:24, height:24, borderRadius:6, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, color:B.accent }}><span style={{ display:"flex", transform:"scale(0.6)" }}>{typeof cat.icon==="function"?cat.icon(B.accent):cat.icon}</span></div>
                   <span style={{ flex:1, textAlign:"left" }}>{cat.cat}</span>
                   <span style={{ fontSize:10, color:B.muted }}>{cat.questions.length}</span>
                 </button>
@@ -24701,7 +24701,7 @@ function HelpPage({ onBack }) {
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:12 }}>
                     {FAQ.map((cat, ci) => (
                       <div key={ci} onClick={()=>setSelCat(ci)} style={{ padding:"20px 18px", borderRadius:16, border:`1.5px solid ${B.border}`, cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${cat.color}40`;e.currentTarget.style.background=`${cat.color}04`;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
-                        <div style={{ width:40, height:40, borderRadius:12, background:`${cat.color}12`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}><span style={{ display:"flex", transform:"scale(0.85)" }}>{typeof cat.icon==="function"?cat.icon(cat.color):cat.icon}</span></div>
+                        <div style={{ width:40, height:40, borderRadius:12, background:`${B.accent}12`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10, color:B.accent }}><span style={{ display:"flex", transform:"scale(0.85)" }}>{typeof cat.icon==="function"?cat.icon(B.accent):cat.icon}</span></div>
                         <p style={{ fontSize:14, fontWeight:700 }}>{cat.cat}</p>
                         <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{cat.questions.length} perguntas</p>
                       </div>
