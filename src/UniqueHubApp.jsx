@@ -24350,7 +24350,7 @@ function HelpPage({ onBack }) {
       { q:"Como funciona o sistema de login?", a:"O UniqueHub usa autenticação via Supabase. Ao criar uma conta, seus dados ficam vinculados ao e-mail informado. Após o cadastro, um administrador precisa aprovar sua conta em Configurações > Aprovações para que você tenha acesso completo." },
       { q:"Posso usar o app no celular e no computador?", a:"Sim! O UniqueHub é responsivo e funciona em qualquer dispositivo com navegador. Sua sessão é sincronizada — alterações feitas no celular aparecem no computador em tempo real." },
     ]},
-    { cat:"Demandas & Conteúdo", icon:IC.content, color:B.blue, questions:[
+    { cat:"Demandas & Conteúdo", icon:IC.content, color:B.accent, questions:[
       { q:"Como criar uma demanda de conteúdo?", a:"Na aba Conteúdo, selecione o pipeline desejado (Social, Campanhas ou Vídeo) e toque no '+'. Preencha o briefing com título, cliente, rede social e descrição. A demanda entrará na primeira etapa 'Ideia'." },
       { q:"Quais são as etapas do workflow?", a:"O pipeline Social tem 7 etapas: Ideia → Briefing → Design → Legenda → Revisão → Aprovação do Cliente → Publicado. O pipeline de Vídeo tem etapas extras: Produção e Edição. Cada etapa é responsabilidade de um cargo diferente (Head, Social Media, Designer, etc.)." },
       { q:"Como mover uma demanda entre etapas?", a:"Abra a demanda e preencha o conteúdo da etapa atual (ex: texto do briefing, upload de arte, etc.). Depois use o botão 'Avançar' para mover para a próxima etapa. Gerentes podem rejeitar e enviar de volta a etapas anteriores." },
@@ -24361,7 +24361,7 @@ function HelpPage({ onBack }) {
       { q:"O que acontece quando a demanda é rejeitada?", a:"Na etapa de Revisão, o gerente pode rejeitar e enviar de volta para 'Arte' (refazer design) ou 'Legenda' (refazer texto). A demanda volta à etapa escolhida e o responsável é notificado." },
       { q:"Como funciona a pré-visualização do post?", a:"Na etapa de Legenda, após upload da arte e texto da legenda, o sistema gera automaticamente uma pré-visualização do post como ficaria na rede social selecionada (Instagram Feed, Stories, Reels)." },
     ]},
-    { cat:"Clientes", icon:IC.clients, color:"#10B981", questions:[
+    { cat:"Clientes", icon:IC.clients, color:B.accent, questions:[
       { q:"Como acessar os arquivos de um cliente?", a:"Vá em Clientes, toque no cliente desejado e selecione a aba 'Biblioteca'. Todos os arquivos do cliente estarão organizados por categoria (Manual de Marca, Posts, Stories, Vídeos, etc.). Você pode fazer upload diretamente nesta seção." },
       { q:"Como enviar um contrato?", a:"No perfil do cliente, acesse a aba 'Contrato'. Lá você pode visualizar e gerenciar os termos contratuais, valores e datas de vigência." },
       { q:"Como gerenciar faturas de um cliente?", a:"Na aba do cliente, acesse a seção de faturas. Você pode gerar novas faturas, marcar como pagas, ver o histórico de pagamentos e identificar faturas pendentes ou atrasadas." },
@@ -24369,14 +24369,14 @@ function HelpPage({ onBack }) {
       { q:"Posso fazer upload de arquivos reais nos clientes?", a:"Sim! Na aba 'Biblioteca' do cliente, clique em '+ Adicionar'. Selecione o arquivo do seu dispositivo, escolha a categoria (Manual de marca, Posts, Vídeos, etc.) e envie. O arquivo é armazenado no servidor e fica disponível para download." },
       { q:"Como editar informações do cliente?", a:"Abra o perfil do cliente e toque no ícone de edição (lápis). Você pode alterar nome, contato, e-mail, segmento, plano mensal e todas as outras informações. Salve para aplicar as alterações." },
     ]},
-    { cat:"Financeiro", icon:IC.dollar, color:B.green, questions:[
+    { cat:"Financeiro", icon:IC.dollar, color:B.accent, questions:[
       { q:"Como visualizar o faturamento mensal?", a:"Acesse Financeiro no menu principal ou pelo card na Home. O dashboard mostra receita total, quantidade de pagantes, ticket médio e status de cada cliente (pago, pendente, atrasado)." },
       { q:"Como registrar um pagamento recebido?", a:"No Financeiro, localize o cliente na lista e toque em 'Marcar como Pago'. O sistema atualizará automaticamente o status e os totais do mês. A data do pagamento é registrada." },
       { q:"Como gerar relatórios financeiros?", a:"Vá em Relatórios > Financeiro. Selecione o período desejado e visualize a evolução de receita, receita por plano e detalhamento por cliente." },
       { q:"O que significam os status de pagamento?", a:"Pago (verde): Cliente pagou a mensalidade. Pendente (amarelo): Fatura emitida mas ainda não paga. Atrasado (vermelho): Pagamento com data vencida. O sistema calcula automaticamente com base na data de vencimento." },
       { q:"Como gerar uma nova fatura?", a:"No perfil do cliente, seção de faturas, use o botão '+ Nova fatura'. O sistema gera automaticamente uma fatura com o valor do plano mensal do cliente, data atual e status 'pendente'." },
     ]},
-    { cat:"Equipe & Chat", icon:IC.chat, color:B.purple, questions:[
+    { cat:"Equipe & Chat", icon:IC.chat, color:B.accent, questions:[
       { q:"Como usar o chat interno?", a:"Acesse Chat no menu principal. Você pode enviar mensagens para toda a equipe no chat geral ou tocar no nome de um membro para iniciar uma conversa privada. O chat suporta texto e mostra indicadores de leitura (✓✓ azul = lido)." },
       { q:"Como ver quem está online?", a:"Na Home, a seção 'Equipe online' mostra todos os membros com indicador verde (online) ou cinza (offline). Também é possível ver o status na página Equipe." },
       { q:"Como adicionar um membro à equipe?", a:"Vá em Equipe e toque em '+ Novo Membro'. Preencha nome, cargo, e-mail e telefone. Alternativamente, o membro pode se cadastrar pela tela de login e aguardar aprovação em Configurações > Aprovações." },
@@ -24384,30 +24384,30 @@ function HelpPage({ onBack }) {
       { q:"Como funcionam os indicadores de leitura?", a:"✓ (cinza) = mensagem enviada. ✓✓ (azul) = mensagem lida pelo destinatário. Os indicadores atualizam em tempo real a cada poucos segundos." },
       { q:"Como aprovar um novo membro?", a:"Apenas CEO e Gerentes podem aprovar cadastros. Vá em Configurações > Aprovações para ver solicitações pendentes. O badge vermelho indica quantas aprovações estão pendentes." },
     ]},
-    { cat:"Calendário & Agenda", icon:IC.clock, color:B.orange, questions:[
+    { cat:"Calendário & Agenda", icon:IC.clock, color:B.accent, questions:[
       { q:"Como criar um evento no calendário?", a:"Acesse Calendário, selecione o dia desejado e toque em '+ Novo'. Escolha o tipo (Reunião, Gravação, Evento, Lembrete ou Deadline), preencha os detalhes e salve." },
       { q:"Quais tipos de evento posso criar?", a:"O calendário suporta 5 tipos: Reunião (online/presencial, interna/com cliente), Gravação (com lista de equipamentos e localização), Evento (externo), Lembrete (pessoal) e Deadline (prazo de entrega)." },
       { q:"Como adicionar participantes a um evento?", a:"Ao criar ou editar uma Reunião ou Gravação, use o campo 'Participantes' para selecionar membros da equipe. Você pode adicionar múltiplos participantes." },
       { q:"Os eventos são sincronizados entre membros?", a:"Sim! Todos os eventos criados são visíveis para toda a equipe. Cada membro pode ver os compromissos do dia na Home e no Calendário completo." },
     ]},
-    { cat:"Gamificação & Ranking", icon:IC.trophy, color:"#F59E0B", questions:[
+    { cat:"Gamificação & Ranking", icon:IC.trophy, color:B.accent, questions:[
       { q:"Como funciona o sistema de XP?", a:"Cada ação no app gera pontos de experiência (XP): check-in diário, demandas concluídas, posts publicados, cursos completados, etc. O XP acumulado define seu nível e posição no ranking." },
       { q:"Quais são os níveis?", a:"São 8 níveis: Nv.1 Iniciante (0-500 XP) → Nv.2 Aprendiz (500-1.200) → Nv.3 Pleno (1.200-2.500) → Nv.4 Sênior (2.500-4.500) → Nv.5 Especialista (4.500-7.000) → Nv.6 Líder (7.000-10.000) → Nv.7 Master (10.000-15.000) → Nv.8 Lenda (15.000+)." },
       { q:"Como ganhar XP?", a:"Faça check-in diário (+10 XP), conclua demandas (+25 XP), publique posts (+15 XP), complete cursos na Academy (+50 XP), receba aprovação de cliente (+20 XP). Administradores também podem conceder XP manualmente pelo Ranking." },
       { q:"O ranking é visível para todos?", a:"Sim! Todos os membros da agência podem ver o ranking completo, incluindo XP total, streak de check-ins, tarefas do mês e badges conquistados." },
       { q:"O que são badges?", a:"Badges são conquistas especiais ganhas por atingir marcos: primeiro post publicado, 7 dias consecutivos de check-in, 1.000 XP acumulados, etc. Eles aparecem no seu perfil de ranking." },
     ]},
-    { cat:"Academy & Cursos", icon:IC.academy, color:"#8B5CF6", questions:[
+    { cat:"Academy & Cursos", icon:IC.academy, color:B.accent, questions:[
       { q:"Como acessar os cursos?", a:"Vá em Academy no menu. Você verá todos os cursos disponíveis organizados por categoria (Marketing Digital, Design, Vídeo, Copywriting, Estratégia, etc.)." },
       { q:"Como completar um módulo?", a:"Abra o curso desejado, selecione o módulo e leia/assista o conteúdo. Ao finalizar, marque como concluído. Seu progresso é salvo automaticamente e você ganha XP pela conclusão." },
       { q:"Posso sugerir novos cursos?", a:"Sim! Use a seção de Ideias para sugerir temas de cursos. Administradores revisam as sugestões e podem criar novos cursos baseados no feedback da equipe." },
     ]},
-    { cat:"News & Notícias", icon:IC.news, color:"#EC4899", questions:[
+    { cat:"News & Notícias", icon:IC.news, color:B.accent, questions:[
       { q:"O que é a seção News?", a:"News é o feed interno de notícias e tendências da agência. Administradores publicam artigos sobre novidades do mercado, dicas, tutoriais e atualizações importantes para a equipe." },
       { q:"Como criar um artigo?", a:"Na seção News, toque em '+ Novo'. Preencha título, corpo do texto, categoria, fonte (com link clicável), tempo de leitura e tags. Você pode marcar o artigo como 'Destaque' para fixar no topo." },
       { q:"Posso salvar artigos para ler depois?", a:"Sim! Toque no ícone de bookmark no artigo para salvar. Você pode filtrar por 'Salvos' na lista de artigos para encontrá-los facilmente." },
     ]},
-    { cat:"Configurações & Segurança", icon:IC.lock, color:B.red, questions:[
+    { cat:"Configurações & Segurança", icon:IC.lock, color:B.accent, questions:[
       { q:"Como alterar minha senha?", a:"Vá em Configurações > Segurança > Alterar Senha. Digite sua senha atual, depois a nova senha (que deve ter 8+ caracteres, maiúscula, minúscula, número e caractere especial) e confirme." },
       { q:"Como ativar a autenticação em dois fatores?", a:"Vá em Configurações > Segurança e ative o toggle de 'Autenticação 2 Fatores'. Siga as instruções para configurar o app de autenticação." },
       { q:"Como encerrar sessões em outros dispositivos?", a:"Vá em Configurações > Segurança > Sessões Ativas. Você pode encerrar sessões individualmente ou usar 'Encerrar todas as outras sessões' para manter apenas o dispositivo atual." },
@@ -24417,24 +24417,24 @@ function HelpPage({ onBack }) {
       { q:"Como mudar o tema do app?", a:"Vá em Configurações > Aparência. Ative o Modo Escuro e/ou escolha uma cor de destaque diferente para personalizar a interface ao seu gosto." },
       { q:"Como configurar notificações?", a:"Vá em Configurações > Notificações. Ative ou desative notificações por categoria: Chat, Conteúdo, Clientes, Equipe, Financeiro. Cada categoria tem sub-opções para controle granular." },
     ]},
-    { cat:"Relatórios & Métricas", icon:IC.reports, color:"#3B82F6", questions:[
+    { cat:"Relatórios & Métricas", icon:IC.reports, color:B.accent, questions:[
       { q:"Que tipos de relatório existem?", a:"O UniqueHub oferece relatórios de Instagram (alcance, engajamento, crescimento de seguidores) e Facebook (impressões, curtidas, alcance) com dados reais da API Meta. Selecione o período (7d, 14d, 30d, mês) e o cliente para ver os KPIs detalhados." },
       { q:"Como exportar um relatório?", a:"Na seção Relatórios, após selecionar o cliente e período, use o botão 'Exportar PDF' no canto superior. O relatório é gerado com todos os gráficos e métricas para apresentar ao cliente." },
       { q:"Como ver posts publicados de um cliente?", a:"Em Relatórios, selecione o cliente e vá na aba 'Posts'. Você verá todos os posts publicados com thumbnails, curtidas, comentários, salvos e compartilhamentos." },
     ]},
-    { cat:"Match4Biz", icon:IC.match4biz, color:"#E91E63", questions:[
+    { cat:"Match4Biz", icon:IC.match4biz, color:B.accent, questions:[
       { q:"O que é o Match4Biz?", a:"O Match4Biz é um sistema de networking entre os clientes da agência. A ideia é conectar clientes que podem fazer negócios juntos — por exemplo, um restaurante com um fornecedor de embalagens. A agência cobra uma taxa pela conexão." },
       { q:"Como criar um match?", a:"Vá em Match4Biz e clique em '+ Novo Match'. Selecione as duas empresas e defina a taxa por empresa. O match é criado com status 'Novo' e cada parte precisa confirmar participação." },
       { q:"Como funciona a taxa do match?", a:"A taxa é cobrada por empresa. Ex: se definir R$150, cada empresa paga R$150, totalizando R$300 de receita para a agência. O valor é configurável em cada match." },
       { q:"O que são as confirmações?", a:"Cada match precisa de 3 confirmações: Admin (agência), Empresa A e Empresa B. Quando todas confirmam, o match está oficialmente ativo e as empresas podem ser apresentadas." },
       { q:"Quais são os status do match?", a:"Novo → Conversando → Negociando → Fechado ✓ (sucesso) ou Não Rolou (sem acordo). Quando fecha, você pode registrar o valor do negócio gerado pela conexão." },
     ]},
-    { cat:"Ideias & Sugestões", icon:IC.ideas, color:"#9333EA", questions:[
+    { cat:"Ideias & Sugestões", icon:IC.ideas, color:B.accent, questions:[
       { q:"Como funciona o Mural de Ideias?", a:"É um espaço para a equipe sugerir ideias criativas de conteúdo, estratégias e melhorias. Qualquer membro pode criar uma ideia, e outros podem votar e comentar." },
       { q:"Como votar em uma ideia?", a:"Clique no botão ▲ ao lado da ideia para votar. Quanto mais votos, mais destaque a ideia ganha na lista. As ideias mais votadas aparecem primeiro." },
       { q:"Como os status das ideias funcionam?", a:"O admin pode alterar o status: Pendente (aguardando análise) → Em Análise (sendo avaliada) → Aprovada (será executada) → Rejeitada (descartada). Tags e cliente relacionado ajudam a organizar." },
     ]},
-    { cat:"Biblioteca de Arquivos", icon:IC.library, color:"#0EA5E9", questions:[
+    { cat:"Biblioteca de Arquivos", icon:IC.library, color:B.accent, questions:[
       { q:"O que é a Biblioteca?", a:"É o repositório central de todos os arquivos da agência e dos clientes. Organize manuais de marca, posts, vídeos, contratos e qualquer documento por cliente e categoria." },
       { q:"Como fazer upload?", a:"Na Biblioteca, clique em '+ Upload' ou arraste arquivos para a área de upload. Selecione o cliente e a categoria. Suporta imagens, PDFs, vídeos, documentos e apresentações." },
       { q:"Como organizar os arquivos?", a:"Filtre por cliente na sidebar esquerda e por categoria (Manual de Marca, Posts, Stories, Vídeos, Contratos, etc.). Use a busca por nome e alterne entre visualização em grid ou lista." },
