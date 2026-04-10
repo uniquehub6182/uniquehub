@@ -5125,6 +5125,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
     try {
       const metaResult = sessionStorage.getItem("uh_meta_connected");
       const metaError = sessionStorage.getItem("uh_meta_error");
+      console.log("[Meta Connect useEffect] metaResult:", metaResult, "metaError:", metaError, "clients:", clients.length);
       if (metaResult) {
         metaChecked.current = true;
         sessionStorage.removeItem("uh_meta_connected");
@@ -31025,10 +31026,14 @@ export default function App() {
           <div style={{maxHeight:"50vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:8}}>
             {metaPagePicker.pages.map(pg => (
               <button key={pg.page_id} disabled={metaSavingPage} onClick={async () => {
+                console.log("[PagePicker] Selected page:", JSON.stringify({ page_id: pg.page_id, page_name: pg.page_name, ig_username: pg.ig_username, ig_user_id: pg.ig_user_id, has_instagram: pg.has_instagram }));
                 setMetaSavingPage(true);
                 const res = await saveMetaSelectedPage(metaPagePicker.clientId, pg);
+                console.log("[PagePicker] Save result:", JSON.stringify(res));
                 if (res && !res.error) {
-                  try { sessionStorage.setItem("uh_meta_connected", JSON.stringify({ clientId: metaPagePicker.clientId, page_name: pg.page_name, page_id: pg.page_id, ig_username: pg.ig_username, ig_user_id: pg.ig_user_id })); } catch {}
+                  const ssData = { clientId: metaPagePicker.clientId, page_name: pg.page_name, page_id: pg.page_id, ig_username: pg.ig_username, ig_user_id: pg.ig_user_id };
+                  console.log("[PagePicker] Setting sessionStorage uh_meta_connected:", JSON.stringify(ssData));
+                  try { sessionStorage.setItem("uh_meta_connected", JSON.stringify(ssData)); } catch {}
                   setMetaOAuthResult({ success: true, pageName: pg.page_name, igUsername: pg.ig_username });
                 } else {
                   setMetaOAuthResult({ success: false, msg: res?.error || "Erro ao salvar" });
