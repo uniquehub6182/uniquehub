@@ -501,7 +501,7 @@ const supaUploadClientFile = async (file, clientId) => {
   try {
     const maxSize = 200 * 1024 * 1024;
     if (file.size > maxSize) return { error: `Arquivo muito grande (${(file.size/1024/1024).toFixed(0)}MB). Máximo: 200MB` };
-    const safeName = file.name.replace(/\s+/g, "_");
+    const safeName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9._-]/g, "_");
     const path = `client_${clientId}/${Date.now()}_${safeName}`;
     /* Try demand-files bucket first (already exists), fallback gracefully */
     const { data, error } = await supabase.storage.from("demand-files").upload(path, file, { upsert: true, cacheControl: "3600" });
