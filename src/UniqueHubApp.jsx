@@ -24335,6 +24335,7 @@ function HelpPage({ onBack }) {
   const [contactForm, setContactForm] = useState(false);
   const [cMsg, setCMsg] = useState("");
   const [cTopic, setCTopic] = useState("");
+  const [cPriority, setCPriority] = useState("Baixa");
   const [searchQ, setSearchQ] = useState("");
   const [helpTab, setHelpTab] = useState("faq"); /* faq | guides | shortcuts | videos */
   const { showToast, ToastEl } = useToast();
@@ -24558,65 +24559,86 @@ function HelpPage({ onBack }) {
 
   /* ── DESKTOP HELP ── */
   if (isHelpDesktop) {
-    /* Contact form on desktop */
+    /* Contact form on desktop — full-width professional layout */
     if (contactForm) return (
-      <div className="content-wide" style={{ paddingTop:TOP, maxWidth:800, margin:"0 auto" }}>
+      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
         {ToastEl}
         <CollapseHeader icon={IC.help} label="Suporte" title="Central de Suporte" onBack={() => setContactForm(false)} collapsed={false} />
 
-        {/* Contact cards row */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:12, marginTop:16 }}>
-          <a href="mailto:suporte@uniquehub.com.br" style={{ textDecoration:"none", color:B.text }}>
-            <Card style={{ textAlign:"center", cursor:"pointer", transition:"all .2s", border:`1.5px solid ${B.border}` }}>
-              <div style={{ width:44, height:44, borderRadius:14, background:"#3B82F615", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-              </div>
-              <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>E-mail</p>
-              <p style={{ fontSize:11, color:B.accent, fontWeight:600 }}>suporte@uniquehub.com.br</p>
-              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Resposta em até 24h</p>
+        <div style={{ display:"flex", gap:20, marginTop:16 }}>
+          {/* LEFT — Contact info + FAQ */}
+          <div style={{ width:340, flexShrink:0, display:"flex", flexDirection:"column", gap:12 }}>
+            {/* Contact cards */}
+            <Card style={{ border:`1.5px solid ${B.border}` }}>
+              <p style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted, marginBottom:14 }}>Canais de Atendimento</p>
+              {[
+                { icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, color:"#3B82F6", label:"E-mail", value:"suporte@uniquehub.com.br", sub:"Resposta em até 24h úteis", href:"mailto:suporte@uniquehub.com.br" },
+                { icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#25D366" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>, color:"#25D366", label:"Telefone / WhatsApp", value:"(21) 2215-9867", sub:"Seg-Sex · 9h às 18h", href:"https://wa.me/552122159867?text=Ol%C3%A1!%20Preciso%20de%20ajuda%20com%20o%20UniqueHub" },
+              ].map((ch, i) => (
+                <a key={i} href={ch.href} target={ch.href.startsWith("http")?"_blank":undefined} rel="noopener noreferrer" style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, border:`1px solid ${B.border}`, textDecoration:"none", color:B.text, marginBottom:i<1?8:0, cursor:"pointer", transition:"all .15s" }} onMouseEnter={e=>e.currentTarget.style.background=`${ch.color}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:`${ch.color}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{ch.icon}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:12, fontWeight:700, marginBottom:1 }}>{ch.label}</p>
+                    <p style={{ fontSize:11, color:ch.color, fontWeight:600 }}>{ch.value}</p>
+                    <p style={{ fontSize:10, color:B.muted }}>{ch.sub}</p>
+                  </div>
+                </a>
+              ))}
             </Card>
-          </a>
-          <a href="https://wa.me/552122159867?text=Olá!%20Preciso%20de%20ajuda%20com%20o%20UniqueHub" target="_blank" rel="noopener noreferrer" style={{ textDecoration:"none", color:B.text }}>
-            <Card style={{ textAlign:"center", cursor:"pointer", transition:"all .2s", border:`1.5px solid ${B.border}` }}>
-              <div style={{ width:44, height:44, borderRadius:14, background:"#25D36615", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
-              </div>
-              <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Telefone / WhatsApp</p>
-              <p style={{ fontSize:11, color:"#25D366", fontWeight:600 }}>(21) 2215-9867</p>
-              <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Seg-Sex · 9h às 18h</p>
+
+            {/* Business hours */}
+            <Card style={{ border:`1.5px solid ${B.border}` }}>
+              <p style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted, marginBottom:10 }}>Horário de Atendimento</p>
+              {[{d:"Segunda a Sexta",h:"09:00 — 18:00",active:true},{d:"Sábado",h:"Fechado",active:false},{d:"Domingo e Feriados",h:"Fechado",active:false}].map((r,i)=>(
+                <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"8px 0", borderTop:i?`1px solid ${B.border}05`:undefined }}>
+                  <span style={{ fontSize:12, fontWeight:500 }}>{r.d}</span>
+                  <span style={{ fontSize:11, fontWeight:600, color:r.active?B.accent:B.muted, background:r.active?`${B.accent}10`:`${B.muted}10`, padding:"3px 10px", borderRadius:8 }}>{r.h}</span>
+                </div>
+              ))}
             </Card>
-          </a>
-          <Card style={{ textAlign:"center", border:`1.5px solid ${B.border}` }}>
-            <div style={{ width:44, height:44, borderRadius:14, background:"#F59E0B15", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 10px" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <p style={{ fontSize:13, fontWeight:700, marginBottom:4 }}>Horário</p>
-            <p style={{ fontSize:11, color:"#F59E0B", fontWeight:600 }}>Seg a Sex</p>
-            <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>9:00 às 18:00 (BRT)</p>
-          </Card>
-        </div>
 
-        {/* Divider */}
-        <div style={{ display:"flex", alignItems:"center", gap:12, margin:"24px 0" }}>
-          <div style={{ flex:1, height:1, background:B.border }} />
-          <span style={{ fontSize:11, fontWeight:600, color:B.muted, textTransform:"uppercase", letterSpacing:0.5 }}>ou envie uma mensagem</span>
-          <div style={{ flex:1, height:1, background:B.border }} />
-        </div>
+            {/* Quick links */}
+            <Card style={{ border:`1.5px solid ${B.border}` }}>
+              <p style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted, marginBottom:10 }}>Links Úteis</p>
+              {[{l:"Perguntas Frequentes",ic:"❓",act:()=>{setContactForm(false);setHelpTab("faq");}},{l:"Guias Passo a Passo",ic:"📖",act:()=>{setContactForm(false);setHelpTab("guides");}},{l:"Dicas & Atalhos",ic:"⚡",act:()=>{setContactForm(false);setHelpTab("shortcuts");}}].map((lk,i)=>(
+                <button key={i} onClick={lk.act} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"9px 0", background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:500, color:B.text, borderTop:i?`1px solid ${B.border}05`:undefined }}>
+                  <span style={{ fontSize:14 }}>{lk.ic}</span> {lk.l}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ marginLeft:"auto" }}><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              ))}
+            </Card>
+          </div>
 
-        {/* Form */}
-        <Card>
-          <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Assunto *</p>
-          <select value={cTopic} onChange={e=>setCTopic(e.target.value)} style={{ width:"100%", padding:12, borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, marginBottom:14, background:B.bgCard, color:B.text }}>
-            <option value="">Selecione o assunto...</option>
-            {["Dúvida sobre funcionalidade","Problema técnico / Bug","Solicitação de recurso","Financeiro / Cobrança","Integração com redes sociais","Outro"].map(o=><option key={o} value={o}>{o}</option>)}
-          </select>
-          <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Mensagem *</p>
-          <textarea value={cMsg} onChange={e=>setCMsg(e.target.value)} rows={5} placeholder="Descreva detalhadamente sua dúvida ou problema..." style={{ width:"100%", padding:12, borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, resize:"vertical", background:B.bgCard, color:B.text, marginBottom:16 }} />
-          <button onClick={() => { if(!cTopic) return showToast("Selecione um assunto"); if(!cMsg.trim()) return showToast("Escreva a mensagem"); setContactForm(false); setCMsg(""); setCTopic(""); showToast("Mensagem enviada ao suporte ✓"); }} className="pill full accent" style={{ padding:"14px 0" }}>
-            Enviar Mensagem
-          </button>
-          <p style={{ fontSize:10, color:B.muted, textAlign:"center", marginTop:10 }}>Nossa equipe responderá em até 24 horas úteis</p>
-        </Card>
+          {/* RIGHT — Contact form */}
+          <div style={{ flex:1 }}>
+            <Card style={{ border:`1.5px solid ${B.border}`, height:"100%", display:"flex", flexDirection:"column" }}>
+              <div style={{ marginBottom:20 }}>
+                <p style={{ fontSize:16, fontWeight:700, marginBottom:4 }}>Enviar uma Mensagem</p>
+                <p style={{ fontSize:12, color:B.muted }}>Preencha o formulário e nossa equipe responderá em até 24 horas úteis.</p>
+              </div>
+
+              <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Assunto <span style={{ color:"#EF4444" }}>*</span></p>
+              <select value={cTopic} onChange={e=>setCTopic(e.target.value)} style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, marginBottom:16, background:B.bgCard, color:B.text, appearance:"auto" }}>
+                <option value="">Selecione o assunto...</option>
+                {["Dúvida sobre funcionalidade","Problema técnico / Bug","Solicitação de recurso","Financeiro / Cobrança","Integração com redes sociais","Permissões e acessos","Outro"].map(o=><option key={o} value={o}>{o}</option>)}
+              </select>
+
+              <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Prioridade</p>
+              <div style={{ display:"flex", gap:8, marginBottom:16 }}>
+                {[{l:"Baixa",c:"#10B981"},{l:"Média",c:"#F59E0B"},{l:"Alta",c:"#EF4444"}].map(p=>(
+                  <button key={p.l} onClick={()=>setCPriority?.(p.l)} style={{ flex:1, padding:"8px 0", borderRadius:10, border:`1.5px solid ${(cPriority||"Baixa")===p.l?p.c:B.border}`, background:(cPriority||"Baixa")===p.l?`${p.c}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:(cPriority||"Baixa")===p.l?p.c:B.muted }}>{p.l}</button>
+                ))}
+              </div>
+
+              <p style={{ fontSize:12, fontWeight:600, marginBottom:6 }}>Mensagem <span style={{ color:"#EF4444" }}>*</span></p>
+              <textarea value={cMsg} onChange={e=>setCMsg(e.target.value)} rows={7} placeholder="Descreva detalhadamente sua dúvida ou problema. Inclua prints ou links se necessário..." style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:`1.5px solid ${B.border}`, fontFamily:"inherit", fontSize:13, resize:"vertical", background:B.bgCard, color:B.text, flex:1, minHeight:140 }} />
+
+              <button onClick={() => { if(!cTopic) return showToast("Selecione um assunto"); if(!cMsg.trim()) return showToast("Escreva a mensagem"); setContactForm(false); setCMsg(""); setCTopic(""); showToast("Mensagem enviada ao suporte ✓"); }} className="pill full accent" style={{ padding:"14px 0", marginTop:16, fontSize:14, fontWeight:700 }}>
+                Enviar Mensagem
+              </button>
+            </Card>
+          </div>
+        </div>
       </div>
     );
     const allQ = FAQ.flatMap((cat, ci) => cat.questions.map((q, qi) => ({ ...q, catIdx:ci, qIdx:qi, catName:cat.cat, color:cat.color, icon:cat.icon })));
