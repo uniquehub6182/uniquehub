@@ -938,10 +938,6 @@ const META_SCOPES = [
   "pages_show_list", "pages_read_engagement", "pages_manage_posts", "pages_read_user_content",
   /* Insights */
   "read_insights",
-  /* Instagram via Facebook */
-  "instagram_basic", "instagram_manage_insights", "instagram_content_publish", "instagram_manage_comments",
-  /* Messaging */
-  "pages_messaging", "instagram_manage_messages",
   /* Business */
   "business_management"
 ].join(",");
