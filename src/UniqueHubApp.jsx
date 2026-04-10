@@ -930,9 +930,9 @@ const asaasCall = async (action, data = {}) => {
   } catch(e) { return { error: e.message }; }
 };
 
-const META_APP_ID = "1253351873442734";
+const META_APP_ID = "1557196698688426";
 const META_CONFIG_ID = "";
-const META_REDIRECT_URI = "https://uniquehub-beta.vercel.app/";
+const META_REDIRECT_URI = (typeof window !== "undefined" ? window.location.origin : "https://uniquehub.com.br") + "/";
 const META_SCOPES = [
   /* Pages */
   "pages_show_list", "pages_read_engagement", "pages_manage_posts", "pages_read_user_content",
@@ -1225,7 +1225,7 @@ const dailyInsight = (data, name) => { if (!data) return []; const m = data.find
 
 const startInstagramOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_ig_oauth_client", clientId); } catch {}
-  const redirectUri = encodeURIComponent("https://uniquehub-beta.vercel.app/");
+  const redirectUri = encodeURIComponent(window.location.origin + "/");
   const url = `https://www.instagram.com/oauth/authorize?client_id=${IG_APP_ID}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(IG_SCOPES)}&response_type=code&state=ig_connect_${clientId}`;
   console.log("[Instagram OAuth] redirect_uri:", window.location.origin + "/", "client_id:", IG_APP_ID);
   window.location.href = url;
@@ -1266,7 +1266,7 @@ const saveInstagramToken = async (clientId, igData) => {
 const THREADS_SCOPES = "threads_basic,threads_content_publish";
 const startThreadsOAuth = (clientId) => {
   try { sessionStorage.setItem("uh_threads_oauth_client", clientId); } catch {}
-  const redirectUri = encodeURIComponent("https://uniquehub-beta.vercel.app/");
+  const redirectUri = encodeURIComponent(window.location.origin + "/");
   const url = `https://threads.net/oauth/authorize?client_id=1285265573811515&redirect_uri=${redirectUri}&scope=${encodeURIComponent(THREADS_SCOPES)}&response_type=code&state=threads_connect_${clientId}`;
   console.log("[Threads OAuth] Starting...");
   window.location.href = url;
@@ -1276,7 +1276,7 @@ const handleThreadsOAuthCallback = async (code, redirectUri) => {
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/threads-oauth`, {
       method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ code, redirect_uri: redirectUri || "https://uniquehub-beta.vercel.app/", action: "exchange_token" })
+      body: JSON.stringify({ code, redirect_uri: redirectUri || window.location.origin + "/", action: "exchange_token" })
     });
     const data = await res.json();
     if (data.error) return { error: typeof data.error === "string" ? data.error : JSON.stringify(data.error) };
@@ -1306,7 +1306,7 @@ const TIKTOK_CLIENT_KEY = ""; /* Set in app_settings: tiktok_client_key */
 const startTikTokOAuth = (clientId, clientKey) => {
   if (!clientKey) { console.error("TikTok client_key not configured"); return; }
   try { sessionStorage.setItem("uh_tiktok_oauth_client", clientId); } catch {}
-  const redirectUri = encodeURIComponent("https://uniquehub-beta.vercel.app/");
+  const redirectUri = encodeURIComponent(window.location.origin + "/");
   const scopes = "user.info.basic,video.upload,video.publish";
   const url = `https://www.tiktok.com/v2/auth/authorize/?client_key=${clientKey}&scope=${scopes}&response_type=code&redirect_uri=${redirectUri}&state=tiktok_connect_${clientId}`;
   console.log("[TikTok OAuth] Starting...");
@@ -1317,7 +1317,7 @@ const handleTikTokOAuthCallback = async (code, redirectUri) => {
   try {
     const res = await fetch(`${SUPA_URL}/functions/v1/tiktok-oauth`, {
       method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPA_KEY}` },
-      body: JSON.stringify({ code, redirect_uri: redirectUri || "https://uniquehub-beta.vercel.app/", action: "exchange_token" })
+      body: JSON.stringify({ code, redirect_uri: redirectUri || window.location.origin + "/", action: "exchange_token" })
     });
     const data = await res.json();
     if (data.error) return { error: typeof data.error === "string" ? data.error : JSON.stringify(data.error) };
