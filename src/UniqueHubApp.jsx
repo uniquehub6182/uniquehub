@@ -13569,22 +13569,24 @@ function ChatPage({ user, chatTermsOk, setChatTermsOk, forceMobile, openWithUser
   /* ── TERMS ── */
   if (!chatTermsOk) return (
     <div className="pg" style={{ paddingTop: TOP, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", minHeight:"80vh" }}>
-      <div style={{ width:70, height:70, borderRadius:20, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:20 }}>
-        <span style={{ color:B.accent }}>{IC.shield}</span>
-      </div>
-      <h2 style={{ fontSize:20, fontWeight:800, textAlign:"center" }}>Termos de Uso do Chat</h2>
-      <p style={{ fontSize:13, color:B.muted, textAlign:"center", marginTop:10, lineHeight:1.7 }}>Para utilizar o chat interno da UniqueHub, você precisa aceitar nossos termos de uso.</p>
-      <Card style={{ marginTop:16, width:"100%" }}>
-        <div style={{ maxHeight:200, overflowY:"auto", fontSize:12, lineHeight:1.7, color:B.muted }}>
-          <p style={{ fontWeight:700, color:B.text, marginBottom:6 }}>Termos de Uso — Chat UniqueHub Agency</p>
-          <p>1. <b>Confidencialidade:</b> Todas as conversas são confidenciais e de uso exclusivo profissional.</p>
-          <p style={{ marginTop:6 }}>2. <b>Conduta profissional:</b> O chat deve ser utilizado exclusivamente para assuntos de trabalho.</p>
-          <p style={{ marginTop:6 }}>3. <b>Arquivos e dados:</b> Arquivos compartilhados pelo chat são de propriedade da empresa e dos clientes.</p>
-          <p style={{ marginTop:6 }}>4. <b>Comunicação com clientes:</b> Mantenha o tom profissional alinhado com a identidade da Unique Marketing 360.</p>
-          <p style={{ marginTop:6 }}>5. <b>Armazenamento:</b> As mensagens são armazenadas para fins de auditoria e segurança conforme LGPD.</p>
+      <div style={{ maxWidth:420, width:"100%", margin:"0 auto", padding:"0 20px" }}>
+        <div style={{ width:72, height:72, borderRadius:20, background:`linear-gradient(135deg,${B.accent}22,${B.accent}08)`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
-      </Card>
-      <button onClick={() => { setChatTermsOk(true); localStorage.setItem("uh_chat_terms", "1"); }} className="pill full accent" style={{ marginTop:16 }}>Li e aceito os Termos de Uso {IC.arrowR()}</button>
+        <h2 style={{ fontSize:22, fontWeight:800, textAlign:"center", color:B.text }}>Termos de Uso do Chat</h2>
+        <p style={{ fontSize:13, color:B.muted, textAlign:"center", marginTop:8, lineHeight:1.6 }}>Para utilizar o chat interno da UniqueHub, você precisa aceitar nossos termos de uso.</p>
+        <div style={{ marginTop:20, padding:"20px", borderRadius:16, background:B.bgCard, border:`1.5px solid ${B.border}` }}>
+          <div style={{ maxHeight:220, overflowY:"auto", fontSize:13, lineHeight:1.8, color:B.muted }}>
+            <p style={{ fontWeight:700, color:B.text, marginBottom:10, fontSize:14 }}>Termos de Uso — Chat UniqueHub Agency</p>
+            <p>1. <b>Confidencialidade:</b> Todas as conversas são confidenciais e de uso exclusivo profissional.</p>
+            <p style={{ marginTop:8 }}>2. <b>Conduta profissional:</b> O chat deve ser utilizado exclusivamente para assuntos de trabalho.</p>
+            <p style={{ marginTop:8 }}>3. <b>Arquivos e dados:</b> Arquivos compartilhados pelo chat são de propriedade da empresa e dos clientes.</p>
+            <p style={{ marginTop:8 }}>4. <b>Comunicação com clientes:</b> Mantenha o tom profissional alinhado com a identidade da Unique Marketing 360.</p>
+            <p style={{ marginTop:8 }}>5. <b>Armazenamento:</b> As mensagens são armazenadas para fins de auditoria e segurança conforme LGPD.</p>
+          </div>
+        </div>
+        <button onClick={() => { setChatTermsOk(true); localStorage.setItem("uh_chat_terms", "1"); }} style={{ marginTop:20, width:"100%", padding:"14px 0", borderRadius:14, background:`linear-gradient(135deg,${B.accent},#A8D810)`, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:800, color:"#192126", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>Li e aceito os Termos de Uso <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
     </div>
   );
 
