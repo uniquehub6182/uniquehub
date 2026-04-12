@@ -4959,6 +4959,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
   const [clientIdeasLoaded, setClientIdeasLoaded] = useState(null); /* client id that was loaded */
   const [clientUsers, setClientUsers] = useState([]);
   const [clientUsersLoaded, setClientUsersLoaded] = useState(null);
+  const [clientLastSeenMap, setClientLastSeenMap] = useState({});
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({});
   const [editingSocial, setEditingSocial] = useState(null);
@@ -5104,6 +5105,17 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
         });
         setClientUsers(linked);
         setClientUsersLoaded(cid);
+        /* Load last_seen for client users */
+        if (linked.length && isAdmin) {
+          const lsKeys = linked.map(p => `last_seen_client_${p.id}`);
+          const { data: lsData } = await supabase.from("app_settings").select("key,value").in("key", lsKeys);
+          const map = {};
+          (lsData||[]).forEach(row => {
+            const uid = row.key.replace("last_seen_client_", "");
+            try { map[uid] = typeof row.value === "string" ? JSON.parse(row.value) : row.value; } catch { map[uid] = { at: row.value }; }
+          });
+          setClientLastSeenMap(map);
+        }
       } catch(e) { console.error("Load client users:", e); }
     })();
   }, [profileTab, sel]);
@@ -6269,6 +6281,14 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                 <p style={{ fontSize:14, fontWeight:700 }}>{u.name||"Sem nome"}</p>
                 <p style={{ fontSize:11, color:B.muted }}>{u.email}</p>
                 <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Desde {u.created_at ? new Date(u.created_at).toLocaleDateString("pt-BR") : "—"}{u.blocked ? " · Bloqueado" : ""}</p>
+                {clientLastSeenMap[u.id] && (() => {
+                  const seen = new Date(clientLastSeenMap[u.id].at);
+                  const now = new Date();
+                  const diffMin = Math.floor((now - seen) / 60000);
+                  const isOnline = diffMin < 6;
+                  const timeStr = diffMin < 1 ? "agora" : diffMin < 60 ? `há ${diffMin}min` : diffMin < 1440 ? `hoje às ${seen.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : `${seen.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} às ${seen.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`;
+                  return <p style={{ fontSize:10, color:isOnline?B.green:B.muted, marginTop:2 }}>{isOnline?"● Online":"● Último acesso: "+timeStr}</p>;
+                })()}
               </div>
               <div style={{ display:"flex", gap:6 }}>
                 <button onClick={async()=>{
@@ -6759,6 +6779,14 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                           <p style={{ fontSize:14, fontWeight:700 }}>{u.name||"Sem nome"}</p>
                           <p style={{ fontSize:11, color:B.muted }}>{u.email}</p>
                           <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>Desde {u.created_at ? new Date(u.created_at).toLocaleDateString("pt-BR") : "—"}{u.blocked?" · Bloqueado":""}</p>
+                          {clientLastSeenMap[u.id] && (() => {
+                            const seen = new Date(clientLastSeenMap[u.id].at);
+                            const now = new Date();
+                            const diffMin = Math.floor((now - seen) / 60000);
+                            const isOnline = diffMin < 6;
+                            const timeStr = diffMin < 1 ? "agora" : diffMin < 60 ? `há ${diffMin}min` : diffMin < 1440 ? `hoje às ${seen.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : `${seen.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} às ${seen.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`;
+                            return <p style={{ fontSize:10, color:isOnline?B.green:B.muted, marginTop:2 }}>{isOnline?"● Online":"● Último acesso: "+timeStr}</p>;
+                          })()}
                         </div>
                         <div style={{ display:"flex", gap:6 }}>
                           <button onClick={async()=>{const nb=!u.blocked;const{error}=await supabase.from("profiles").update({blocked:nb}).eq("id",u.id);if(!error){setClientUsers(prev=>prev.map(x=>x.id===u.id?{...x,blocked:nb}:x));showToast(nb?"Bloqueado":"Desbloqueado");}else showToast("Erro: "+error.message);}} title={u.blocked?"Desbloquear":"Bloquear"} style={{ width:34, height:34, borderRadius:10, background:u.blocked?`${B.green}10`:`${B.orange||"#F59E0B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -30989,6 +31017,8 @@ export default function App() {
               company: session.user.user_metadata?.company || "",
             });
             await loadOrg(session.user.id);
+            /* Track last seen for client portal users */
+            try { supaSetSetting(`last_seen_client_${session.user.id}`, JSON.stringify({ name: profile?.name || session.user.email, email: session.user.email, at: new Date().toISOString() })); } catch {}
           } else {
             /* ── AGENCY user: restore to agency panel ── */
             setUserAndRef({
@@ -31046,6 +31076,15 @@ export default function App() {
     const iv = setInterval(update, 5 * 60 * 1000);
     return () => clearInterval(iv);
   }, [user?.id]);
+
+  /* ── Periodic last_seen update for client portal users (every 5 min) ── */
+  useEffect(() => {
+    if (!clientUser?.id || !supabase || clientUser?.registering) return;
+    const update = () => { try { supaSetSetting(`last_seen_client_${clientUser.id}`, JSON.stringify({ name: clientUser.name, email: clientUser.email, at: new Date().toISOString() })); } catch {} };
+    update();
+    const iv = setInterval(update, 5 * 60 * 1000);
+    return () => clearInterval(iv);
+  }, [clientUser?.id]);
 
   const handleLogout = async () => {
     if (supabase) await supabase.auth.signOut();
