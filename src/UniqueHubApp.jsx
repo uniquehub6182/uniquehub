@@ -16958,6 +16958,7 @@ function TeamPage({ onBack, user, onTeamChange }) {
   const [loaded, setLoaded] = useState(false);
   const [memberExtras, setMemberExtras] = useState(null);
   const [extrasLoading, setExtrasLoading] = useState(false);
+  const [lastSeenMap, setLastSeenMap] = useState({});
   const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
   const { showToast, ToastEl } = useToast();
   const isAdmin = user?.supaRole === "admin";
@@ -17008,6 +17009,22 @@ function TeamPage({ onBack, user, onTeamChange }) {
       setLoaded(true);
     });
   }, [loaded]);
+
+  /* Load last_seen data for all team members */
+  useEffect(() => {
+    if (!loaded || !members.length || !supabase) return;
+    const uids = members.filter(m => m.user_id).map(m => m.user_id);
+    if (!uids.length) return;
+    const keys = uids.map(uid => `last_seen_${uid}`);
+    supabase.from("app_settings").select("key, value").in("key", keys).then(({ data }) => {
+      const map = {};
+      (data || []).forEach(row => {
+        const uid = row.key.replace("last_seen_", "");
+        try { map[uid] = typeof row.value === "string" ? JSON.parse(row.value) : row.value; } catch { map[uid] = { at: row.value }; }
+      });
+      setLastSeenMap(map);
+    });
+  }, [loaded, members.length]);
 
   const ROLES = ["CEO / Proprietário","Gerente","Head de Marketing","Social Media","Designer","Audiovisual / Vídeo","Redator(a)","Gestor de Tráfego","Atendimento","Analista de Dados","Estagiário(a)"];
 
@@ -17100,6 +17117,14 @@ function TeamPage({ onBack, user, onTeamChange }) {
                           <span style={{ fontSize:9, color:"#fff", fontWeight:600, background:"#1A1D23", padding:"3px 8px", borderRadius:6, border:`1px solid ${B.accent}` }}>{mm.role}</span>
                           {mm.status==="pendente" && <span style={{ fontSize:8, fontWeight:700, color:B.orange, background:`${B.orange}12`, padding:"1px 5px", borderRadius:4 }}>Pendente</span>}
                         </div>
+                        {isAdmin && lastSeenMap[mm.user_id] && (() => {
+                          const seen = new Date(lastSeenMap[mm.user_id].at);
+                          const now = new Date();
+                          const diffMin = Math.floor((now - seen) / 60000);
+                          const isOnline = diffMin < 6;
+                          const timeStr = diffMin < 1 ? "agora" : diffMin < 60 ? `há ${diffMin}min` : diffMin < 1440 ? `hoje às ${seen.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : `${seen.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} às ${seen.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`;
+                          return <p style={{ fontSize:10, color:isOnline?B.green:B.muted, marginTop:3 }}>{isOnline?"● Online":"● "+timeStr}</p>;
+                        })()}
                       </div>
                       <span style={{ fontSize:10, color:B.muted }}>{mm.since||""}</span>
                     </div>
@@ -17367,6 +17392,14 @@ function TeamPage({ onBack, user, onTeamChange }) {
                 <p style={{ fontSize:11, color:B.accent, fontWeight:500 }}>{m.role}</p>
                 {m.status==="pendente" && <span style={{ fontSize:9, fontWeight:700, color:B.orange, background:`${B.orange}12`, padding:"2px 6px", borderRadius:6 }}>Aguardando cadastro</span>}
               </div>
+              {isAdmin && lastSeenMap[m.user_id] && (() => {
+                const seen = new Date(lastSeenMap[m.user_id].at);
+                const now = new Date();
+                const diffMin = Math.floor((now - seen) / 60000);
+                const isOnline = diffMin < 6;
+                const timeStr = diffMin < 1 ? "agora" : diffMin < 60 ? `há ${diffMin}min` : diffMin < 1440 ? `hoje às ${seen.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : `${seen.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} às ${seen.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}`;
+                return <p style={{ fontSize:10, color:isOnline?B.green:B.muted, marginTop:2 }}>{isOnline?"● Online":"● Último acesso: "+timeStr}</p>;
+              })()}
             </div>
             <div style={{ textAlign:"right" }}>
               <p style={{ fontSize:10, color:B.muted }}>Desde {m.since||"—"}</p>
@@ -30967,6 +31000,8 @@ export default function App() {
           });
           /* Load org BEFORE setting user — ensures _currentOrgId is ready when data loads */
           await loadOrg(session.user.id);
+          /* Track last seen for admin visibility */
+          try { supaSetSetting(`last_seen_${session.user.id}`, JSON.stringify({ name: profile?.name || session.user.email, email: session.user.email, at: new Date().toISOString() })); } catch {}
           /* Apply visual prefs from cloud */
           try {
             if (cloudPrefs) {
@@ -31002,6 +31037,15 @@ export default function App() {
     });
     return () => subscription?.unsubscribe();
   }, []);
+
+  /* ── Periodic last_seen update (every 5 min) ── */
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    const update = () => { try { supaSetSetting(`last_seen_${user.id}`, JSON.stringify({ name: user.name, email: user.email, at: new Date().toISOString() })); } catch {} };
+    update(); /* immediate update on mount */
+    const iv = setInterval(update, 5 * 60 * 1000);
+    return () => clearInterval(iv);
+  }, [user?.id]);
 
   const handleLogout = async () => {
     if (supabase) await supabase.auth.signOut();
