@@ -14724,15 +14724,19 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     const startEnroll = async () => {
       setTwoFALoading(true);
       try {
-        /* Clean up any dangling unverified factors first */
-        const { data: factors } = await supabase.auth.mfa.listFactors();
-        if (factors?.totp) {
-          for (const f of factors.totp) {
-            if (f.status === 'unverified') {
-              try { await supabase.auth.mfa.unenroll({ factorId: f.id }); } catch {}
+        /* Refresh session first to avoid stale JWT issues */
+        try { await supabase.auth.refreshSession(); } catch {}
+        /* Clean up any dangling unverified factors */
+        try {
+          const { data: factors } = await supabase.auth.mfa.listFactors();
+          if (factors?.totp) {
+            for (const f of factors.totp) {
+              if (f.status === 'unverified') {
+                try { await supabase.auth.mfa.unenroll({ factorId: f.id }); } catch {}
+              }
             }
           }
-        }
+        } catch(listErr) { console.warn("[2FA] listFactors failed, continuing:", listErr.message); }
         const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniqueHub' });
         if (error) throw error;
         setTwoFAQR(data.totp.qr_code);
