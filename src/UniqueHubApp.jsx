@@ -23684,7 +23684,7 @@ NÃO invente campanhas que não existem no documento.`
       setSaving(true);
       const periodLabel = dateFrom && dateTo ? `${dateFrom.split("-").reverse().slice(0,2).join("/")} a ${dateTo.split("-").reverse().slice(0,2).join("/")}` : formatMonth(selMonth);
       const title = mode === "metrics" ? `Resultados · ${selClient.name} · ${periodLabel}` : mode === "both" ? `Resultados + Campanhas · ${selClient.name} · ${periodLabel}` : `Campanhas · ${selClient.name} · ${periodLabel}`;
-      const { data: saved, error } = await supabase.from("presentations").insert({ client_id: selClient.id, title, type: mode, month: selMonth, slides, created_by: user?.id, org_id: _currentOrgId }).select().single();
+      const { data: saved, error } = await supabase.from("presentations").insert({ client_id: selClient.id, title, type: mode, month: selMonth, slides, created_by: user?.id }).select().single();
       if (error) throw error;
       setPresentations(prev => [saved, ...prev]);
       setCurrentPres(saved); setSlideIdx(0); setView("viewer");
