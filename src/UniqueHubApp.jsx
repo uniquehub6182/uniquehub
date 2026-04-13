@@ -23646,10 +23646,13 @@ NÃO invente campanhas que não existem no documento.`
       for (const model of models) {
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 90000); /* 90s timeout */
             const resp = await fetch("https://api.anthropic.com/v1/messages", {
-              method: "POST", headers: { "Content-Type": "application/json", "x-api-key": aiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+              method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json", "x-api-key": aiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
               body: JSON.stringify({ model, max_tokens: 4000, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] })
             });
+            clearTimeout(timeoutId);
             const d = await resp.json();
             if (d.error) {
               lastError = d.error.message || d.error.type;
@@ -23658,7 +23661,9 @@ NÃO invente campanhas que não existem no documento.`
             }
             data = d;
             break;
-          } catch(fetchErr) { lastError = fetchErr.message; }
+          } catch(fetchErr) {
+            lastError = fetchErr.name === "AbortError" ? "Tempo esgotado — a IA demorou demais" : fetchErr.message;
+          }
         }
         if (data) break;
       }
