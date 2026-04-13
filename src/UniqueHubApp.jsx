@@ -23640,11 +23640,29 @@ ESTRUTURA (siga esta ordem):
 IMPORTANTE: Extraia informações REAIS do PDF. Fale com o cliente: "Para sua marca", "Seus clientes vão...".
 NÃO invente campanhas que não existem no documento.`
       }
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": aiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] })
-      });
-      const data = await resp.json();
+      const models = ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001"];
+      let data = null;
+      let lastError = null;
+      for (const model of models) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const resp = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST", headers: { "Content-Type": "application/json", "x-api-key": aiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+              body: JSON.stringify({ model, max_tokens: 4000, system: systemPrompt, messages: [{ role: "user", content: userPrompt }] })
+            });
+            const d = await resp.json();
+            if (d.error) {
+              lastError = d.error.message || d.error.type;
+              if (d.error.type === "overloaded_error") { await new Promise(r => setTimeout(r, 2000)); continue; }
+              throw new Error(lastError);
+            }
+            data = d;
+            break;
+          } catch(fetchErr) { lastError = fetchErr.message; }
+        }
+        if (data) break;
+      }
+      if (!data) throw new Error(lastError || "API indisponível — tente novamente em alguns minutos");
       const text = (data.content || []).map(c => c.text || "").join("");
       let slides;
       try { slides = JSON.parse(text.replace(/```json|```/g, "").trim()); }
