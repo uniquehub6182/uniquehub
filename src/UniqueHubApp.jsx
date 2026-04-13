@@ -2615,7 +2615,7 @@ function LoginPage({ onAuth, onClientAuth }) {
     setLoginLoading(true); setError("");
     try {
       const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
-      if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
+      if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); supaAuditLog("login_failed", { email, portal: "client" }); setLoginLoading(false); return; }
       let profile = null;
       try { const r = await supabase.from("profiles").select("*").eq("id", data.user.id).single(); profile = r.data; } catch {}
       /* ── Block deleted users (profile removed but auth still exists) ── */
@@ -2633,7 +2633,7 @@ function LoginPage({ onAuth, onClientAuth }) {
         setError("Esta conta é de colaborador. Use a aba \"Colaborador\" para acessar.");
         await supabase.auth.signOut(); setLoginLoading(false); return;
       }
-      if (onClientAuth) { try { localStorage.removeItem("uh_login_attempts_client"); } catch {} onClientAuth({ mode:"login", user: { id: data.user.id, name: profile?.name || email.split("@")[0], email, photo: profile?.photo_url || null, role: "cliente" } }); }
+      if (onClientAuth) { try { localStorage.removeItem("uh_login_attempts_client"); } catch {} supaAuditLog("login", { email, portal: "client" }, data.user.id); onClientAuth({ mode:"login", user: { id: data.user.id, name: profile?.name || email.split("@")[0], email, photo: profile?.photo_url || null, role: "cliente" } }); }
       setLoginLoading(false);
     } catch(e) { setError("Erro: " + e.message); setLoginLoading(false); }
   };
@@ -6340,6 +6340,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                     /* Delete auth account so user can't log in anymore */
                     const { error: rpcErr } = await supabase.rpc("delete_user_account", { target_user_id: u.id });
                     if (rpcErr) console.error("delete_user_account:", rpcErr.message);
+                    supaAuditLog("delete_client_user", { name: u.name, email: u.email });
                     setClientUsers(prev => prev.filter(x => x.id !== u.id));
                     showToast("Acesso removido");
                   } else showToast("Erro: "+error.message);
@@ -6495,6 +6496,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             { l:"Excluir cliente", ic:()=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>, c:B.red, desc:"Remover permanentemente", act:async ()=>{
             if (!confirm(`Excluir ${sel.name}? Essa ação não pode ser desfeita.`)) return;
             if (sel.supaId) await supaDeleteClient(sel.supaId);
+            supaAuditLog("delete_client", { name: sel.name, id: sel.supaId });
             setClients(p=>p.filter(c=>c.id!==sel.id));
             setSel(null); showToast("Cliente excluído ✓");
           } },
@@ -6607,7 +6609,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                   </div>
                   <div style={{ display:"flex", gap:6 }}>
                     <button onClick={()=>{setEditClient(true);if(profileTab!=="info"&&profileTab!=="financial")setProfileTab("info");}} style={{ padding:"8px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.text }}>Editar</button>
-                    {canAccessFn("clients.delete") && <button onClick={()=>setConfirmAction({type:"delete",title:"Excluir cliente?",msg:`Deseja excluir ${sel.name}? Essa ação não pode ser desfeita.`,action:async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").delete().eq("id",cid);}catch(e){}}setClients(p=>p.filter(c=>c.id!==sel.id&&c.supaId!==sel.supaId));setSel(null);showToast("Cliente excluído");}})} style={{ padding:"8px 14px", borderRadius:10, border:"none", background:"#FEE2E2", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:"#EF4444" }}>Excluir</button>}
+                    {canAccessFn("clients.delete") && <button onClick={()=>setConfirmAction({type:"delete",title:"Excluir cliente?",msg:`Deseja excluir ${sel.name}? Essa ação não pode ser desfeita.`,action:async()=>{const cid=sel.supaId||sel.id;if(supabase){try{await supabase.from("clients").delete().eq("id",cid);}catch(e){}}setClients(p=>p.filter(c=>c.id!==sel.id&&c.supaId!==sel.supaId));setSel(null);supaAuditLog("delete_client",{name:sel.name,id:cid});showToast("Cliente excluído");}})} style={{ padding:"8px 14px", borderRadius:10, border:"none", background:"#FEE2E2", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:"#EF4444" }}>Excluir</button>}
                   </div>
                 </div>
               </div>
@@ -6816,10 +6818,10 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
                           })()}
                         </div>
                         <div style={{ display:"flex", gap:6 }}>
-                          <button onClick={async()=>{const nb=!u.blocked;const{error}=await supabase.from("profiles").update({blocked:nb}).eq("id",u.id);if(!error){setClientUsers(prev=>prev.map(x=>x.id===u.id?{...x,blocked:nb}:x));showToast(nb?"Bloqueado":"Desbloqueado");}else showToast("Erro: "+error.message);}} title={u.blocked?"Desbloquear":"Bloquear"} style={{ width:34, height:34, borderRadius:10, background:u.blocked?`${B.green}10`:`${B.orange||"#F59E0B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <button onClick={async()=>{const nb=!u.blocked;const{error}=await supabase.from("profiles").update({blocked:nb}).eq("id",u.id);if(!error){supaAuditLog(nb?"block_user":"unblock_user",{name:u.name,email:u.email});setClientUsers(prev=>prev.map(x=>x.id===u.id?{...x,blocked:nb}:x));showToast(nb?"Bloqueado":"Desbloqueado");}else showToast("Erro: "+error.message);}} title={u.blocked?"Desbloquear":"Bloquear"} style={{ width:34, height:34, borderRadius:10, background:u.blocked?`${B.green}10`:`${B.orange||"#F59E0B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                             {u.blocked ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.orange||"#F59E0B"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>}
                           </button>
-                          <button onClick={async()=>{if(!confirm(`Remover acesso de ${u.name||u.email}? Esta ação não pode ser desfeita.`))return;await supabase.from("xp_events").delete().eq("user_id",u.id);await supabase.from("checkins").delete().eq("user_id",u.id);await supabase.from("messages").delete().eq("sender_id",u.id);await supabase.from("conversation_members").delete().eq("user_id",u.id);const{error}=await supabase.from("profiles").delete().eq("id",u.id);if(!error){await supabase.from("app_settings").delete().eq("key",`client_extras_${u.id}`);const{error:rpcErr}=await supabase.rpc("delete_user_account",{target_user_id:u.id});if(rpcErr)console.error("delete_user_account:",rpcErr.message);setClientUsers(prev=>prev.filter(x=>x.id!==u.id));showToast("Removido");}else showToast("Erro: "+error.message);}} title="Remover" style={{ width:34, height:34, borderRadius:10, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                          <button onClick={async()=>{if(!confirm(`Remover acesso de ${u.name||u.email}? Esta ação não pode ser desfeita.`))return;await supabase.from("xp_events").delete().eq("user_id",u.id);await supabase.from("checkins").delete().eq("user_id",u.id);await supabase.from("messages").delete().eq("sender_id",u.id);await supabase.from("conversation_members").delete().eq("user_id",u.id);const{error}=await supabase.from("profiles").delete().eq("id",u.id);if(!error){await supabase.from("app_settings").delete().eq("key",`client_extras_${u.id}`);const{error:rpcErr}=await supabase.rpc("delete_user_account",{target_user_id:u.id});if(rpcErr)console.error("delete_user_account:",rpcErr.message);supaAuditLog("delete_client_user",{name:u.name,email:u.email});setClientUsers(prev=>prev.filter(x=>x.id!==u.id));showToast("Removido");}else showToast("Erro: "+error.message);}} title="Remover" style={{ width:34, height:34, borderRadius:10, background:`${B.red||"#FF6B6B"}10`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#FF6B6B"} strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                           </button>
                         </div>
@@ -14836,6 +14838,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
       if (error) { showToast("Erro: " + error.message); return; }
       setChangePw(false); setOldPw(""); setNewPw(""); setConfirmPw("");
       showToast("Senha alterada com sucesso ✓");
+      supaAuditLog("password_change", { email: user?.email }, user?.id);
     } catch(e) { showToast("Erro ao alterar senha"); }
   };
 
@@ -16506,7 +16509,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         await supabase.from("org_members").delete().eq("org_id", orgId);
         await supabase.from("organizations").delete().eq("id", orgId);
         setSaOrgs(prev => prev.filter(o => o.id !== orgId));
-        setSaSelected(null); showToast(orgName + " excluída"); setSaModal(null);
+        setSaSelected(null); supaAuditLog("delete_org", { name: orgName, orgId }); showToast(orgName + " excluída"); setSaModal(null);
       }});
     };
     const loadMembers = async (orgId) => {
@@ -17093,7 +17096,8 @@ function TeamPage({ onBack, user, onTeamChange }) {
       if (existingProfile?.[0]?.id) { m.user_id = existingProfile[0].id; /* Keep status pendente — admin must approve */ }
     }
     const row = await supaCreateMember(m);
-    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:row.status||"pendente",user_id:row.user_id||null,supaId:row.id}]); setAdding(false); setForm({}); showToast(m.user_id ? "Membro adicionado e vinculado ✓" : "Membro adicionado ✓ — envie o link de convite"); if(onTeamChange) onTeamChange(); }
+    if (row) { setMembers(p=>[...p,{id:row.id,name:row.name,role:row.role,email:row.email,phone:row.phone,since:row.since,skills:row.skills||[],status:row.status||"pendente",user_id:row.user_id||null,supaId:row.id}]); setAdding(false); setForm({}); supaAuditLog("add_member", { name: m.name, email: m.email, role: m.role }, user?.id);
+    showToast(m.user_id ? "Membro adicionado e vinculado ✓" : "Membro adicionado ✓ — envie o link de convite"); if(onTeamChange) onTeamChange(); }
     else { showToast("Erro ao adicionar membro"); }
   };
 
@@ -17103,12 +17107,14 @@ function TeamPage({ onBack, user, onTeamChange }) {
     await supaUpdateMember(sel.supaId, u);
     const updated = {...sel,...u};
     setMembers(p=>p.map(m=>m.id===sel.id?updated:m));
+    supaAuditLog("update_member", { name: form.name||sel.name, email: form.email||sel.email }, user?.id);
     setSel(updated); setEditMember(false); setForm({}); showToast("Membro atualizado ✓"); if(onTeamChange) onTeamChange();
   };
 
   const deleteMember = async (m) => {
     if (!confirm(`Remover "${m.name}" da equipe? ${m.user_id ? "A conta de acesso será excluída permanentemente." : ""}`)) return;
     if (m.supaId) await supaDeleteMember(m.supaId, m.user_id);
+    supaAuditLog("delete_member", { name: m.name, email: m.email, role: m.role }, user?.id);
     setMembers(p=>p.filter(x=>x.id!==m.id)); setSel(null); showToast("Membro removido ✓"); if(onTeamChange) onTeamChange();
   };
 
@@ -31150,6 +31156,7 @@ export default function App() {
                   const ssData = { clientId: metaPagePicker.clientId, page_name: pg.page_name, page_id: pg.page_id, ig_username: pg.ig_username, ig_user_id: pg.ig_user_id };
                   console.log("[PagePicker] Setting sessionStorage uh_meta_connected:", JSON.stringify(ssData));
                   try { sessionStorage.setItem("uh_meta_connected", JSON.stringify(ssData)); } catch {}
+                  supaAuditLog("connect_social", { platform: "meta", page: pg.page_name, instagram: pg.ig_username, clientId: metaPagePicker.clientId });
                   setMetaOAuthResult({ success: true, pageName: pg.page_name, igUsername: pg.ig_username });
                 } else {
                   setMetaOAuthResult({ success: false, msg: res?.error || "Erro ao salvar" });
