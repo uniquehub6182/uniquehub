@@ -30886,6 +30886,10 @@ export default function App() {
     });
   }, [dark, themeColor, savePrefsToCloud]);
   const [authLoading, setAuthLoading] = useState(!!supabase);
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const [mfaError, setMfaError] = useState("");
   const [onboardDone, setOnboardDone] = useState(() => {
     try { return localStorage.getItem("uh_onboard_v4") === "1"; } catch { return false; }
   });
@@ -31093,6 +31097,7 @@ export default function App() {
         } catch(e) { console.error("Profile load failed, blocking:", e); await supabase.auth.signOut(); }
       }
       clearTimeout(timeout);
+      await checkMfaRequired();
       setAuthLoading(false);
     }).catch(() => { clearTimeout(timeout); setAuthLoading(false); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -31118,6 +31123,38 @@ export default function App() {
     const iv = setInterval(update, 5 * 60 * 1000);
     return () => clearInterval(iv);
   }, [clientUser?.id]);
+
+  /* ── MFA challenge check ── */
+  const checkMfaRequired = async () => {
+    if (!supabase) return false;
+    try {
+      const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (data?.currentLevel === 'aal1' && data?.nextLevel === 'aal2') {
+        setMfaRequired(true);
+        return true;
+      }
+      return false;
+    } catch { return false; }
+  };
+  const handleMfaVerify = async () => {
+    if (mfaCode.length !== 6 || !supabase) return;
+    setMfaLoading(true); setMfaError("");
+    try {
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      const totp = factors?.totp?.[0];
+      if (!totp) throw new Error("Nenhum fator TOTP encontrado");
+      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: totp.id });
+      if (chErr) throw chErr;
+      const { error: vErr } = await supabase.auth.mfa.verify({ factorId: totp.id, challengeId: ch.id, code: mfaCode });
+      if (vErr) throw vErr;
+      setMfaRequired(false); setMfaCode(""); setMfaError("");
+      supaAuditLog("mfa_verified", { method: "totp" }, user?.id || clientUser?.id);
+    } catch(e) {
+      setMfaError("Código inválido. Tente novamente.");
+      setMfaCode("");
+    }
+    setMfaLoading(false);
+  };
 
   const handleLogout = async () => {
     if (supabase) await supabase.auth.signOut();
@@ -31219,6 +31256,44 @@ export default function App() {
         <div style={{width:44,height:44,border:"3px solid #E5E2DD",borderTopColor:"#BBF246",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 12px"}}/>
         <p style={{color:"#8B8F92",fontSize:13}}>Carregando...</p>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </div>
+  );
+
+  /* ── MFA Challenge Screen ── */
+  if (mfaRequired && (user || clientUser)) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#F7F7F8",fontFamily:"'Figtree',sans-serif"}}>
+      <div style={{maxWidth:380,width:"100%",padding:"0 24px",textAlign:"center"}}>
+        <div style={{width:72,height:72,borderRadius:20,background:"linear-gradient(135deg,#C6F13522,#C6F13508)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 24px"}}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#C6F135" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h2 style={{fontSize:22,fontWeight:800,color:"#192126",marginBottom:6}}>Verificação em 2 etapas</h2>
+        <p style={{fontSize:13,color:"#8B8F92",lineHeight:1.6,marginBottom:24}}>Digite o código de 6 dígitos do seu app autenticador</p>
+        <input
+          type="number"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          autoFocus
+          value={mfaCode}
+          onChange={e => { setMfaCode(e.target.value.slice(0,6)); setMfaError(""); }}
+          onKeyDown={e => e.key === "Enter" && mfaCode.length === 6 && handleMfaVerify()}
+          placeholder="000000"
+          style={{width:"100%",padding:"16px",borderRadius:14,border:"1.5px solid #E5E2DD",background:"#fff",fontSize:28,fontWeight:800,textAlign:"center",letterSpacing:12,fontFamily:"'Figtree',monospace",outline:"none",marginBottom:8}}
+        />
+        {mfaError && <p style={{fontSize:12,color:"#EF4444",marginBottom:8,padding:"8px 14px",borderRadius:10,background:"#FEF2F2",border:"1px solid #FECACA"}}>{mfaError}</p>}
+        <button
+          onClick={handleMfaVerify}
+          disabled={mfaLoading || mfaCode.length !== 6}
+          style={{width:"100%",padding:"14px",borderRadius:14,background:mfaCode.length===6?"linear-gradient(135deg,#C6F135,#A8D810)":"#E5E2DD",border:"none",cursor:mfaCode.length===6?"pointer":"default",fontFamily:"'Figtree',sans-serif",fontSize:14,fontWeight:800,color:mfaCode.length===6?"#192126":"#8B8F92",marginTop:8,opacity:mfaLoading?0.6:1}}
+        >
+          {mfaLoading ? "Verificando..." : "Verificar e entrar"}
+        </button>
+        <button
+          onClick={async () => { if(supabase) await supabase.auth.signOut(); setUser(null); setClientUser(null); setMfaRequired(false); setMfaCode(""); }}
+          style={{marginTop:16,background:"none",border:"none",cursor:"pointer",fontFamily:"'Figtree',sans-serif",fontSize:12,fontWeight:600,color:"#8B8F92"}}
+        >
+          Sair e usar outra conta
+        </button>
       </div>
     </div>
   );
@@ -31328,7 +31403,7 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && !clientUser && !onboardDone && <OnboardingSlides onDone={finishOnboard} />}
-      {!user && !clientUser && onboardDone && <LoginPage onAuth={async (u) => { await loadOrg(u.id); setUserAndRef(u); loadCloudPrefsForUser(u.id);
+      {!user && !clientUser && onboardDone && <LoginPage onAuth={async (u) => { await loadOrg(u.id); setUserAndRef(u); loadCloudPrefsForUser(u.id); await checkMfaRequired();
     const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
     const dismissed = (() => { try { return localStorage.getItem("uh_pwa_dismissed"); } catch { return null; } })();
