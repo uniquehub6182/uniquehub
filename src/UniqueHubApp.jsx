@@ -23545,18 +23545,25 @@ function PresentationsPage({ onBack, clients, user, demands }) {
     const to = dateTo ? new Date(dateTo + "T23:59:59") : null;
     const [year, month] = selMonth.split("-").map(Number);
     const cd = (demands || []).filter(d => d.client === selClient.name || d.client_id === selClient.id || d.client_id === (selClient.supaId || selClient.id));
+    const getDate = (d) => {
+      const raw = d.schedule_date || d.scheduling?.date || d.scheduled_date || d.createdAt || d.created_at || "";
+      if (!raw) return null;
+      const dt = new Date(raw);
+      return isNaN(dt.getTime()) ? null : dt;
+    };
     const md = cd.filter(d => {
-      const dt = new Date(d.scheduled_date || d.created_at);
+      const dt = getDate(d);
+      if (!dt) return false;
       if (from && to) return dt >= from && dt <= to;
       return dt.getFullYear() === year && dt.getMonth() + 1 === month;
     });
-    const published = md.filter(d => d.stage === "published" || d.stage === "Publicado" || d.stage === "done" || d.stage === "scheduled");
-    const approved = md.filter(d => d.stage === "client" || d.stage === "Aprovado" || d.stage === "approved" || d.stage === "review");
-    const pending = md.filter(d => d.stage !== "published" && d.stage !== "done");
+    const published = md.filter(d => ["published","done","scheduled","Publicado"].includes(d.stage));
+    const approved = md.filter(d => ["client","review","approved","Aprovado"].includes(d.stage));
+    const pending = md.filter(d => !["published","done"].includes(d.stage));
     const pm = month === 1 ? 12 : month - 1; const py = month === 1 ? year - 1 : year;
-    const prevPub = cd.filter(d => { const dt = new Date(d.scheduled_date || d.created_at); return dt.getFullYear() === py && dt.getMonth() + 1 === pm && (d.stage === "published" || d.stage === "Publicado" || d.stage === "done" || d.stage === "scheduled"); });
+    const prevPub = cd.filter(d => { const dt = getDate(d); if (!dt) return false; return dt.getFullYear() === py && dt.getMonth() + 1 === pm && ["published","done","scheduled","Publicado"].includes(d.stage); });
     const types = {}; md.forEach(d => { const t = d.type || d.format || "Post"; types[t] = (types[t]||0) + 1; });
-    return { clientName: selClient.name, month: formatMonth(selMonth), totalDemands: md.length, published: published.length, approved: approved.length, pending: pending.length, prevPublished: prevPub.length, growth: prevPub.length > 0 ? Math.round(((published.length - prevPub.length) / prevPub.length) * 100) : 0, types, topPosts: md.slice(0,5).map(d => ({ title: d.title || d.caption?.slice(0,60) || "Post", type: d.type || "Post", date: d.scheduled_date })) };
+    return { clientName: selClient.name, month: formatMonth(selMonth), totalDemands: md.length, published: published.length, approved: approved.length, pending: pending.length, prevPublished: prevPub.length, growth: prevPub.length > 0 ? Math.round(((published.length - prevPub.length) / prevPub.length) * 100) : 0, types, topPosts: md.slice(0,5).map(d => ({ title: d.title || d.caption?.slice(0,60) || "Post", type: d.type || "Post", date: d.schedule_date || d.scheduling?.date })) };
   };
 
   const handleGenerate = async () => {
