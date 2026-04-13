@@ -23478,6 +23478,7 @@ function PresentationsPage({ onBack, clients, user, demands }) {
   const [pdfFile, setPdfFile] = useState(null);
   const [pdfText, setPdfText] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState("");
   const [currentPres, setCurrentPres] = useState(null);
   const [slideIdx, setSlideIdx] = useState(0);
   const [editSlide, setEditSlide] = useState(null);
@@ -23555,7 +23556,7 @@ function PresentationsPage({ onBack, clients, user, demands }) {
   const handleGenerate = async () => {
     if (!selClient) { showToast("Selecione um cliente", "error"); return; }
     if (mode === "campaigns" && !pdfText) { showToast("Faça upload do PDF de campanhas", "error"); return; }
-    setGenerating(true);
+    setGenerating(true); setGenError("");
     try {
       const aiKey = await supaGetSetting("claude_key");
       if (!aiKey) { showToast("Configure a chave da API Claude nas configurações", "error"); setGenerating(false); return; }
@@ -23688,7 +23689,7 @@ NÃO invente campanhas que não existem no documento.`
       setPresentations(prev => [saved, ...prev]);
       setCurrentPres(saved); setSlideIdx(0); setView("viewer");
       showToast(`Apresentação gerada com ${slides.length} slides!`);
-    } catch (err) { console.error("Presentations generate error:", err); showToast(err.message || "Erro ao gerar", "error"); }
+    } catch (err) { console.error("Presentations generate error:", err); const errMsg = err.message || "Erro ao gerar"; showToast(errMsg, "error"); setGenError(errMsg); }
     finally { setGenerating(false); setSaving(false); }
   };
 
@@ -23957,6 +23958,7 @@ NÃO invente campanhas que não existem no documento.`
               {!selClient && <span style={{ fontSize:11, fontWeight:500, marginTop:4 }}>Selecione um cliente acima para continuar</span>}
             </>)}
           </button>
+          {genError && <div style={{ marginTop:10, padding:"10px 16px", borderRadius:12, background:"#FEF2F2", border:"1px solid #FECACA", fontSize:12, color:"#DC2626", textAlign:"center" }}>❌ {genError}</div>}
         </div>
       </div>
     );
