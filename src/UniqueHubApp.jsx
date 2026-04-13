@@ -14721,28 +14721,35 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   /* Auto-start 2FA enrollment when entering 'qr' mode */
   useEffect(() => {
     if (twoFASetup !== 'qr' || !supabase) return;
+    console.log("[2FA] Starting enrollment flow...");
     const startEnroll = async () => {
       setTwoFALoading(true);
       try {
         /* Refresh session first to avoid stale JWT issues */
-        try { await supabase.auth.refreshSession(); } catch {}
+        console.log("[2FA] Refreshing session...");
+        try { const refreshResult = await supabase.auth.refreshSession(); console.log("[2FA] Session refresh:", refreshResult.error ? refreshResult.error.message : "OK"); } catch(re) { console.warn("[2FA] Refresh failed:", re.message); }
         /* Clean up any dangling unverified factors */
+        console.log("[2FA] Listing factors...");
         try {
-          const { data: factors } = await supabase.auth.mfa.listFactors();
+          const { data: factors, error: listErr } = await supabase.auth.mfa.listFactors();
+          console.log("[2FA] Factors:", JSON.stringify(factors), "Error:", listErr?.message);
           if (factors?.totp) {
             for (const f of factors.totp) {
               if (f.status === 'unverified') {
-                try { await supabase.auth.mfa.unenroll({ factorId: f.id }); } catch {}
+                console.log("[2FA] Removing unverified factor:", f.id);
+                try { await supabase.auth.mfa.unenroll({ factorId: f.id }); console.log("[2FA] Unenrolled OK"); } catch(ue) { console.warn("[2FA] Unenroll failed:", ue.message); }
               }
             }
           }
-        } catch(listErr) { console.warn("[2FA] listFactors failed, continuing:", listErr.message); }
+        } catch(listErr) { console.warn("[2FA] listFactors failed:", listErr.message); }
+        console.log("[2FA] Enrolling new TOTP factor...");
         const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniqueHub' });
+        console.log("[2FA] Enroll result:", data ? "QR generated" : "no data", "Error:", error?.message);
         if (error) throw error;
         setTwoFAQR(data.totp.qr_code);
         setTwoFAFactorId(data.id);
         setTwoFASetup('verify');
-      } catch(e) { showToast("Erro ao gerar QR code: " + (e?.message || "")); setTwoFASetup(null); }
+      } catch(e) { console.error("[2FA] ENROLLMENT FAILED:", e); showToast("Erro ao gerar QR code: " + (e?.message || "")); setTwoFASetup(null); }
       setTwoFALoading(false);
     };
     startEnroll();
@@ -15802,12 +15809,12 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                 <p style={{ fontSize: 11, color: twoFA ? B.green : B.muted }}>{twoFA ? "✓ Ativado (App Autenticador)" : "Desativado"}</p>
               </div>
             </div>
-            <Toggle on={twoFA} onToggle={() => { if (twoFA) { setTwoFACode(""); setTwoFASetup('disable'); } else { setTwoFASetup('qr'); } }} />
+            <Toggle on={twoFA} onToggle={() => { console.log("[2FA] Toggle clicked, current:", twoFA); if (twoFA) { setTwoFACode(""); setTwoFASetup('disable'); } else { setTwoFASetup('qr'); } }} />
           </div>
           {!twoFA && <div style={{ marginTop: 12, paddingTop: 12, borderTop:`1px solid ${B.border}` }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom: 8 }}>Métodos disponíveis</p>
             <div style={{ display:"flex", flexDirection:"column", gap: 6 }}>
-              <button onClick={() => setTwoFASetup('qr')} style={{ display:"flex", alignItems:"center", gap: 10, padding:"10px 12px", borderRadius: 12, border:`1.5px solid ${B.accent}30`, background:`${B.accent}06`, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+              <button onClick={() => { console.log("[2FA] App Authenticator button clicked"); setTwoFASetup('qr'); }} style={{ display:"flex", alignItems:"center", gap: 10, padding:"10px 12px", borderRadius: 12, border:`1.5px solid ${B.accent}30`, background:`${B.accent}06`, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
                 <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><circle cx="17.5" cy="17.5" r="3.5"/></svg>
                 </div>
