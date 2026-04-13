@@ -23939,8 +23939,11 @@ NÃO invente campanhas que não existem no documento.`
             </label>
             {pdfText && <div style={{ marginTop:8, padding:12, borderRadius:12, background:`${B.accent}06`, fontSize:11, color:B.muted, maxHeight:80, overflow:"auto" }}>Texto extraído: {pdfText.slice(0,200)}...</div>}
           </div>)}
-          <button onClick={handleGenerate} disabled={generating||!selClient} style={{ width:"100%", padding:16, borderRadius:16, border:"none", background:!selClient?B.border:"linear-gradient(135deg,#0D0D0D,#1a1a2e)", color:!selClient?B.muted:LIME, fontFamily:"inherit", fontSize:16, fontWeight:800, cursor:selClient?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", gap:10, opacity:generating?0.7:1 }}>
-            {generating ? (<><div style={{ width:18, height:18, border:"2px solid transparent", borderTopColor:LIME, borderRadius:"50%", animation:"spin 1s linear infinite" }} /> Gerando apresentação...</>) : (<><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={!selClient?B.muted:LIME} strokeWidth="2" strokeLinecap="round"><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/><path d="M9 18h6"/><path d="M10 22h4"/></svg> Gerar com IA</>)}
+          <button onClick={handleGenerate} disabled={generating||!selClient} style={{ width:"100%", padding:16, borderRadius:16, border:"none", background:!selClient?B.border:"linear-gradient(135deg,#0D0D0D,#1a1a2e)", color:!selClient?B.muted:LIME, fontFamily:"inherit", fontSize:16, fontWeight:800, cursor:selClient?"pointer":"default", display:"flex", alignItems:"center", justifyContent:"center", gap:10, opacity:generating?0.7:1, flexDirection:"column" }}>
+            {generating ? (<div style={{ display:"flex", alignItems:"center", gap:10 }}><div style={{ width:18, height:18, border:"2px solid transparent", borderTopColor:LIME, borderRadius:"50%", animation:"spin 1s linear infinite" }} /> Gerando apresentação...</div>) : (<>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={!selClient?B.muted:LIME} strokeWidth="2" strokeLinecap="round"><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/><path d="M9 18h6"/><path d="M10 22h4"/></svg> Gerar com IA</div>
+              {!selClient && <span style={{ fontSize:11, fontWeight:500, marginTop:4 }}>Selecione um cliente acima para continuar</span>}
+            </>)}
           </button>
         </div>
       </div>
