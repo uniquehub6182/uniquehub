@@ -840,6 +840,15 @@ const supaSetSetting = async (key, value) => {
     return true;
   } catch(e) { console.error("[setSetting] CATCH:", key, e); return false; }
 };
+/* ── Audit log: records critical actions for admin review ── */
+const supaAuditLog = async (action, details = {}, userId = null) => {
+  if (!supabase) return;
+  try {
+    const entry = { action, details, user_id: userId, at: new Date().toISOString() };
+    const key = `audit_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+    await supabase.from("app_settings").insert({ key, value: JSON.stringify(entry), org_id: _currentOrgId, updated_at: new Date().toISOString() });
+  } catch(e) { console.warn("[Audit]", e.message); }
+};
 const supaGetAIKeys = async () => {
   if (!supabase) return {};
   try {
@@ -2387,13 +2396,22 @@ function LoginPage({ onAuth, onClientAuth }) {
     /* Blocked users */
     const BLOCKED = ["lucassouza@hotmail.com","lucassouzap@hotmail.com","lucassouza@hotmail.com.br","lucas.souza@hotmail.com","lucassouza@outlook.com"];
     if (BLOCKED.some(b => email.trim().toLowerCase().replace(/\s/g,"") === b)) { setError("Acesso bloqueado. Entre em contato com o administrador."); return; }
+    /* Rate limiting: max 5 attempts per 15 min */
+    try {
+      const rlKey = "uh_login_attempts";
+      const rl = JSON.parse(localStorage.getItem(rlKey) || '{"count":0,"first":0}');
+      const now = Date.now();
+      if (now - rl.first > 15 * 60 * 1000) { rl.count = 0; rl.first = now; }
+      if (rl.count >= 5) { const remain = Math.ceil((15*60*1000 - (now - rl.first))/60000); setError(`Muitas tentativas. Aguarde ${remain} minuto${remain>1?"s":""}.`); return; }
+      rl.count++; localStorage.setItem(rlKey, JSON.stringify(rl));
+    } catch {}
     /* Try Supabase auth if available */
     if (supabase) {
       setLoginLoading(true); setError("");
       const loginTimeout = setTimeout(() => { setError("Servidor demorou para responder. Tente novamente."); setLoginLoading(false); }, 25000);
       try {
         const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
-        if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); setLoginLoading(false); return; }
+        if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); supaAuditLog("login_failed", { email, portal: "agency" }); setLoginLoading(false); return; }
         /* Load profile + extras + photo in ONE bulk query */
         const profilePromise = supabase.from("profiles").select("*").eq("id", data.user.id).single().then(r => r).catch(() => ({ data: null }));
         const settingsPromise = supaGetSettingsBulk([`profile_extras_${data.user.id}`, `profile_photo_${data.user.id}`]);
@@ -2446,7 +2464,7 @@ function LoginPage({ onAuth, onClientAuth }) {
             return;
           }
         }
-        clearTimeout(loginTimeout); setLoginLoading(false); onAuth(userObj);
+        clearTimeout(loginTimeout); setLoginLoading(false); try { localStorage.removeItem("uh_login_attempts"); } catch {} supaAuditLog("login", { email, portal: "agency" }, userObj.id); onAuth(userObj);
       } catch (e) { setError("Erro de conexão: " + (e?.message || "tente novamente")); setLoginLoading(false); }
       return;
     }
@@ -2585,6 +2603,15 @@ function LoginPage({ onAuth, onClientAuth }) {
   const handleClientLogin = async () => {
     if (!email.trim() || !pw.trim()) { setError("Preencha email e senha"); return; }
     if (!supabase) { setError("Servidor indisponível"); return; }
+    /* Rate limiting: max 5 attempts per 15 min */
+    try {
+      const rlKey = "uh_login_attempts_client";
+      const rl = JSON.parse(localStorage.getItem(rlKey) || '{"count":0,"first":0}');
+      const now = Date.now();
+      if (now - rl.first > 15 * 60 * 1000) { rl.count = 0; rl.first = now; }
+      if (rl.count >= 5) { const remain = Math.ceil((15*60*1000 - (now - rl.first))/60000); setError(`Muitas tentativas. Aguarde ${remain} minuto${remain>1?"s":""}.`); return; }
+      rl.count++; localStorage.setItem(rlKey, JSON.stringify(rl));
+    } catch {}
     setLoginLoading(true); setError("");
     try {
       const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
@@ -2606,7 +2633,7 @@ function LoginPage({ onAuth, onClientAuth }) {
         setError("Esta conta é de colaborador. Use a aba \"Colaborador\" para acessar.");
         await supabase.auth.signOut(); setLoginLoading(false); return;
       }
-      if (onClientAuth) onClientAuth({ mode:"login", user: { id: data.user.id, name: profile?.name || email.split("@")[0], email, photo: profile?.photo_url || null, role: "cliente" } });
+      if (onClientAuth) { try { localStorage.removeItem("uh_login_attempts_client"); } catch {} onClientAuth({ mode:"login", user: { id: data.user.id, name: profile?.name || email.split("@")[0], email, photo: profile?.photo_url || null, role: "cliente" } }); }
       setLoginLoading(false);
     } catch(e) { setError("Erro: " + e.message); setLoginLoading(false); }
   };
