@@ -23541,16 +23541,22 @@ function PresentationsPage({ onBack, clients, user, demands }) {
 
   const gatherMetrics = () => {
     if (!selClient) return {};
+    const from = dateFrom ? new Date(dateFrom + "T00:00:00") : null;
+    const to = dateTo ? new Date(dateTo + "T23:59:59") : null;
     const [year, month] = selMonth.split("-").map(Number);
-    const cd = (demands || []).filter(d => d.client === selClient.name || d.client_id === selClient.id);
-    const md = cd.filter(d => { const dt = new Date(d.scheduled_date || d.created_at); return dt.getFullYear() === year && dt.getMonth() + 1 === month; });
-    const published = md.filter(d => d.stage === "Publicado" || d.stage === "published");
-    const approved = md.filter(d => d.stage === "Aprovado" || d.stage === "approved");
-    const pending = md.filter(d => d.stage === "Aguardando" || d.stage === "pending" || d.stage === "Aprovação");
+    const cd = (demands || []).filter(d => d.client === selClient.name || d.client_id === selClient.id || d.client_id === (selClient.supaId || selClient.id));
+    const md = cd.filter(d => {
+      const dt = new Date(d.scheduled_date || d.created_at);
+      if (from && to) return dt >= from && dt <= to;
+      return dt.getFullYear() === year && dt.getMonth() + 1 === month;
+    });
+    const published = md.filter(d => d.stage === "published" || d.stage === "Publicado" || d.stage === "done" || d.stage === "scheduled");
+    const approved = md.filter(d => d.stage === "client" || d.stage === "Aprovado" || d.stage === "approved" || d.stage === "review");
+    const pending = md.filter(d => d.stage !== "published" && d.stage !== "done");
     const pm = month === 1 ? 12 : month - 1; const py = month === 1 ? year - 1 : year;
-    const prevPub = cd.filter(d => { const dt = new Date(d.scheduled_date || d.created_at); return dt.getFullYear() === py && dt.getMonth() + 1 === pm && (d.stage === "Publicado" || d.stage === "published"); });
-    const types = {}; published.forEach(d => { const t = d.type || d.format || "Post"; types[t] = (types[t]||0) + 1; });
-    return { clientName: selClient.name, month: formatMonth(selMonth), totalDemands: md.length, published: published.length, approved: approved.length, pending: pending.length, prevPublished: prevPub.length, growth: prevPub.length > 0 ? Math.round(((published.length - prevPub.length) / prevPub.length) * 100) : 0, types, topPosts: published.slice(0,5).map(d => ({ title: d.title || d.caption?.slice(0,60) || "Post", type: d.type || "Post", date: d.scheduled_date })) };
+    const prevPub = cd.filter(d => { const dt = new Date(d.scheduled_date || d.created_at); return dt.getFullYear() === py && dt.getMonth() + 1 === pm && (d.stage === "published" || d.stage === "Publicado" || d.stage === "done" || d.stage === "scheduled"); });
+    const types = {}; md.forEach(d => { const t = d.type || d.format || "Post"; types[t] = (types[t]||0) + 1; });
+    return { clientName: selClient.name, month: formatMonth(selMonth), totalDemands: md.length, published: published.length, approved: approved.length, pending: pending.length, prevPublished: prevPub.length, growth: prevPub.length > 0 ? Math.round(((published.length - prevPub.length) / prevPub.length) * 100) : 0, types, topPosts: md.slice(0,5).map(d => ({ title: d.title || d.caption?.slice(0,60) || "Post", type: d.type || "Post", date: d.scheduled_date })) };
   };
 
   const handleGenerate = async () => {
