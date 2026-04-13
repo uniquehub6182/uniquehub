@@ -14743,7 +14743,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           }
         } catch(listErr) { console.warn("[2FA] listFactors failed:", listErr.message); }
         console.log("[2FA] Enrolling new TOTP factor...");
-        const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniqueHub' });
+        const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniqueHub_' + Date.now() });
         console.log("[2FA] Enroll result:", data ? "QR generated" : "no data", "Error:", error?.message);
         if (error) throw error;
         setTwoFAQR(data.totp.qr_code);
