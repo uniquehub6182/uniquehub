@@ -15916,14 +15916,14 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             {IC.chev()}
           </div>
         </Card>
-        {isAdmin && <Card onClick={() => setShowAuditLogs(true)} style={{ cursor: "pointer", marginTop: 8 }}>
+        {user?.supaRole === "admin" && <Card onClick={() => setShowAuditLogs(true)} style={{ cursor: "pointer", marginTop: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ color: B.accent, display: "flex" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
             <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>Logs de Segurança</p><p style={{ fontSize: 11, color: B.muted }}>Histórico de ações críticas na plataforma</p></div>
             {IC.chev()}
           </div>
         </Card>}
-        {isAdmin && <Card onClick={async () => {
+        {user?.supaRole === "admin" && <Card onClick={async () => {
           showToast("Exportando dados...");
           try {
             const [clients, members, settings, audit] = await Promise.all([
