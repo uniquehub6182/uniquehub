@@ -14721,35 +14721,28 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   /* Auto-start 2FA enrollment when entering 'qr' mode */
   useEffect(() => {
     if (twoFASetup !== 'qr' || !supabase) return;
-    console.log("[2FA] Starting enrollment flow...");
     const startEnroll = async () => {
       setTwoFALoading(true);
       try {
         /* Refresh session first to avoid stale JWT issues */
-        console.log("[2FA] Refreshing session...");
-        try { const refreshResult = await supabase.auth.refreshSession(); console.log("[2FA] Session refresh:", refreshResult.error ? refreshResult.error.message : "OK"); } catch(re) { console.warn("[2FA] Refresh failed:", re.message); }
+        try { await supabase.auth.refreshSession(); } catch {}
         /* Clean up any dangling unverified factors */
-        console.log("[2FA] Listing factors...");
         try {
           const { data: factors, error: listErr } = await supabase.auth.mfa.listFactors();
-          console.log("[2FA] Factors:", JSON.stringify(factors), "Error:", listErr?.message);
           if (factors?.totp) {
             for (const f of factors.totp) {
               if (f.status === 'unverified') {
-                console.log("[2FA] Removing unverified factor:", f.id);
-                try { await supabase.auth.mfa.unenroll({ factorId: f.id }); console.log("[2FA] Unenrolled OK"); } catch(ue) { console.warn("[2FA] Unenroll failed:", ue.message); }
+                try { await supabase.auth.mfa.unenroll({ factorId: f.id }); } catch {}
               }
             }
           }
-        } catch(listErr) { console.warn("[2FA] listFactors failed:", listErr.message); }
-        console.log("[2FA] Enrolling new TOTP factor...");
+        } catch(listErr) { /* silently continue */ }
         const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'UniqueHub_' + Date.now() });
-        console.log("[2FA] Enroll result:", data ? "QR generated" : "no data", "Error:", error?.message);
         if (error) throw error;
         setTwoFAQR(data.totp.qr_code);
         setTwoFAFactorId(data.id);
         setTwoFASetup('verify');
-      } catch(e) { console.error("[2FA] ENROLLMENT FAILED:", e); showToast("Erro ao gerar QR code: " + (e?.message || "")); setTwoFASetup(null); }
+      } catch(e) { showToast("Erro ao gerar QR code: " + (e?.message || "")); setTwoFASetup(null); }
       setTwoFALoading(false);
     };
     startEnroll();
@@ -15809,12 +15802,12 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
                 <p style={{ fontSize: 11, color: twoFA ? B.green : B.muted }}>{twoFA ? "✓ Ativado (App Autenticador)" : "Desativado"}</p>
               </div>
             </div>
-            <Toggle on={twoFA} onToggle={() => { console.log("[2FA] Toggle clicked, current:", twoFA); if (twoFA) { setTwoFACode(""); setTwoFASetup('disable'); } else { setTwoFASetup('qr'); } }} />
+            <Toggle on={twoFA} onToggle={() => { if (twoFA) { setTwoFACode(""); setTwoFASetup('disable'); } else { setTwoFASetup('qr'); } }} />
           </div>
           {!twoFA && <div style={{ marginTop: 12, paddingTop: 12, borderTop:`1px solid ${B.border}` }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom: 8 }}>Métodos disponíveis</p>
             <div style={{ display:"flex", flexDirection:"column", gap: 6 }}>
-              <button onClick={() => { console.log("[2FA] App Authenticator button clicked"); setTwoFASetup('qr'); }} style={{ display:"flex", alignItems:"center", gap: 10, padding:"10px 12px", borderRadius: 12, border:`1.5px solid ${B.accent}30`, background:`${B.accent}06`, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+              <button onClick={() => { setTwoFASetup('qr'); }} style={{ display:"flex", alignItems:"center", gap: 10, padding:"10px 12px", borderRadius: 12, border:`1.5px solid ${B.accent}30`, background:`${B.accent}06`, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
                 <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}15`, display:"flex", alignItems:"center", justifyContent:"center" }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><circle cx="17.5" cy="17.5" r="3.5"/></svg>
                 </div>
@@ -31145,6 +31138,29 @@ export default function App() {
     const iv = setInterval(update, 5 * 60 * 1000);
     return () => clearInterval(iv);
   }, [clientUser?.id]);
+
+  /* ── Session timeout: auto-logout after 8h of inactivity ── */
+  useEffect(() => {
+    if (!user?.id && !clientUser?.id) return;
+    const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; /* 8 hours */
+    const LS_KEY = "uh_last_activity";
+    const updateActivity = () => { try { localStorage.setItem(LS_KEY, Date.now().toString()); } catch {} };
+    const checkTimeout = () => {
+      try {
+        const last = parseInt(localStorage.getItem(LS_KEY) || "0");
+        if (last > 0 && Date.now() - last > SESSION_TIMEOUT) {
+          if (supabase) supabase.auth.signOut();
+          window.location.reload();
+        }
+      } catch {}
+    };
+    updateActivity();
+    const events = ["mousedown", "keydown", "touchstart", "scroll"];
+    const throttled = (() => { let t = 0; return () => { if (Date.now() - t > 60000) { t = Date.now(); updateActivity(); } }; })();
+    events.forEach(e => window.addEventListener(e, throttled, { passive: true }));
+    const iv = setInterval(checkTimeout, 5 * 60 * 1000); /* check every 5 min */
+    return () => { events.forEach(e => window.removeEventListener(e, throttled)); clearInterval(iv); };
+  }, [user?.id, clientUser?.id]);
 
   /* ── MFA challenge check ── */
   const checkMfaRequired = async () => {
