@@ -23559,7 +23559,7 @@ function PresentationsPage({ onBack, clients, user, demands }) {
     try {
       const aiKey = await supaGetSetting("claude_key");
       if (!aiKey) { showToast("Configure a chave da API Claude nas configurações", "error"); setGenerating(false); return; }
-      const metrics = mode === "metrics" ? gatherMetrics() : null;
+      const metrics = (mode === "metrics" || mode === "both") ? gatherMetrics() : null;
       const systemPrompt = `Você é a equipe de marketing da Unique Marketing, preparando uma apresentação profissional para reunião com o cliente.
 
 CONTEXTO: Esta apresentação será MOSTRADA DIRETAMENTE AO CLIENTE em reunião presencial ou online. A linguagem deve ser direcionada ao cliente: "Sua marca", "Seus resultados", "Seu público".
@@ -23615,6 +23615,13 @@ ESTRUTURA (siga esta ordem):
 
 IMPORTANTE: Fale diretamente com o cliente. Use "sua marca", "seu público", "seus resultados".
 Use os NÚMEROS REAIS fornecidos acima. Não invente dados.`
+        if (mode === "both" && pdfText) { userPrompt += `
+
+ALÉM DOS RESULTADOS, INCLUA TAMBÉM O PLANEJAMENTO DE CAMPANHAS:
+${pdfText}
+
+Adicione 3-5 slides extras (tipo "highlight") sobre as campanhas do PDF, entre os slides de resultados e o encerramento. Cada slide de campanha deve ter: objetivo, público-alvo, formato/canal, período e resultado esperado.
+Gere 14-18 slides no total.`; }
       } else {
         userPrompt = `Prepare uma apresentação de PLANEJAMENTO DE CAMPANHAS para apresentar ao cliente "${selClient.name}" na reunião de ${formatMonth(selMonth)}.
 
