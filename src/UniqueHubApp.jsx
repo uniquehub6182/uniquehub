@@ -731,6 +731,21 @@ const renderMd = (text) => {
     .replace(/\n/g, '<br/>');
   return h;
 };
+/* ── HTML sanitizer: strips dangerous tags/attributes for XSS protection ── */
+const sanitizeHtml = (html) => {
+  if (!html) return "";
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^>]*>.*?<\/iframe>/gi, "")
+    .replace(/<object\b[^>]*>.*?<\/object>/gi, "")
+    .replace(/<embed\b[^>]*\/?>/gi, "")
+    .replace(/<link\b[^>]*\/?>/gi, "")
+    .replace(/<form\b[^>]*>.*?<\/form>/gi, "")
+    .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, "")
+    .replace(/\s*on\w+\s*=\s*[^\s>]+/gi, "")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/data\s*:\s*text\/html/gi, "");
+};
 const normalizeCat = (cat) => {
   if (!cat) return "geral";
   const lower = cat.toLowerCase().trim();
@@ -2411,7 +2426,14 @@ function LoginPage({ onAuth, onClientAuth }) {
       const loginTimeout = setTimeout(() => { setError("Servidor demorou para responder. Tente novamente."); setLoginLoading(false); }, 25000);
       try {
         const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
-        if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); supaAuditLog("login_failed", { email, portal: "agency" }); setLoginLoading(false); return; }
+        if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); supaAuditLog("login_failed", { email, portal: "agency" });
+          /* Suspicious login detection: alert after 3+ failures for same email */
+          try {
+            const { data: recentFails } = await supabase.from("app_settings").select("key,value").like("key", "audit_%").order("updated_at", { ascending: false }).limit(20);
+            const failCount = (recentFails || []).filter(r => { try { const v = typeof r.value === "string" ? JSON.parse(r.value) : r.value; return v.action === "login_failed" && v.details?.email === email; } catch { return false; } }).length;
+            if (failCount >= 3) { supaAuditLog("suspicious_login", { email, portal: "agency", failures: failCount, reason: "Múltiplas tentativas falhas" }); }
+          } catch {}
+          setLoginLoading(false); return; }
         /* Load profile + extras + photo in ONE bulk query */
         const profilePromise = supabase.from("profiles").select("*").eq("id", data.user.id).single().then(r => r).catch(() => ({ data: null }));
         const settingsPromise = supaGetSettingsBulk([`profile_extras_${data.user.id}`, `profile_photo_${data.user.id}`]);
@@ -2464,7 +2486,7 @@ function LoginPage({ onAuth, onClientAuth }) {
             return;
           }
         }
-        clearTimeout(loginTimeout); setLoginLoading(false); try { localStorage.removeItem("uh_login_attempts"); } catch {} supaAuditLog("login", { email, portal: "agency" }, userObj.id); onAuth(userObj);
+        clearTimeout(loginTimeout); setLoginLoading(false); try { localStorage.removeItem("uh_login_attempts"); } catch {} try { await supabase.auth.signOut({ scope: 'others' }); } catch {} supaAuditLog("login", { email, portal: "agency" }, userObj.id); onAuth(userObj);
       } catch (e) { setError("Erro de conexão: " + (e?.message || "tente novamente")); setLoginLoading(false); }
       return;
     }
@@ -2615,7 +2637,13 @@ function LoginPage({ onAuth, onClientAuth }) {
     setLoginLoading(true); setError("");
     try {
       const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
-      if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); supaAuditLog("login_failed", { email, portal: "client" }); setLoginLoading(false); return; }
+      if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); supaAuditLog("login_failed", { email, portal: "client" });
+        try {
+          const { data: recentFails } = await supabase.from("app_settings").select("key,value").like("key", "audit_%").order("updated_at", { ascending: false }).limit(20);
+          const failCount = (recentFails || []).filter(r => { try { const v = typeof r.value === "string" ? JSON.parse(r.value) : r.value; return v.action === "login_failed" && v.details?.email === email; } catch { return false; } }).length;
+          if (failCount >= 3) { supaAuditLog("suspicious_login", { email, portal: "client", failures: failCount, reason: "Múltiplas tentativas falhas" }); }
+        } catch {}
+        setLoginLoading(false); return; }
       let profile = null;
       try { const r = await supabase.from("profiles").select("*").eq("id", data.user.id).single(); profile = r.data; } catch {}
       /* ── Block deleted users (profile removed but auth still exists) ── */
@@ -2633,7 +2661,7 @@ function LoginPage({ onAuth, onClientAuth }) {
         setError("Esta conta é de colaborador. Use a aba \"Colaborador\" para acessar.");
         await supabase.auth.signOut(); setLoginLoading(false); return;
       }
-      if (onClientAuth) { try { localStorage.removeItem("uh_login_attempts_client"); } catch {} supaAuditLog("login", { email, portal: "client" }, data.user.id); onClientAuth({ mode:"login", user: { id: data.user.id, name: profile?.name || email.split("@")[0], email, photo: profile?.photo_url || null, role: "cliente" } }); }
+      if (onClientAuth) { try { localStorage.removeItem("uh_login_attempts_client"); } catch {} try { await supabase.auth.signOut({ scope: 'others' }); } catch {} supaAuditLog("login", { email, portal: "client" }, data.user.id); onClientAuth({ mode:"login", user: { id: data.user.id, name: profile?.name || email.split("@")[0], email, photo: profile?.photo_url || null, role: "cliente" } }); }
       setLoginLoading(false);
     } catch(e) { setError("Erro: " + e.message); setLoginLoading(false); }
   };
@@ -7305,7 +7333,7 @@ function AcademyPage({ onBack, isClientView }) {
                 {(lesson.content || lesson.desc) && <div style={{ padding:16, borderRadius:12, background:B.bg, marginBottom:16 }}>
                   <p style={{ fontSize:11, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>Conteúdo da Aula</p>
                   {lesson.content
-                    ? <div style={{ fontSize:13, lineHeight:1.8, color:B.text, wordBreak:"break-word", overflowWrap:"break-word", overflow:"hidden" }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
+                    ? <div style={{ fontSize:13, lineHeight:1.8, color:B.text, wordBreak:"break-word", overflowWrap:"break-word", overflow:"hidden" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.content) }} />
                     : <p style={{ fontSize:13, lineHeight:1.7, color:B.text, whiteSpace:"pre-wrap" }}>{lesson.desc}</p>
                   }
                 </div>}
@@ -7687,7 +7715,7 @@ function AcademyPage({ onBack, isClientView }) {
             <Card style={{ marginBottom:14, borderLeft:`3px solid ${c}` }}>
               <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", letterSpacing:0.5, marginBottom:8 }}>Conteúdo da Aula</p>
               {lesson.content
-                ? <div style={{ fontSize:14, lineHeight:1.8, color:B.text, wordBreak:"break-word", overflowWrap:"break-word", overflow:"hidden", maxWidth:"100%" }} dangerouslySetInnerHTML={{ __html: lesson.content }} />
+                ? <div style={{ fontSize:14, lineHeight:1.8, color:B.text, wordBreak:"break-word", overflowWrap:"break-word", overflow:"hidden", maxWidth:"100%" }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(lesson.content) }} />
                 : <p style={{ fontSize:14, lineHeight:1.8, color:B.text, whiteSpace:"pre-wrap" }}>{lesson.desc}</p>
               }
             </Card>
@@ -14710,6 +14738,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   const [showOldPw, setShowOldPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [sessions, setSessions] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [showAuditLogs, setShowAuditLogs] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
   /* 2FA states */
   const [twoFASetup, setTwoFASetup] = useState(null); // null | 'qr' | 'disable'
   const [twoFAQR, setTwoFAQR] = useState("");
@@ -15722,6 +15753,53 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     }
 
     /* Sessions sub-view */
+    /* ── Audit Logs View ── */
+    if (showAuditLogs) {
+      const loadAuditLogs = async () => {
+        if (!supabase) return;
+        setAuditLoading(true);
+        try {
+          const { data } = await supabase.from("app_settings").select("key,value,updated_at").like("key", "audit_%").order("updated_at", { ascending: false }).limit(100);
+          const logs = (data || []).map(row => {
+            try { const v = typeof row.value === "string" ? JSON.parse(row.value) : row.value; return { ...v, key: row.key }; } catch { return null; }
+          }).filter(Boolean);
+          setAuditLogs(logs);
+        } catch(e) { console.error("Load audit logs:", e); }
+        setAuditLoading(false);
+      };
+      if (!auditLogs.length && !auditLoading) loadAuditLogs();
+      const ACTION_LABELS = { login:"Login", login_failed:"Login falho", suspicious_login:"⚠️ Login suspeito", add_member:"Membro adicionado", update_member:"Membro atualizado", delete_member:"Membro removido", delete_client:"Cliente excluído", block_user:"Usuário bloqueado", unblock_user:"Usuário desbloqueado", delete_client_user:"Acesso removido", connect_social:"Rede social conectada", password_change:"Senha alterada", delete_org:"Agência excluída", "2fa_enabled":"2FA ativado", "2fa_disabled":"2FA desativado", mfa_verified:"2FA verificado", data_export:"Backup exportado" };
+      const ACTION_COLORS = { login:B.green, login_failed:B.red||"#EF4444", suspicious_login:"#DC2626", delete_member:B.red||"#EF4444", delete_client:B.red||"#EF4444", delete_client_user:B.red||"#EF4444", delete_org:B.red||"#EF4444", block_user:B.orange||"#F59E0B", "2fa_enabled":B.green, "2fa_disabled":B.orange||"#F59E0B" };
+      return (
+        <SetPage title="Logs de Segurança" onBackOverride={() => { setShowAuditLogs(false); setAuditLogs([]); }}>
+          {auditLoading && <p style={{ textAlign:"center", color:B.muted, padding:20, fontSize:12 }}>Carregando logs...</p>}
+          {!auditLoading && auditLogs.length === 0 && <Card><p style={{ fontSize:13, color:B.muted, textAlign:"center" }}>Nenhum registro encontrado.</p></Card>}
+          {auditLogs.map((log, i) => {
+            const dt = log.at ? new Date(log.at) : null;
+            const color = ACTION_COLORS[log.action] || B.accent;
+            return (
+              <Card key={log.key||i} style={{ marginBottom:4, padding:"10px 14px" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ width:8, height:8, borderRadius:4, background:color, flexShrink:0 }} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:13, fontWeight:600 }}>{ACTION_LABELS[log.action] || log.action}</p>
+                    <p style={{ fontSize:11, color:B.muted }}>
+                      {log.details?.email || log.details?.name || ""}
+                      {log.details?.portal ? ` · ${log.details.portal === "agency" ? "Painel" : "Portal Cliente"}` : ""}
+                      {log.details?.page ? ` · ${log.details.page}` : ""}
+                      {log.details?.platform ? ` · ${log.details.platform}` : ""}
+                      {log.details?.reason ? ` · ${log.details.reason}` : ""}
+                    </p>
+                  </div>
+                  <p style={{ fontSize:10, color:B.muted, flexShrink:0 }}>{dt ? `${dt.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})} ${dt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}` : ""}</p>
+                </div>
+              </Card>
+            );
+          })}
+        </SetPage>
+      );
+    }
+
     if (sessions) {
       /* Detect current device from userAgent */
       const ua = navigator.userAgent;
@@ -15838,6 +15916,45 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
             {IC.chev()}
           </div>
         </Card>
+        {isAdmin && <Card onClick={() => setShowAuditLogs(true)} style={{ cursor: "pointer", marginTop: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ color: B.accent, display: "flex" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>Logs de Segurança</p><p style={{ fontSize: 11, color: B.muted }}>Histórico de ações críticas na plataforma</p></div>
+            {IC.chev()}
+          </div>
+        </Card>}
+        {isAdmin && <Card onClick={async () => {
+          showToast("Exportando dados...");
+          try {
+            const [clients, members, settings, audit] = await Promise.all([
+              supabase.from("clients").select("*"),
+              supabase.from("agency_members").select("*"),
+              supabase.from("app_settings").select("key,value,updated_at").not("key", "like", "audit_%").limit(500),
+              supabase.from("app_settings").select("key,value,updated_at").like("key", "audit_%").order("updated_at", { ascending: false }).limit(200)
+            ]);
+            const backup = {
+              exported_at: new Date().toISOString(),
+              org_id: _currentOrgId,
+              clients: clients.data || [],
+              members: members.data || [],
+              settings: (settings.data || []).map(s => ({ key: s.key, updated_at: s.updated_at })),
+              audit_logs: (audit.data || []).map(a => { try { return typeof a.value === "string" ? JSON.parse(a.value) : a.value; } catch { return a.value; } })
+            };
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = `uniquehub-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+            URL.revokeObjectURL(url);
+            showToast("Backup exportado ✓");
+            supaAuditLog("data_export", { type: "manual_backup" }, user?.id);
+          } catch(e) { showToast("Erro ao exportar: " + e.message); }
+        }} style={{ cursor: "pointer", marginTop: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ color: B.accent, display: "flex" }}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+            <div style={{ flex: 1 }}><p style={{ fontSize: 14, fontWeight: 600 }}>Exportar Dados (Backup)</p><p style={{ fontSize: 11, color: B.muted }}>Download JSON com clientes, equipe e configurações</p></div>
+            {IC.chev()}
+          </div>
+        </Card>}
       </SetPage>
     );
   }
