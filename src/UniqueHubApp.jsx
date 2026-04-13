@@ -15629,6 +15629,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           setTwoFASetup(null);
           setTwoFACode("");
           showToast("2FA ativado com sucesso ✓");
+          supaAuditLog("2fa_enabled", { method: "totp" }, user?.id);
         } catch(e) { showToast("Código inválido. Tente novamente."); setTwoFACode(""); }
         setTwoFALoading(false);
       };
@@ -15675,6 +15676,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           setTwoFASetup(null);
           setTwoFACode("");
           showToast("2FA desativado ✓");
+          supaAuditLog("2fa_disabled", { method: "totp" }, user?.id);
         } catch(e) { showToast("Código inválido. Tente novamente."); setTwoFACode(""); }
         setTwoFALoading(false);
       };
