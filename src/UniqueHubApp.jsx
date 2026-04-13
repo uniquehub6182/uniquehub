@@ -14982,7 +14982,7 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
           {/* ── Main Panel ── */}
           <div style={{ flex:1, background:B.bgCard, borderRadius:"var(--uh-radius)", border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", minWidth:0 }}>
             {sub && <div style={{ padding:"14px 24px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
-              <button onClick={() => setSub(null)} style={{ width:30, height:30, borderRadius:8, background:`${accent}08`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
+              <button onClick={onBackOverride || (() => setSub(null))} style={{ width:30, height:30, borderRadius:8, background:`${accent}08`, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}
                 onMouseEnter={e=>{e.currentTarget.style.background=`${accent}15`;}} onMouseLeave={e=>{e.currentTarget.style.background=`${accent}08`;}}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round"><path d="M15 18l-6-6 6-6"/></svg>
               </button>
@@ -15844,8 +15844,9 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
               Outras sessões ativas em outros dispositivos não são visíveis aqui por segurança.
             </p>
           </Card>
-          <button onClick={signOutOthers} className="pill full outline" style={{ marginTop: 8, color: B.red, borderColor: `${B.red}30` }}>
-            🔐 Encerrar todas as outras sessões
+          <button onClick={signOutOthers} className="pill full outline" style={{ marginTop: 8, color: B.red, borderColor: `${B.red}30`, display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Encerrar todas as outras sessões
           </button>
         </SetPage>
       );
