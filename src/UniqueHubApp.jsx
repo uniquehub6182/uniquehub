@@ -14986,8 +14986,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
     { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
     { k:"about", l:"Sobre", desc:"Versão e informações" },
-    { k:"plans", l:"Planos e Assinatura", desc:"Upgrade, features e pagamento" },
-    ...(_isSuperAdmin ? [{ k:"superadmin", l:"Super Admin", desc:"Gerenciar todas as agências" }] : []),
+    ...(!isClientView ? [{ k:"plans", l:"Planos e Assinatura", desc:"Upgrade, features e pagamento" }] : []),
+    ...(!isClientView && _isSuperAdmin ? [{ k:"superadmin", l:"Super Admin", desc:"Gerenciar todas as agências" }] : []),
   ];
 
   /* ── Unified Settings wrapper — shell stays mounted, only panel content swaps ── */
