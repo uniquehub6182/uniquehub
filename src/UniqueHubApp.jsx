@@ -18789,39 +18789,46 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   const pgRef = useRef(null);
   const isComposingRef = useRef(false);
   const clientRootRef = useRef(null); /* Locked folder for client view */
+  const [shareItem, setShareItem] = useState(null); /* Item being shared */
 
   /* Load items from Supabase */
   const loadItems = useCallback(async (parentId = null) => {
     setLoading(true);
-    let data = await libFetch(parentId);
-    /* Client view: if at root and no locked folder yet, filter by client_id */
-    if (isClientView && !parentId && !clientRootRef.current) {
+    if (isClientView && !parentId) {
+      /* Client view at root: show only items shared with this client */
       const cid = propClientId || (CDATA.find(c => c.name === clientFilter)?.supaId) || (CDATA.find(c => c.name === clientFilter)?.id);
-      if (cid) data = data.filter(it => it.client_id === cid);
-      else data = data.filter(it => (it.name||"").toLowerCase() === (clientFilter||"").toLowerCase());
+      if (cid) {
+        const allItems = await libFetch(null);
+        /* Show folders/files explicitly shared with this client (client_id match) */
+        const shared = allItems.filter(it => it.client_id === cid);
+        setItems(shared);
+      } else {
+        setItems([]);
+      }
+    } else {
+      /* Agency view OR client navigating inside a shared folder */
+      const data = await libFetch(parentId);
+      setItems(data);
     }
-    setItems(data);
     setLoading(false);
-  }, [isClientView, clientFilter, CDATA]);
+  }, [isClientView, clientFilter, propClientId, CDATA]);
 
   useEffect(() => { loadItems(currentFolderId); }, [currentFolderId, loadItems]);
 
-  /* Client view: auto-navigate into client's folder */
-  useEffect(() => {
-    if (!isClientView || clientRootRef.current) return;
-    (async () => {
-      const allRoot = await libFetch(null);
-      const cid = propClientId || (CDATA.find(c => c.name === clientFilter)?.supaId) || (CDATA.find(c => c.name === clientFilter)?.id);
-      /* Match by client_id first (most reliable), then by name */
-      let clientFolder = cid ? allRoot.find(it => it.is_folder && it.client_id === cid) : null;
-      if (!clientFolder) clientFolder = allRoot.find(it => it.is_folder && it.name.toLowerCase() === (clientFilter||"").toLowerCase());
-      if (clientFolder) {
-        clientRootRef.current = clientFolder.id;
-        setCurrentFolderId(clientFolder.id);
-        setFolderPath([{ id: clientFolder.id, name: clientFolder.name }]);
-      }
-    })();
-  }, [isClientView, clientFilter, propClientId, CDATA]);
+  /* Share item with a client */
+  const handleShare = async (itemId, clientId) => {
+    if (!supabase) return false;
+    const { error } = await supabase.from("library_files").update({ client_id: clientId, updated_at: new Date().toISOString() }).eq("id", itemId);
+    if (error) { console.error("[LibDrive] share:", error); return false; }
+    return true;
+  };
+  /* Unshare item */
+  const handleUnshare = async (itemId) => {
+    if (!supabase) return false;
+    const { error } = await supabase.from("library_files").update({ client_id: null, updated_at: new Date().toISOString() }).eq("id", itemId);
+    if (error) { console.error("[LibDrive] unshare:", error); return false; }
+    return true;
+  };
 
   /* Auto-migrate old client files on first load */
   useEffect(() => {
@@ -18998,6 +19005,39 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     </div>
   ) : null;
 
+  /* Share with client modal */
+  const ShareModal = () => {
+    if (!shareItem) return null;
+    const currentClient = CDATA.find(c => (c.supaId||c.id) === shareItem.client_id);
+    return (
+      <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>setShareItem(null)}>
+        <div onClick={e=>e.stopPropagation()} style={{ background:B.bgCard, borderRadius:16, padding:24, width:380, maxHeight:"80vh", border:`1px solid ${B.border}`, display:"flex", flexDirection:"column" }}>
+          <p style={{ fontSize:15, fontWeight:700, marginBottom:4 }}>Compartilhar com cliente</p>
+          <p style={{ fontSize:11, color:B.muted, marginBottom:14 }}>{shareItem.is_folder?"Pasta":"Arquivo"}: <strong>{shareItem.name}</strong></p>
+          {currentClient && <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", borderRadius:10, background:`${B.green}08`, border:`1px solid ${B.green}20`, marginBottom:12 }}>
+            <div><p style={{ fontSize:10, color:B.muted }}>Compartilhado com:</p><p style={{ fontSize:13, fontWeight:700, color:B.green }}>{currentClient.name}</p></div>
+            <button onClick={async()=>{const ok=await handleUnshare(shareItem.id);if(ok){showToast("Compartilhamento removido");setShareItem(null);loadItems(currentFolderId);}}} style={{ padding:"6px 12px", borderRadius:8, background:`${B.red||"#EF4444"}10`, border:`1px solid ${B.red||"#EF4444"}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.red||"#EF4444" }}>Remover</button>
+          </div>}
+          <p style={{ fontSize:10, fontWeight:700, color:B.muted, textTransform:"uppercase", marginBottom:6 }}>{currentClient?"Trocar cliente:":"Selecione o cliente:"}</p>
+          <div style={{ flex:1, overflowY:"auto", maxHeight:300 }}>
+            {CDATA.map(c => {
+              const cid = c.supaId || c.id;
+              const isCurrent = cid === shareItem.client_id;
+              return (
+                <button key={cid} onClick={async()=>{if(isCurrent)return;const ok=await handleShare(shareItem.id,cid);if(ok){showToast("Compartilhado com "+c.name+" ✓");setShareItem(null);loadItems(currentFolderId);}else showToast("Erro ao compartilhar");}} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"10px 12px", borderRadius:10, border:isCurrent?`1.5px solid ${B.green}`:`1.5px solid ${B.border}`, background:isCurrent?`${B.green}06`:B.bgCard, cursor:isCurrent?"default":"pointer", fontFamily:"inherit", fontSize:13, fontWeight:isCurrent?700:500, color:isCurrent?B.green:B.text, marginBottom:4, textAlign:"left" }} onMouseEnter={e=>{if(!isCurrent)e.currentTarget.style.borderColor=B.accent;}} onMouseLeave={e=>{if(!isCurrent)e.currentTarget.style.borderColor=B.border;}}>
+                  <div style={{ width:32, height:32, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:800, color:B.accent, flexShrink:0 }}>{(c.name||"?")[0]}</div>
+                  <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.name}</span>
+                  {isCurrent && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={()=>setShareItem(null)} style={{ marginTop:12, padding:"10px 0", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text, width:"100%" }}>Cancelar</button>
+        </div>
+      </div>
+    );
+  };
+
   /* Upload overlay */
   const UploadOverlay = () => uploading ? (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }}>
@@ -19071,6 +19111,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
         <div style={{ padding:"8px 10px" }}>
           <p style={{ fontSize:11, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</p>
           <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{item.is_folder?"Pasta":fmtSize(item.size_bytes)} {item.is_folder?"":"· "+fmtDate(item.created_at)}</p>
+          {!isClientView && item.client_id && (() => { const cn = CDATA.find(c => (c.supaId||c.id) === item.client_id); return cn ? <p style={{ fontSize:8, color:B.blue||"#3B82F6", marginTop:2, display:"flex", alignItems:"center", gap:3 }}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>{cn.name}</p> : null; })()}
         </div>
       </div>
     );
@@ -19086,6 +19127,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
         <button onClick={()=>{setRenamingId(contextMenu.item.id);setRenameVal(contextMenu.item.name);setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.text, textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Renomear</button>
         {!contextMenu.item.is_folder && contextMenu.item.url && <button onClick={()=>{navigator.clipboard.writeText(contextMenu.item.url);showToast("Link copiado ✓");setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.text, textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copiar link</button>}
         {currentFolderId && <button onClick={async()=>{const ok=await libMove(contextMenu.item.id,null);if(ok){showToast("Movido para raiz ✓");loadItems(currentFolderId);}setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.text, textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Mover para raiz</button>}
+        {!isClientView && <><div style={{ height:1, background:B.border, margin:"2px 8px" }} /><button onClick={()=>{setShareItem(contextMenu.item);setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.blue||"#3B82F6", textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.blue||"#3B82F6"}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>{contextMenu.item.client_id?" Trocar cliente":" Enviar p/ cliente"}</button></>}
         <div style={{ height:1, background:B.border, margin:"2px 8px" }} />
         <button onClick={()=>{handleDelete(contextMenu.item);setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.red||"#EF4444", textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.red||"#EF4444"}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg> Apagar</button>
       </div>
@@ -19143,7 +19185,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   /* ══════════ DESKTOP VIEW ══════════ */
   if (isLibDesktop) return (
     <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      {ToastEl}<NewFolderModal /><RenameModal /><UploadOverlay /><ContextMenuEl />
+      {ToastEl}<NewFolderModal /><RenameModal /><ShareModal /><UploadOverlay /><ContextMenuEl />
       <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" onBack={onBack} collapsed={false} stats={[]} />
       <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:12, flex:1, minHeight:0 }}>
         {/* Toolbar */}
@@ -19235,7 +19277,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   /* ══════════ MOBILE: Main list ══════════ */
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      {ToastEl}<NewFolderModal /><RenameModal /><UploadOverlay />
+      {ToastEl}<NewFolderModal /><RenameModal /><ShareModal /><UploadOverlay />
       <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" collapsed={pgC} stats={[]} onBack={onBack} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
