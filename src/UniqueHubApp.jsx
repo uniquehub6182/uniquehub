@@ -18901,22 +18901,28 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     return { ic: IC.doc, c: B.muted };
   };
 
-  /* Upload handler — multi-file with error handling */
+  /* Upload handler — multi-file PARALLEL (3 concurrent) */
   const handleUpload = async (fileList) => {
     if (!fileList?.length) return;
     setUploading(true);
     const files = Array.from(fileList);
-    let ok = 0; let errors = [];
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      const sizeMB = (f.size / 1048576).toFixed(0);
-      setUploadProgress(`${i+1}/${files.length} — ${f.name} (${sizeMB}MB)`);
+    let ok = 0; let errors = []; let done = 0;
+    const CONCURRENCY = 3;
+    const update = () => setUploadProgress(`${done}/${files.length} concluído(s)${errors.length?" · "+errors.length+" erro(s)":""}`);
+    const uploadOne = async (f) => {
       try {
         const result = await libUploadFile(f, currentFolderId);
-        if (result?.error) { errors.push(f.name + ": " + result.error); }
+        if (result?.error) errors.push(f.name);
         else if (result) ok++;
-        else errors.push(f.name + ": falhou");
-      } catch (e) { errors.push(f.name + ": " + (e.message||"erro")); }
+        else errors.push(f.name);
+      } catch { errors.push(f.name); }
+      done++; update();
+    };
+    /* Process in batches of CONCURRENCY */
+    for (let i = 0; i < files.length; i += CONCURRENCY) {
+      const batch = files.slice(i, i + CONCURRENCY);
+      setUploadProgress(`${done}/${files.length} — enviando ${batch.map(f=>f.name.slice(0,20)).join(", ")}...`);
+      await Promise.all(batch.map(uploadOne));
     }
     setUploading(false); setUploadProgress("");
     if (ok > 0) { showToast(ok + " enviado(s)" + (errors.length ? ", " + errors.length + " erro(s)" : "") + " ✓"); loadItems(currentFolderId); }
