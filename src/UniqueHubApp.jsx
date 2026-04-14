@@ -532,14 +532,30 @@ const libCreateFolder = async (name, parentId = null) => {
 const libUploadFile = async (file, parentId = null) => {
   if (!supabase || !_currentOrgId) return null;
   try {
+    const isVideo = file.type?.startsWith("video/");
     const isImgFile = file.type?.startsWith("image/");
     const processed = isImgFile ? await compressImage(file) : file;
     const safeName = (processed.name||file.name).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9._-]/g,"_");
     const path = "library/" + _currentOrgId + "/" + Date.now() + "_" + safeName;
-    const { error: upErr } = await supabase.storage.from("demand-files").upload(path, processed, { upsert:true, cacheControl:"3600", contentType: processed.type||file.type||"application/octet-stream" });
-    if (upErr) { console.error("[LibDrive] storage:", upErr); return null; }
-    const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
-    const url = pub?.publicUrl || "";
+    let url = "";
+    const R2_THRESHOLD = 10 * 1024 * 1024;
+    /* Route large files / videos to Cloudflare R2 */
+    if (processed.size > R2_THRESHOLD || isVideo) {
+      try {
+        const r2Res = await fetch(SUPA_URL + "/functions/v1/r2-upload", { method:"POST", headers:{ "Authorization":"Bearer "+SUPA_KEY, "x-file-name":safeName, "x-content-type":processed.type||file.type||"application/octet-stream" }, body:processed });
+        const r2Data = await r2Res.json();
+        if (r2Data.url) { url = r2Data.url; console.log("[LibDrive] R2 upload OK:", url); }
+        else { console.warn("[LibDrive] R2 failed:", r2Data.error); }
+      } catch (r2Err) { console.warn("[LibDrive] R2 error:", r2Err); }
+    }
+    /* Supabase Storage fallback (small files or R2 failure) */
+    if (!url) {
+      if (processed.size > 50 * 1024 * 1024) return { error: "Arquivo muito grande (" + (processed.size/1024/1024).toFixed(0) + "MB). Máximo: 50MB." };
+      const { error: upErr } = await supabase.storage.from("demand-files").upload(path, processed, { upsert:true, cacheControl:"3600", contentType: processed.type||file.type||"application/octet-stream" });
+      if (upErr) { console.error("[LibDrive] storage:", upErr); return null; }
+      const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
+      url = pub?.publicUrl || "";
+    }
     const row = { org_id: _currentOrgId, parent_id: parentId||null, name: file.name, is_folder: false, size_bytes: processed.size || file.size, url, storage_path: path, mime_type: processed.type||file.type||"" };
     const { data, error: dbErr } = await supabase.from("library_files").insert(row).select().single();
     if (dbErr) { console.error("[LibDrive] insert:", dbErr); return null; }
@@ -18885,20 +18901,26 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     return { ic: IC.doc, c: B.muted };
   };
 
-  /* Upload handler — multi-file */
+  /* Upload handler — multi-file with error handling */
   const handleUpload = async (fileList) => {
     if (!fileList?.length) return;
     setUploading(true);
     const files = Array.from(fileList);
-    let ok = 0;
+    let ok = 0; let errors = [];
     for (let i = 0; i < files.length; i++) {
-      setUploadProgress(`${i+1}/${files.length} — ${files[i].name}`);
-      const result = await libUploadFile(files[i], currentFolderId);
-      if (result) ok++;
+      const f = files[i];
+      const sizeMB = (f.size / 1048576).toFixed(0);
+      setUploadProgress(`${i+1}/${files.length} — ${f.name} (${sizeMB}MB)`);
+      try {
+        const result = await libUploadFile(f, currentFolderId);
+        if (result?.error) { errors.push(f.name + ": " + result.error); }
+        else if (result) ok++;
+        else errors.push(f.name + ": falhou");
+      } catch (e) { errors.push(f.name + ": " + (e.message||"erro")); }
     }
     setUploading(false); setUploadProgress("");
-    if (ok > 0) { showToast(ok + " arquivo(s) enviado(s) ✓"); loadItems(currentFolderId); }
-    else showToast("Erro no upload");
+    if (ok > 0) { showToast(ok + " enviado(s)" + (errors.length ? ", " + errors.length + " erro(s)" : "") + " ✓"); loadItems(currentFolderId); }
+    else showToast("Erro: " + (errors[0] || "falha no upload"));
   };
 
   /* Drag & drop handler */
