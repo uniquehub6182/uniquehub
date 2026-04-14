@@ -510,6 +510,68 @@ const supaUploadClientFile = async (file, clientId) => {
     return { name: file.name, path, url: pub?.publicUrl || "", size: file.size, type: file.type };
   } catch (e) { console.error("Client upload catch:", e); return { error: e.message }; }
 };
+/* ── Library Drive CRUD (library_files table) ── */
+const libFetch = async (parentId = null, orgId = null) => {
+  if (!supabase) return [];
+  const oid = orgId || _currentOrgId;
+  let q = supabase.from("library_files").select("*");
+  if (oid) q = q.eq("org_id", oid);
+  if (parentId) q = q.eq("parent_id", parentId); else q = q.is("parent_id", null);
+  q = q.order("is_folder", { ascending: false }).order("name");
+  const { data, error } = await q;
+  if (error) { console.error("[LibDrive] fetch error:", error); return []; }
+  return data || [];
+};
+const libCreateFolder = async (name, parentId = null) => {
+  if (!supabase || !_currentOrgId) return null;
+  const row = { org_id: _currentOrgId, parent_id: parentId||null, name, is_folder: true };
+  const { data, error } = await supabase.from("library_files").insert(row).select().single();
+  if (error) { console.error("[LibDrive] createFolder:", error); return null; }
+  return data;
+};
+const libUploadFile = async (file, parentId = null) => {
+  if (!supabase || !_currentOrgId) return null;
+  try {
+    const isImgFile = file.type?.startsWith("image/");
+    const processed = isImgFile ? await compressImage(file) : file;
+    const safeName = (processed.name||file.name).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9._-]/g,"_");
+    const path = "library/" + _currentOrgId + "/" + Date.now() + "_" + safeName;
+    const { error: upErr } = await supabase.storage.from("demand-files").upload(path, processed, { upsert:true, cacheControl:"3600", contentType: processed.type||file.type||"application/octet-stream" });
+    if (upErr) { console.error("[LibDrive] storage:", upErr); return null; }
+    const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
+    const url = pub?.publicUrl || "";
+    const row = { org_id: _currentOrgId, parent_id: parentId||null, name: file.name, is_folder: false, size_bytes: processed.size || file.size, url, storage_path: path, mime_type: processed.type||file.type||"" };
+    const { data, error: dbErr } = await supabase.from("library_files").insert(row).select().single();
+    if (dbErr) { console.error("[LibDrive] insert:", dbErr); return null; }
+    return data;
+  } catch (e) { console.error("[LibDrive] upload catch:", e); return null; }
+};
+const libRename = async (id, name) => { if (!supabase) return false; const { error } = await supabase.from("library_files").update({ name, updated_at: new Date().toISOString() }).eq("id", id); return !error; };
+const libMove = async (id, newParentId) => { if (!supabase) return false; const { error } = await supabase.from("library_files").update({ parent_id: newParentId||null, updated_at: new Date().toISOString() }).eq("id", id); return !error; };
+const libDeleteItem = async (id) => {
+  if (!supabase) return false;
+  const { data: item } = await supabase.from("library_files").select("storage_path,is_folder").eq("id", id).single();
+  if (item?.storage_path) { await supabase.storage.from("demand-files").remove([item.storage_path]).catch(()=>{}); }
+  const { error } = await supabase.from("library_files").delete().eq("id", id);
+  if (error) console.error("[LibDrive] delete:", error);
+  return !error;
+};
+const libMigrateClientFiles = async (clients) => {
+  if (!supabase || !_currentOrgId) return 0;
+  const existing = await libFetch(null, _currentOrgId);
+  if (existing.length > 0) return -1;
+  let count = 0;
+  for (const c of clients) {
+    if (!c.files?.length) continue;
+    for (const f of c.files) {
+      const row = { org_id: _currentOrgId, parent_id: null, name: f.name||"Arquivo", is_folder: false, size_bytes: parseInt(f.size)||0, url: f.url||"", storage_path: f.storagePath||"", mime_type: f.mimeType||"", category: f.category||"Outros", client_id: c.supaId||c.id };
+      const { error } = await supabase.from("library_files").insert(row);
+      if (!error) count++;
+    }
+  }
+  return count;
+};
+
 const supaDeleteFile = async (path) => {
   if (!supabase) return;
   try { await supabase.storage.from("demand-files").remove([path]); } catch(e) {}
@@ -18705,577 +18767,457 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
 function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientView, clientFilter }) {
   const isLibDesktop = useIsDesktop();
   const CDATA = propClients || [];
-  const [filterClient, setFilterClient] = useState(isClientView ? (clientFilter||"all") : "all");
-  const [filterCat, setFilterCat] = useState("all");
+  const { showToast, ToastEl } = useToast();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentFolderId, setCurrentFolderId] = useState(null);
+  const [folderPath, setFolderPath] = useState([]);
   const [search, setSearch] = useState("");
   const [viewFile, setViewFile] = useState(null);
-  const [addingFile, setAddingFile] = useState(false);
-  const [fileForm, setFileForm] = useState({});
+  const [libView, setLibView] = useState("grid");
+  const [dragOver, setDragOver] = useState(false);
+  const [dragOverFolder, setDragOverFolder] = useState(null);
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
   const [uploading, setUploading] = useState(false);
-  const { showToast, ToastEl } = useToast();
-  const [pgC, setPgC] = useState(false); const pgRef = useRef(null);
-  useEffect(() => { if (pgRef.current) { pgRef.current.scrollTop = 0; } }, []);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameVal, setRenameVal] = useState("");
+  const [contextMenu, setContextMenu] = useState(null);
+  const [migrated, setMigrated] = useState(false);
+  const [pgC, setPgC] = useState(false);
+  const pgRef = useRef(null);
 
-  const LIB_CATS = [
-    { key:"brand", label:"Manual de Marca", c:B.red },
-    { key:"feed", label:"Posts Feed", c:B.blue },
-    { key:"stories", label:"Stories", c:B.pink },
-    { key:"reels", label:"Capas de Reels", c:B.purple },
-    { key:"videos", label:"Vídeos", c:B.orange },
-    { key:"digital", label:"Artes Digitais", c:B.cyan },
-    { key:"print", label:"Material Impresso", c:B.green },
-    { key:"docs", label:"Documentos", c:B.muted },
-    { key:"ref", label:"Referências", c:B.yellow },
-    { key:"other", label:"Outros", c:B.muted },
-  ];
-  const LIB_CAT_IC = {brand:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>,feed:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,stories:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="6" y="2" width="12" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>,reels:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>,videos:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,digital:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>,print:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>,docs:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,ref:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,other:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>};
-  const catMap = { "Manual de Marca":"brand","Posts Feed":"feed","Stories":"stories","Capas de Reels":"reels","Vídeos":"videos","Artes Digitais":"digital","Material Impresso":"print","Documentos":"docs","Referências":"ref" };
-  const getFileCat = (f) => catMap[f.category] || "other";
+  /* Load items from Supabase */
+  const loadItems = useCallback(async (parentId = null) => {
+    setLoading(true);
+    const data = await libFetch(parentId);
+    setItems(data);
+    setLoading(false);
+  }, []);
 
-  /* Smart extension detection: checks name, originalExt, mimeType, url */
-  const IMG_EXTS = ["jpg","jpeg","png","gif","webp","heic","heif","svg","bmp","ico","tiff"];
-  const VID_EXTS = ["mp4","mov","avi","mkv","webm","m4v"];
-  const getFileExt = (f) => {
-    const fromName = f.name?.split(".").pop()?.toLowerCase();
-    if (fromName && fromName !== f.name?.toLowerCase() && fromName.length <= 5) return fromName;
-    if (f.originalExt) return f.originalExt;
-    const fromPath = f.storagePath?.split(".").pop()?.toLowerCase();
-    if (fromPath && fromPath.length <= 5) return fromPath;
-    const fromUrl = f.url?.split("?")[0]?.split("/").pop()?.split(".").pop()?.toLowerCase();
-    if (fromUrl && fromUrl.length <= 5 && fromUrl !== fromUrl?.split("_").pop()) return fromUrl;
-    if (f.mimeType?.startsWith("image/")) return f.mimeType.split("/")[1] === "jpeg" ? "jpg" : f.mimeType.split("/")[1];
-    if (f.mimeType?.startsWith("video/")) return f.mimeType.split("/")[1];
-    /* Last resort: check URL for common image patterns */
-    const urlLower = (f.url||"").toLowerCase();
-    if (/\.(jpg|jpeg|png|gif|webp|heic|heif|svg|bmp)(\?|$)/i.test(urlLower)) return urlLower.match(/\.(jpg|jpeg|png|gif|webp|heic|heif|svg|bmp)/i)[1];
-    if (/\.(mp4|mov|webm|avi)(\?|$)/i.test(urlLower)) return urlLower.match(/\.(mp4|mov|webm|avi)/i)[1];
-    return fromName || "";
+  useEffect(() => { loadItems(currentFolderId); }, [currentFolderId, loadItems]);
+
+  /* Auto-migrate old client files on first load */
+  useEffect(() => {
+    if (migrated || isClientView) return;
+    (async () => {
+      const hasFiles = CDATA.some(c => (c.files||[]).length > 0);
+      if (!hasFiles) { setMigrated(true); return; }
+      const existing = await libFetch(null);
+      if (existing.length > 0) { setMigrated(true); return; }
+      const count = await libMigrateClientFiles(CDATA);
+      if (count > 0) { showToast(count + " arquivos migrados para a Biblioteca"); loadItems(null); }
+      setMigrated(true);
+    })();
+  }, [CDATA, migrated, isClientView]);
+
+  /* Navigate into folder */
+  const navigateToFolder = (folder) => {
+    setFolderPath(p => [...p, { id: folder.id, name: folder.name }]);
+    setCurrentFolderId(folder.id);
+    setViewFile(null); setContextMenu(null); setSearch("");
   };
-  const isFileImage = (f) => IMG_EXTS.includes(getFileExt(f));
-  const isFileVideo = (f) => VID_EXTS.includes(getFileExt(f));
-  const fmtFileSize = (s) => { if (!s || s === "0.0MB" || s === "0MB" || s === "0B") return "—"; return s; };
+  /* Navigate to specific breadcrumb */
+  const navigateTo = (index) => {
+    if (index < 0) { setFolderPath([]); setCurrentFolderId(null); }
+    else { setFolderPath(p => p.slice(0, index + 1)); setCurrentFolderId(folderPath[index].id); }
+    setViewFile(null); setSearch("");
+  };
 
-  const fileIcon = (name) => {
-    const ext = name.split(".").pop()?.toLowerCase();
-    if (["jpg","jpeg","png","gif","webp","heic","heif","svg"].includes(ext)) return { ic: IC.img, c: B.pink };
-    if (["mp4","mov","avi","mkv"].includes(ext)) return { ic: IC.vid, c: B.orange };
-    if (["pdf"].includes(ext)) return { ic: IC.doc, c: B.red };
-    if (["psd","ai","fig","xd"].includes(ext)) return { ic: IC.palette, c: B.purple };
-    if (["doc","docx","txt"].includes(ext)) return { ic: IC.doc, c: B.blue };
+  /* File helpers */
+  const IMG_EXTS = ["jpg","jpeg","png","gif","webp","heic","heif","svg","bmp","ico"];
+  const VID_EXTS = ["mp4","mov","avi","mkv","webm","m4v"];
+  const getExt = (name) => { const p = (name||"").split("."); return p.length > 1 ? p.pop().toLowerCase() : ""; };
+  const isImg = (item) => IMG_EXTS.includes(getExt(item.name)) || (item.mime_type||"").startsWith("image/");
+  const isVid = (item) => VID_EXTS.includes(getExt(item.name)) || (item.mime_type||"").startsWith("video/");
+  const fmtSize = (bytes) => { if (!bytes) return "—"; const b = parseInt(bytes); if (b >= 1048576) return (b/1048576).toFixed(1)+"MB"; if (b >= 1024) return (b/1024).toFixed(0)+"KB"; return b+"B"; };
+  const fmtDate = (d) => { if (!d) return "—"; try { return new Date(d).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}); } catch { return "—"; } };
+
+  const fileIcon = (item) => {
+    if (item.is_folder) return { ic: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>, c: B.accent };
+    const ext = getExt(item.name);
+    if (IMG_EXTS.includes(ext)) return { ic: IC.img, c: B.pink };
+    if (VID_EXTS.includes(ext)) return { ic: IC.vid, c: B.orange };
+    if (ext === "pdf") return { ic: IC.doc, c: B.red };
+    if (["psd","ai","fig","xd","sketch"].includes(ext)) return { ic: IC.palette, c: B.purple };
+    if (["doc","docx","txt","rtf"].includes(ext)) return { ic: IC.doc, c: B.blue };
+    if (["xls","xlsx","csv"].includes(ext)) return { ic: IC.doc, c: B.green };
+    if (["zip","rar","7z","tar","gz"].includes(ext)) return { ic: IC.doc, c: B.cyan };
     return { ic: IC.doc, c: B.muted };
   };
 
-  // Gather all files from all clients
-  const allFiles = CDATA.flatMap(c => (c.files||[]).map(f => ({ ...f, clientName: c.name, clientId: c.id })));
-
-  const filtered = allFiles.filter(f => {
-    if (filterClient !== "all" && f.clientName !== filterClient) return false;
-    if (filterCat !== "all" && getFileCat(f) !== filterCat) return false;
-    if (search.trim()) {
-      const s = search.toLowerCase();
-      if (!f.name.toLowerCase().includes(s) && !f.clientName.toLowerCase().includes(s) && !(f.category||"").toLowerCase().includes(s)) return false;
-    }
-    return true;
-  });
-
-  // Stats
-  const totalFiles = allFiles.length;
-  const clientsWithFiles = [...new Set(allFiles.map(f => f.clientName))].length;
-  const catCounts = {};
-  allFiles.forEach(f => { const k = getFileCat(f); catCounts[k] = (catCounts[k]||0)+1; });
-  const topCat = Object.entries(catCounts).sort((a,b)=>b[1]-a[1])[0];
-
-  // Group by category or client
-  const grouped = {};
-  filtered.forEach(f => {
-    const key = filterClient !== "all" ? (f.category || "Outros") : f.clientName;
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(f);
-  });
-
-  /* ── FILE DETAIL VIEW ── */
-  if (viewFile && !isLibDesktop) {
-    const f = viewFile;
-    const fi = fileIcon(f.name);
-    const cat = LIB_CATS.find(c => c.key === getFileCat(f));
-    const ext = getFileExt(f);
-    const isImage = isFileImage(f);
-    const isVideo = isFileVideo(f);
-    const isPdf = ext === "pdf";
-    const hasUrl = !!f.url;
-
-    const handleDownload = () => {
-      if (hasUrl) {
-        const a = document.createElement("a");
-        a.href = f.url;
-        a.download = f.name;
-        a.target = "_blank";
-        a.rel = "noopener";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        showToast("Download iniciado ✓");
-      } else {
-        showToast("Arquivo de demonstração — sem URL real para download");
-      }
-    };
-
-    const handleOpen = () => {
-      if (hasUrl) {
-        window.open(f.url, "_blank", "noopener");
-      } else {
-        showToast("Arquivo de demonstração — sem URL real");
-      }
-    };
-
-    const handleCopyLink = () => {
-      if (hasUrl) {
-        navigator.clipboard.writeText(f.url).then(() => showToast("Link copiado! ✓")).catch(() => showToast("Erro ao copiar"));
-      } else {
-        showToast("Arquivo de demonstração — sem link para copiar");
-      }
-    };
-
-    return (
-      <div className="pg">
-        {ToastEl}
-        <Head title="" onBack={() => setViewFile(null)} />
-
-        {/* Preview area */}
-        {hasUrl && isImage && (
-          <Card style={{ padding:0, overflow:"hidden", marginBottom:12, borderRadius:16 }}>
-            <img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:300, objectFit:"contain", background:`${B.dark}` }} onError={e=>{e.target.onerror=null;e.target.style.display="none";e.target.parentElement.innerHTML=`<div style="padding:40px;text-align:center;background:${B.dark}"><p style="color:#fff;font-size:12px;opacity:0.7">Não foi possível carregar a imagem</p><p style="color:#fff;font-size:10px;opacity:0.4;margin-top:6px">${f.url?.substring(0,60)}...</p></div>`;}} />
-          </Card>
-        )}
-        {hasUrl && isVideo && (
-          <Card style={{ padding:0, overflow:"hidden", marginBottom:12, borderRadius:16 }}>
-            <video src={f.url+"#t=0.1"} controls playsInline preload="metadata" style={{ width:"100%", maxHeight:300, background:B.dark }} />
-          </Card>
-        )}
-
-        {/* File icon + name when no preview */}
-        <Card style={{ textAlign:"center", marginBottom:12 }}>
-          {!(hasUrl && (isImage || isVideo)) && (
-            <div style={{ width:64, height:64, borderRadius:20, background:`${fi.c}12`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, margin:"0 auto 12px", transform:"scale(1.5)" }}>{fi.ic}</div>
-          )}
-          <h3 style={{ fontSize:15, fontWeight:800, marginTop: (hasUrl && (isImage||isVideo)) ? 0 : 16, wordBreak:"break-all" }}>{f.name}</h3>
-          <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8 }}>
-            <Tag color={fi.c}>{ext?.toUpperCase()}</Tag>
-            <Tag color={cat?.c || B.muted}>{cat?.label || "Outros"}</Tag>
-          </div>
-        </Card>
-
-        {/* ACTION BUTTONS */}
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
-          <button onClick={handleDownload} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.textOnAccent }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Baixar
-          </button>
-          <button onClick={handleOpen} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:14, borderRadius:14, background:`${B.accent}10`, border:`1.5px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.accent }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            Abrir
-          </button>
-        </div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
-          <button onClick={handleCopyLink} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:12, borderRadius:14, background:`${B.blue}08`, border:`1.5px solid ${B.blue}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.blue }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-            Copiar link
-          </button>
-          <button onClick={() => { if (hasUrl && navigator.share) { navigator.share({ title:f.name, url:f.url }).catch(()=>{}); } else { handleCopyLink(); } }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:12, borderRadius:14, background:`${B.green}08`, border:`1.5px solid ${B.green}20`, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.green }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            Compartilhar
-          </button>
-        </div>
-
-        {/* File info */}
-        <Card>
-          <p className="sl" style={{ marginBottom:8 }}>Informações</p>
-          {[
-            { l:"Cliente", v:f.clientName },
-            { l:"Categoria", v:f.category || "Outros" },
-            { l:"Tamanho", v:fmtFileSize(f.size) },
-            { l:"Data", v:f.date },
-            { l:"Extensão", v:ext?.toUpperCase() },
-            ...(hasUrl ? [{ l:"Armazenamento", v:"Supabase Storage" }] : [{ l:"Armazenamento", v:"Demonstração" }]),
-          ].map((item,i) => (
-            <div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}>
-              <span style={{ fontSize:11, color:B.muted }}>{item.l}</span>
-              <span style={{ fontSize:13, fontWeight:600 }}>{item.v}</span>
-            </div>
-          ))}
-        </Card>
-
-        {/* Delete button — admin only */}
-        {!isClientView && <button onClick={async () => {
-          if (!confirm(`Tem certeza que deseja apagar "${f.name}"?`)) return;
-          const client = CDATA.find(c => c.id === f.clientId);
-          if (client) {
-            const newFiles = (client.files||[]).filter(x => x.id !== f.id);
-            const saveKey = `client_files_${client.supaId || client.id}`;
-            await supaSetSetting(saveKey, JSON.stringify(newFiles));
-            if (onUpdateClients) onUpdateClients(CDATA.map(c => c.id === f.clientId ? { ...c, files: newFiles } : c));
-            if (f.storagePath && supabase) { await supabase.storage.from("client-files").remove([f.storagePath]).catch(()=>{}); }
-            setViewFile(null);
-            showToast("Arquivo apagado ✓");
-          }
-        }} style={{ width:"100%", marginTop:12, padding:"14px 0", borderRadius:14, background:`${B.red||"#FF6B6B"}08`, border:`1.5px solid ${B.red||"#FF6B6B"}25`, cursor:"pointer", fontFamily:"inherit", fontSize:13, fontWeight:700, color:B.red||"#FF6B6B", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-          Apagar arquivo
-        </button>}
-      </div>
-    );
-  }
-
-  /* ── ADD FILE FORM ── */
-  const uploadLibFile = async () => {
-    const cid = isClientView ? (CDATA.find(c => (c.contact_email||"").toLowerCase() === (clientFilter||"").toLowerCase() || (c.name||"").toLowerCase() === (clientFilter||"").toLowerCase())?.id || fileForm.clientId) : fileForm.clientId;
-    if (!cid) return showToast("Selecione o cliente");
-    if (!fileForm.file) return showToast("Selecione um arquivo");
-    const client = CDATA.find(c => c.id === cid);
-    if (!client) return showToast("Cliente não encontrado");
+  /* Upload handler — multi-file */
+  const handleUpload = async (fileList) => {
+    if (!fileList?.length) return;
     setUploading(true);
-    const filesToUpload = fileForm._multiFiles ? Array.from(fileForm._multiFiles) : [fileForm.file];
-    const cat = fileForm.category || "Outros";
-    let added = [];
-    for (let i = 0; i < filesToUpload.length; i++) {
-      showToast(`Enviando ${i+1}/${filesToUpload.length}...`);
-      const f = filesToUpload[i];
-      const result = await supaUploadClientFile(f, cid);
-      if (result?.error) { showToast("Erro: " + f.name); continue; }
-      const bytes = f.size || 0;
-      const size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + "MB" : bytes >= 1024 ? (bytes / 1024).toFixed(0) + "KB" : bytes + "B";
-      added.push({ id: Date.now()+i, name: filesToUpload.length === 1 ? (fileForm.name?.trim() || f.name) : f.name, category: cat, date: new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric"}), size, url: result.url||"", storagePath: result.path||"", uploadedBy: isClientView ? "cliente" : "agencia", originalExt: f.name.split(".").pop()?.toLowerCase()||"", mimeType: f.type||"" });
+    const files = Array.from(fileList);
+    let ok = 0;
+    for (let i = 0; i < files.length; i++) {
+      setUploadProgress(`${i+1}/${files.length} — ${files[i].name}`);
+      const result = await libUploadFile(files[i], currentFolderId);
+      if (result) ok++;
     }
-    setUploading(false);
-    if (added.length) {
-      const newFiles = [...(client.files||[]), ...added];
-      const saveKey = `client_files_${client.supaId || client.id}`;
-      const saved = await supaSetSetting(saveKey, JSON.stringify(newFiles));
-      if (!saved) { showToast("Erro ao salvar metadados"); return; }
-      if (onUpdateClients) onUpdateClients(CDATA.map(c => c.id === cid ? { ...c, files: newFiles } : c));
-    }
-    setAddingFile(false); setFileForm({});
-    showToast(added.length + " arquivo(s) enviado(s) ✓");
+    setUploading(false); setUploadProgress("");
+    if (ok > 0) { showToast(ok + " arquivo(s) enviado(s) ✓"); loadItems(currentFolderId); }
+    else showToast("Erro no upload");
   };
 
-  /* ── DESKTOP LIBRARY — FULL REDESIGN ── */
-  const [libView, setLibView] = useState("grid"); /* grid | list */
-  const [dragOver, setDragOver] = useState(false);
+  /* Drag & drop handler */
   const handleDrop = (e) => {
     e.preventDefault(); setDragOver(false);
-    const file = e.dataTransfer?.files?.[0];
-    if (file) { setAddingFile(true); setFileForm({ file, name: file.name }); setViewFile(null); }
+    const files = e.dataTransfer?.files;
+    if (files?.length) handleUpload(files);
   };
 
-  if (isLibDesktop) {
-    const f = viewFile;
-    const fi = f ? fileIcon(f.name) : null;
-    const ext = f ? getFileExt(f) : "";
-    const isImage = f && isFileImage(f);
-    const isVideo = f && isFileVideo(f);
-    const clientNames = [...new Set(allFiles.map(ff=>ff.clientName))].sort();
-    return (
-      <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-        {ToastEl}
-        <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" onBack={onBack} collapsed={false} stats={[]} />
-        <div style={{ display:"flex", gap:16, marginTop:12, height:"calc(100vh - 230px)" }}>
-          {/* ── LEFT SIDEBAR: Filters ── */}
-          <div style={{ width:240, flexShrink:0, display:"flex", flexDirection:"column", gap:10 }}>
-            {/* Stats card */}
-            <div style={{ background:B.dark, borderRadius:16, padding:"16px 18px" }}>
-              <p style={{ fontSize:28, fontWeight:900, color:B.accent }}>{totalFiles}</p>
-              <p style={{ fontSize:10, color:"rgba(255,255,255,0.5)", marginBottom:10 }}>arquivos na biblioteca</p>
-              <div style={{ display:"flex", gap:12 }}>
-                <div><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>{clientsWithFiles}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>Clientes</p></div>
-                {topCat && <div><p style={{ fontSize:14, fontWeight:800, color:"#fff" }}>{topCat[1]}</p><p style={{ fontSize:8, color:"rgba(255,255,255,0.4)" }}>{LIB_CATS.find(c=>c.key===topCat[0])?.label||"Top"}</p></div>}
-              </div>
-            </div>
-            {/* Client filter */}
-            <div style={{ background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}` }}>
-                <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Cliente</p>
-              </div>
-              <div style={{ maxHeight:160, overflowY:"auto", padding:"4px 6px" }}>
-                <button onClick={()=>setFilterClient("all")} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterClient==="all"?700:500, background:filterClient==="all"?`${B.accent}10`:"transparent", color:filterClient==="all"?B.accent:B.text, marginBottom:1 }}>Todos ({totalFiles})</button>
-                {clientNames.map(cn => {
-                  const cnt = allFiles.filter(ff=>ff.clientName===cn).length;
-                  return <button key={cn} onClick={()=>setFilterClient(filterClient===cn?"all":cn)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterClient===cn?700:500, background:filterClient===cn?`${B.accent}10`:"transparent", color:filterClient===cn?B.accent:B.text, marginBottom:1, textAlign:"left" }}><span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{cn}</span><span style={{ fontSize:9, color:B.muted, flexShrink:0 }}>{cnt}</span></button>;
-                })}
-              </div>
-            </div>
-            {/* Category filter */}
-            <div style={{ flex:1, background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-              <div style={{ padding:"10px 12px", borderBottom:`1px solid ${B.border}` }}>
-                <p style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:0.5, color:B.muted }}>Categoria</p>
-              </div>
-              <div style={{ flex:1, overflowY:"auto", padding:"4px 6px" }}>
-                <button onClick={()=>setFilterCat("all")} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterCat==="all"?700:500, background:filterCat==="all"?`${B.accent}10`:"transparent", color:filterCat==="all"?B.accent:B.text, marginBottom:1 }}>📂 Todas</button>
-                {LIB_CATS.map(cat => {
-                  const cnt = catCounts[cat.key]||0;
-                  if (!cnt) return null;
-                  return <button key={cat.key} onClick={()=>setFilterCat(filterCat===cat.key?"all":cat.key)} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"6px 8px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:filterCat===cat.key?700:500, background:filterCat===cat.key?`${cat.c}10`:"transparent", color:filterCat===cat.key?cat.c:B.text, marginBottom:1 }}><span style={{display:"flex",color:filterCat===cat.key?cat.c:B.muted}}>{LIB_CAT_IC[cat.key]}</span><span style={{ flex:1, textAlign:"left" }}>{cat.label}</span><span style={{ fontSize:9, color:B.muted }}>{cnt}</span></button>;
-                })}
-              </div>
-            </div>
-          </div>
-          {/* ── CENTER + RIGHT: Content ── */}
-          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:10, minWidth:0 }}>
-            {/* Toolbar: search + view toggle + upload btn */}
-            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ flex:1, display:"flex", flexDirection:"column" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome, cliente..." style={{ width:"100%", padding:"10px 12px 10px 38px", borderRadius:12, border:`1.5px solid ${B.border}`, background:B.bgCard, fontFamily:"inherit", fontSize:13, outline:"none" }} />
-              </div>
-              <div style={{ display:"flex", borderRadius:10, border:`1.5px solid ${B.border}`, overflow:"hidden" }}>
-                <button onClick={()=>setLibView("grid")} style={{ padding:"8px 10px", border:"none", cursor:"pointer", background:libView==="grid"?`${B.accent}12`:"transparent", color:libView==="grid"?B.accent:B.muted, display:"flex" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
-                <button onClick={()=>setLibView("list")} style={{ padding:"8px 10px", border:"none", cursor:"pointer", background:libView==="list"?`${B.accent}12`:"transparent", color:libView==="list"?B.accent:B.muted, display:"flex" }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
-              </div>
-              {!isClientView && <button onClick={()=>{setAddingFile(true);setFileForm({});setViewFile(null);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"9px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Enviar</button>}
-            </div>
-            {/* Content split: files + detail */}
-            <div style={{ flex:1, display:"flex", gap:12, minHeight:0 }}>
-              {/* Files area with drag & drop */}
-              <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop} style={{ flex:1, background:B.bgCard, borderRadius:16, border:dragOver?`2px dashed ${B.accent}`:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", transition:"border .2s", position:"relative", minWidth:0 }}>
-                {dragOver && <div style={{ position:"absolute", inset:0, background:`${B.accent}08`, zIndex:10, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}><div style={{ textAlign:"center" }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p style={{ fontSize:14, fontWeight:700, color:B.accent }}>Solte o arquivo aqui</p></div></div>}
-                <div style={{ flex:1, overflowY:"auto", padding:libView==="grid"?"12px":"6px 8px" }}>
-                  {filtered.length===0 && <div style={{ textAlign:"center", padding:"50px 20px" }}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.2" strokeLinecap="round" style={{ margin:"0 auto 12px", display:"block", opacity:0.3 }}><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-                    <p style={{ fontSize:14, fontWeight:700, color:B.muted }}>Nenhum arquivo</p>
-                    <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>Arraste um arquivo ou clique "Enviar"</p>
-                  </div>}
-                  {/* GRID VIEW */}
-                  {libView==="grid" && filtered.length>0 && <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(150px, 1fr))", gap:10 }}>
-                    {filtered.map((ff,i) => {
-                      const ffi = fileIcon(ff.name); const isSel = viewFile?.id===ff.id;
-                      const ffExt = getFileExt(ff);
-                      const isImg = isFileImage(ff);
-                      const isVid = isFileVideo(ff);
-                      return (
-                        <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ borderRadius:14, border:isSel?`2px solid ${B.accent}`:`1.5px solid ${B.border}`, overflow:"hidden", cursor:"pointer", background:B.bgCard, transition:"all .15s", boxShadow:isSel?`0 0 0 3px ${B.accent}20`:"none" }} onMouseEnter={e=>{if(!isSel){e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel){e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
-                          <div style={{ width:"100%", height:110, background:isImg&&ff.url?`url(${ff.url}) center/cover`:isVid&&ff.url?"#000":`${ffi.c}08`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
-                            {isVid&&ff.url && <><video src={ff.url+"#t=0.1"} preload="metadata" muted style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}><div style={{ width:32, height:32, borderRadius:16, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="9 6 19 12 9 18"/></svg></div></div></>}
-                            {!(isImg&&ff.url) && !(isVid&&ff.url) && <div style={{ color:ffi.c, opacity:0.6, transform:"scale(1.5)" }}>{ffi.ic}</div>}
-                            {isVid && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.3)" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21"/></svg></div>}
-                            <span style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:700, padding:"2px 5px", borderRadius:4, background:"rgba(0,0,0,0.5)", color:"#fff", textTransform:"uppercase" }}>{ffExt}</span>
-                          </div>
-                          <div style={{ padding:"8px 10px" }}>
-                            <p style={{ fontSize:11, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.name}</p>
-                            <p style={{ fontSize:9, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.clientName}{fmtFileSize(ff.size) !== "—" ? " · "+fmtFileSize(ff.size) : ""}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>}
-                  {/* LIST VIEW */}
-                  {libView==="list" && filtered.length>0 && filtered.map((ff,i) => {
-                    const ffi = fileIcon(ff.name); const isSel = viewFile?.id===ff.id;
-                    const ffExt = getFileExt(ff);
-                    const isImg = isFileImage(ff);
-                    return (
-                      <div key={ff.id||i} onClick={()=>{setViewFile(ff);setAddingFile(false);}} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}06`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:"1.5px solid transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
-                        {isImg&&ff.url ? <div style={{ width:40, height:40, borderRadius:8, background:`url(${ff.url}) center/cover`, flexShrink:0 }}/> : <div style={{ width:40, height:40, borderRadius:8, background:`${ffi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:ffi.c, flexShrink:0 }}>{ffi.ic}</div>}
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ff.name}</p>
-                          <p style={{ fontSize:10, color:B.muted }}>{ff.clientName}</p>
-                        </div>
-                        <span style={{ fontSize:8, fontWeight:700, padding:"2px 6px", borderRadius:4, background:`${ffi.c}10`, color:ffi.c, textTransform:"uppercase" }}>{ffExt}</span>
-                        <span style={{ fontSize:10, color:B.muted }}>{ff.size}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              {/* ── Right detail panel ── */}
-              {(f || addingFile) && <div style={{ width:320, flexShrink:0, background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
-                {addingFile ? <>
-                  <div style={{ padding:"12px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
-                    <button onClick={()=>{setAddingFile(false);setFileForm({});}} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                    <p style={{ fontSize:13, fontWeight:700 }}>Enviar Arquivo</p>
-                  </div>
-                  <div style={{ flex:1, overflowY:"auto", padding:"14px" }}>
-                    {/* Drop zone */}
-                    <label onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor=B.accent;}} onDragLeave={e=>{e.currentTarget.style.borderColor=`${B.accent}30`;}} onDrop={e=>{e.preventDefault();const file=e.dataTransfer?.files?.[0];if(file)setFileForm(p=>({...p,file,name:p.name||file.name}));}} style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:8, padding:"28px 16px", borderRadius:14, border:`2px dashed ${fileForm.file?B.green:`${B.accent}30`}`, background:fileForm.file?`${B.green}04`:`${B.accent}02`, cursor:"pointer", marginBottom:14, transition:"all .2s" }}>
-                      {fileForm.file ? <><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><p style={{ fontSize:12, fontWeight:700, color:B.green }}>Arquivo selecionado</p><p style={{ fontSize:10, color:B.muted, wordBreak:"break-all", textAlign:"center" }}>{fileForm.file.name}</p><p style={{ fontSize:9, color:B.muted }}>{(fileForm.file.size/1024/1024).toFixed(1)} MB</p></> : <><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p style={{ fontSize:12, fontWeight:600, color:B.accent }}>Arraste ou clique</p><p style={{ fontSize:9, color:B.muted }}>Imagens, vídeos, PDF, PSD...</p></>}
-                      <input type="file" multiple style={{display:"none"}} onChange={e=>{const files=Array.from(e.target.files||[]);if(files.length===1)setFileForm(p=>({...p,file:files[0],name:p.name||files[0].name}));else if(files.length>1){setFileForm(p=>({...p,file:files[0],name:p.name||files[0].name,_multiFiles:files}));}}} />
-                    </label>
-                    {!isClientView && <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Cliente *</label><select value={fileForm.clientId||""} onChange={e=>setFileForm(p=>({...p,clientId:e.target.value}))} className="tinput" style={{ fontSize:12 }}>{["",...CDATA.map(c=>({id:c.id,name:c.name}))].map(c=>typeof c==="string"?<option key="" value="">Selecionar...</option>:<option key={c.id} value={c.id}>{c.name}</option>)}</select></div>}
-                    <div style={{ marginBottom:12 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Nome</label><input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Nome do arquivo" className="tinput" style={{ fontSize:12 }} /></div>
-                    <div style={{ marginBottom:14 }}><label style={{ fontSize:9, fontWeight:700, color:B.muted, display:"block", marginBottom:3, textTransform:"uppercase" }}>Categoria</label><div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>{LIB_CATS.filter(c=>c.k!=="all").map(c=><button key={c.key} onClick={()=>setFileForm(p=>({...p,category:c.label}))} style={{ padding:"5px 10px", borderRadius:8, border:`1.5px solid ${fileForm.category===c.label?c.c:B.border}`, background:fileForm.category===c.label?`${c.c}10`:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fileForm.category===c.label?c.c:B.text, display:"flex", alignItems:"center", gap:5 }}><span style={{display:"flex",color:fileForm.category===c.label?c.c:B.muted}}>{LIB_CAT_IC[c.key]}</span>{c.label}</button>)}</div></div>
-                    <button onClick={uploadLibFile} disabled={uploading} style={{ width:"100%", padding:"10px 0", borderRadius:10, background:B.accent, border:"none", cursor:uploading?"wait":"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, opacity:uploading?0.6:1 }}>{uploading?"Enviando...":"Enviar Arquivo"}</button>
-                  </div>
-                </> : f ? <>
-                  <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
-                    <button onClick={()=>setViewFile(null)} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-                    <p style={{ fontSize:13, fontWeight:700, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p>
-                  </div>
-                  <div style={{ flex:1, overflowY:"auto" }}>
-                    {/* Preview */}
-                    {f.url && isImage && <div style={{ background:B.dark, padding:8 }}><img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:200, objectFit:"contain", display:"block", margin:"0 auto", borderRadius:8 }}/></div>}
-                    {f.url && isVideo && <div style={{ background:B.dark }}><video src={f.url} controls style={{ width:"100%", maxHeight:200, display:"block" }}/></div>}
-                    {!(f.url && (isImage||isVideo)) && <div style={{ padding:"30px 16px", textAlign:"center", background:`${fi.c}04` }}><div style={{ color:fi.c, margin:"0 auto", display:"flex", justifyContent:"center", transform:"scale(2)", marginBottom:16 }}>{fi.ic}</div><p style={{ fontSize:12, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()}</p></div>}
-                    <div style={{ padding:"12px 14px" }}>
-                      {[{l:"Cliente",v:f.clientName},{l:"Categoria",v:f.category||"Outros"},{l:"Tamanho",v:fmtFileSize(f.size)},{l:"Data",v:f.date}].map((item,ii)=>(
-                        <div key={ii} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderTop:ii?`1px solid ${B.border}`:"none" }}>
-                          <span style={{ fontSize:10, color:B.muted }}>{item.l}</span>
-                          <span style={{ fontSize:12, fontWeight:600 }}>{item.v||"—"}</span>
-                        </div>
-                      ))}
-                      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginTop:12 }}>
-                        {f.url && <button onClick={()=>{const a=document.createElement("a");a.href=f.url;a.download=f.name;a.target="_blank";document.body.appendChild(a);a.click();document.body.removeChild(a);showToast("Download ✓");}} style={{ padding:"8px 0", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>Baixar</button>}
-                        {f.url && <button onClick={()=>window.open(f.url,"_blank","noopener")} style={{ padding:"8px 0", borderRadius:8, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Abrir</button>}
-                      </div>
-                      {f.url && <button onClick={()=>{navigator.clipboard.writeText(f.url);showToast("Link copiado ✓");}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:`${B.blue}08`, border:`1px solid ${B.blue}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.blue, marginTop:6 }}>Copiar link</button>}
-                      {!isClientView && <button onClick={async()=>{if(!confirm('Apagar "'+f.name+'"?'))return;const client=CDATA.find(c=>c.id===f.clientId);if(client){const nf=(client.files||[]).filter(x=>x.id!==f.id);const sk="client_files_"+(client.supaId||client.id);await supaSetSetting(sk,JSON.stringify(nf));if(onUpdateClients)onUpdateClients(CDATA.map(c=>c.id===f.clientId?{...c,files:nf}:c));if(f.storagePath&&supabase){await supabase.storage.from("client-files").remove([f.storagePath]).catch(()=>{});}setViewFile(null);showToast("Arquivo apagado ✓");}}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:(B.red||"#EF4444")+"08", border:"1px solid "+(B.red||"#EF4444")+"20", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.red||"#EF4444", marginTop:6, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>Apagar</button>}
-                    </div>
-                  </div>
-                </> : null}
-              </div>}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  /* Move item via drag & drop */
+  const handleItemDrop = async (e, targetFolderId) => {
+    e.preventDefault(); e.stopPropagation(); setDragOverFolder(null);
+    const raw = e.dataTransfer?.getData("application/uh-lib-item");
+    if (!raw) return;
+    try {
+      const item = JSON.parse(raw);
+      if (item.id === targetFolderId) return;
+      const ok = await libMove(item.id, targetFolderId);
+      if (ok) { showToast("Movido para pasta ✓"); loadItems(currentFolderId); }
+      else showToast("Erro ao mover");
+    } catch {}
+  };
 
-  /* ── MAIN LIBRARY VIEW ── */
+  /* Create folder */
+  const handleCreateFolder = async () => {
+    const name = newFolderName.trim();
+    if (!name) return;
+    const folder = await libCreateFolder(name, currentFolderId);
+    if (folder) { showToast("Pasta criada ✓"); setShowNewFolder(false); setNewFolderName(""); loadItems(currentFolderId); }
+    else showToast("Erro ao criar pasta");
+  };
 
+  /* Rename */
+  const handleRename = async () => {
+    const name = renameVal.trim();
+    if (!name || !renamingId) return;
+    const ok = await libRename(renamingId, name);
+    if (ok) { showToast("Renomeado ✓"); setRenamingId(null); setRenameVal(""); loadItems(currentFolderId); if (viewFile?.id === renamingId) setViewFile(p => ({...p, name})); }
+    else showToast("Erro ao renomear");
+  };
 
-  const LIB_CATS_FORM = [
-    { key:"brand", label:"Manual de Marca", c:B.red },
-    { key:"feed", label:"Posts Feed", c:B.blue },
-    { key:"stories", label:"Stories", c:B.pink },
-    { key:"reels", label:"Capas de Reels", c:B.purple },
-    { key:"videos", label:"Vídeos", c:B.orange },
-    { key:"digital", label:"Artes Digitais", c:B.cyan },
-    { key:"print", label:"Material Impresso", c:B.green },
-    { key:"docs", label:"Documentos", c:B.muted },
-  ];
+  /* Delete */
+  const handleDelete = async (item) => {
+    if (!confirm(`Apagar "${item.name}"${item.is_folder?" e todo seu conteúdo":""}?`)) return;
+    const ok = await libDeleteItem(item.id);
+    if (ok) { showToast("Apagado ✓"); if (viewFile?.id === item.id) setViewFile(null); loadItems(currentFolderId); }
+    else showToast("Erro ao apagar");
+  };
 
-  if (addingFile && !isLibDesktop) return (
-    <div className="pg">{ToastEl}
-      <Head title="Novo Arquivo" onBack={()=>{setAddingFile(false);setFileForm({});}} />
-      {!isClientView && <Card style={{ marginBottom:8 }}>
-        <label className="sl" style={{ display:"block", marginBottom:6 }}>Cliente *</label>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:4 }}>
-          {CDATA.map(c => (
-            <button key={c.id} onClick={()=>setFileForm(p=>({...p,clientId:c.id}))} style={{ padding:"7px 12px", borderRadius:10, border:`1.5px solid ${fileForm.clientId===c.id?B.accent:B.border}`, background:fileForm.clientId===c.id?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:fileForm.clientId===c.id?B.accent:B.text }}>{c.name}</button>
-          ))}
-        </div>
-      </Card>}
-      <Card style={{ marginBottom:8 }}>
-        <label className="sl" style={{ display:"block", marginBottom:4 }}>Nome do arquivo *</label>
-        <input value={fileForm.name||""} onChange={e=>setFileForm(p=>({...p,name:e.target.value}))} placeholder="Ex: post_lancamento_feed.png" className="tinput" style={{ marginBottom:12 }} />
-        <label className="sl" style={{ display:"block", marginBottom:6 }}>Categoria</label>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-          {LIB_CATS_FORM.map(cat => (
-            <button key={cat.key} onClick={()=>setFileForm(p=>({...p,category:cat.label}))} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", borderRadius:10, border:`1.5px solid ${fileForm.category===cat.label?B.accent:B.border}`, background:fileForm.category===cat.label?`${B.accent}10`:B.bgCard, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
-              <span style={{ fontSize:11, fontWeight:600, color:fileForm.category===cat.label?B.accent:B.text }}>{cat.label}</span>
-            </button>
-          ))}
-        </div>
-      </Card>
-      <Card style={{ marginBottom:8 }}>
-        <label className="sl" style={{ display:"block", marginBottom:6 }}>Arquivo *</label>
-        <label htmlFor="lib-file-input" style={{ display:"block", border:`2px dashed ${fileForm.file?B.green:B.accent}30`, borderRadius:12, padding:20, textAlign:"center", background:fileForm.file?`${B.green}06`:`${B.accent}04`, cursor:"pointer" }}>
-          <input id="lib-file-input" type="file" style={{ display:"none" }} onChange={e => {
-            const f = e.target.files?.[0];
-            if (f) { setFileForm(p => ({ ...p, file: f, name: p.name || f.name })); showToast(`Selecionado: ${f.name}`); }
-          }} />
-          {fileForm.file ? <>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={B.green} strokeWidth="2" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><polyline points="20 6 9 17 4 12"/></svg>
-            <p style={{ fontSize:13, fontWeight:700, color:B.green }}>{fileForm.file.name}</p>
-            <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{(fileForm.file.size / (1024 * 1024)).toFixed(1)} MB</p>
-          </> : <>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <p style={{ fontSize:12, fontWeight:600, color:B.accent }}>Toque para selecionar</p>
-            <p style={{ fontSize:10, color:B.muted, marginTop:4 }}>Imagens, vídeos, documentos (até 100MB)</p>
-          </>}
-        </label>
-      </Card>
-      <button onClick={uploadLibFile} disabled={uploading} className="pill full accent" style={{ marginTop:8, padding:"14px 0", opacity:uploading?0.6:1 }}>
-        {uploading ? "Enviando..." : "Enviar Arquivo"}
-      </button>
+  /* Filter */
+  const filtered = search.trim() ? items.filter(it => it.name.toLowerCase().includes(search.toLowerCase())) : items;
+  const folders = filtered.filter(it => it.is_folder);
+  const files = filtered.filter(it => !it.is_folder);
+  const totalItems = items.length;
+  const totalFolders = items.filter(it => it.is_folder).length;
+  const totalFiles = items.filter(it => !it.is_folder).length;
+
+  /* Breadcrumbs */
+  const Breadcrumbs = () => (
+    <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap", padding:"0 0 8px" }}>
+      <button onClick={()=>navigateTo(-1)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:folderPath.length?B.accent:B.text, padding:"4px 6px", borderRadius:6 }}>Biblioteca</button>
+      {folderPath.map((fp, i) => (
+        <React.Fragment key={fp.id}>
+          <span style={{ color:B.muted, fontSize:10 }}>/</span>
+          <button onClick={()=>navigateTo(i)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:i===folderPath.length-1?700:500, color:i===folderPath.length-1?B.text:B.accent, padding:"4px 6px", borderRadius:6, maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fp.name}</button>
+        </React.Fragment>
+      ))}
     </div>
   );
 
+  /* New Folder Modal */
+  const NewFolderModal = () => showNewFolder ? (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>setShowNewFolder(false)}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:B.bgCard, borderRadius:16, padding:24, width:340, border:`1px solid ${B.border}` }}>
+        <p style={{ fontSize:15, fontWeight:700, marginBottom:14 }}>Nova Pasta</p>
+        <input value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleCreateFolder();}} placeholder="Nome da pasta" autoFocus style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box" }} />
+        <div style={{ display:"flex", gap:8, marginTop:14 }}>
+          <button onClick={()=>setShowNewFolder(false)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text }}>Cancelar</button>
+          <button onClick={handleCreateFolder} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", background:B.accent, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Criar</button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  /* Rename Modal */
+  const RenameModal = () => renamingId ? (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>setRenamingId(null)}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:B.bgCard, borderRadius:16, padding:24, width:340, border:`1px solid ${B.border}` }}>
+        <p style={{ fontSize:15, fontWeight:700, marginBottom:14 }}>Renomear</p>
+        <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")handleRename();}} autoFocus style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box" }} />
+        <div style={{ display:"flex", gap:8, marginTop:14 }}>
+          <button onClick={()=>setRenamingId(null)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text }}>Cancelar</button>
+          <button onClick={handleRename} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", background:B.accent, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Salvar</button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  /* Upload overlay */
+  const UploadOverlay = () => uploading ? (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:B.bgCard, borderRadius:16, padding:32, textAlign:"center", border:`1px solid ${B.border}` }}>
+        <div style={{ width:40, height:40, borderRadius:20, border:`3px solid ${B.accent}30`, borderTopColor:B.accent, animation:"spin 1s linear infinite", margin:"0 auto 12px" }} />
+        <p style={{ fontSize:14, fontWeight:700 }}>Enviando...</p>
+        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{uploadProgress}</p>
+      </div>
+    </div>
+  ) : null;
+
+  /* Single item renderer for grid */
+  const GridItem = ({ item }) => {
+    const fi = fileIcon(item);
+    const ext = getExt(item.name);
+    const isSel = viewFile?.id === item.id;
+    const isImage = isImg(item);
+    const isVideo = isVid(item);
+    return (
+      <div draggable onDragStart={e=>{e.dataTransfer.setData("application/uh-lib-item",JSON.stringify({id:item.id,name:item.name,is_folder:item.is_folder}));e.dataTransfer.effectAllowed="move";}} onDragOver={e=>{if(item.is_folder){e.preventDefault();e.stopPropagation();setDragOverFolder(item.id);}}} onDragLeave={()=>setDragOverFolder(null)} onDrop={e=>{if(item.is_folder)handleItemDrop(e,item.id);}} onClick={()=>{if(item.is_folder)navigateToFolder(item);else setViewFile(item);}} onContextMenu={e=>{e.preventDefault();setContextMenu({x:e.clientX,y:e.clientY,item});}} style={{ borderRadius:14, border:isSel?`2px solid ${B.accent}`:dragOverFolder===item.id?`2px solid ${B.green}`:`1.5px solid ${B.border}`, overflow:"hidden", cursor:"pointer", background:dragOverFolder===item.id?`${B.green}06`:B.bgCard, transition:"all .15s", boxShadow:isSel?`0 0 0 3px ${B.accent}20`:"none" }} onMouseEnter={e=>{if(!isSel&&dragOverFolder!==item.id){e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel&&dragOverFolder!==item.id){e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
+        <div style={{ width:"100%", height:item.is_folder?80:110, background:item.is_folder?`${B.accent}08`:isImage&&item.url?`url(${item.url}) center/cover`:`${fi.c}08`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
+          {item.is_folder && <svg width="40" height="40" viewBox="0 0 24 24" fill={`${B.accent}20`} stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>}
+          {!item.is_folder && isVideo && item.url && <><video src={item.url+"#t=0.1"} preload="metadata" muted style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.3)" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21"/></svg></div></>}
+          {!item.is_folder && !isImage && !isVideo && <div style={{ color:fi.c, opacity:0.6, transform:"scale(1.5)" }}>{fi.ic}</div>}
+          {!item.is_folder && <span style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:700, padding:"2px 5px", borderRadius:4, background:"rgba(0,0,0,0.5)", color:"#fff", textTransform:"uppercase" }}>{ext}</span>}
+        </div>
+        <div style={{ padding:"8px 10px" }}>
+          <p style={{ fontSize:11, fontWeight:700, color:B.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</p>
+          <p style={{ fontSize:9, color:B.muted, marginTop:2 }}>{item.is_folder?"Pasta":fmtSize(item.size_bytes)} {item.is_folder?"":"· "+fmtDate(item.created_at)}</p>
+        </div>
+      </div>
+    );
+  };
+
+  /* Context menu */
+  const ContextMenuEl = () => contextMenu ? (
+    <div style={{ position:"fixed", inset:0, zIndex:9998 }} onClick={()=>setContextMenu(null)}>
+      <div onClick={e=>e.stopPropagation()} style={{ position:"fixed", left:contextMenu.x, top:contextMenu.y, background:B.bgCard, borderRadius:12, border:`1px solid ${B.border}`, boxShadow:"0 8px 24px rgba(0,0,0,0.15)", padding:4, minWidth:160, zIndex:9999 }}>
+        {contextMenu.item.is_folder && <button onClick={()=>{navigateToFolder(contextMenu.item);setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.text, textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>📂 Abrir</button>}
+        {!contextMenu.item.is_folder && contextMenu.item.url && <button onClick={()=>{window.open(contextMenu.item.url,"_blank");setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.text, textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>🔗 Abrir</button>}
+        {!contextMenu.item.is_folder && contextMenu.item.url && <button onClick={()=>{const a=document.createElement("a");a.href=contextMenu.item.url;a.download=contextMenu.item.name;a.target="_blank";document.body.appendChild(a);a.click();document.body.removeChild(a);showToast("Download ✓");setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.text, textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>⬇️ Baixar</button>}
+        <button onClick={()=>{setRenamingId(contextMenu.item.id);setRenameVal(contextMenu.item.name);setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.text, textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>✏️ Renomear</button>
+        {!contextMenu.item.is_folder && contextMenu.item.url && <button onClick={()=>{navigator.clipboard.writeText(contextMenu.item.url);showToast("Link copiado ✓");setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.text, textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>📋 Copiar link</button>}
+        {currentFolderId && <button onClick={async()=>{const ok=await libMove(contextMenu.item.id,null);if(ok){showToast("Movido para raiz ✓");loadItems(currentFolderId);}setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.text, textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.accent}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>📤 Mover para raiz</button>}
+        <div style={{ height:1, background:B.border, margin:"2px 8px" }} />
+        <button onClick={()=>{handleDelete(contextMenu.item);setContextMenu(null);}} style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"8px 12px", borderRadius:8, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, background:"transparent", color:B.red||"#EF4444", textAlign:"left" }} onMouseEnter={e=>e.currentTarget.style.background=`${B.red||"#EF4444"}08`} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>🗑️ Apagar</button>
+      </div>
+    </div>
+  ) : null;
+
+  /* Empty state */
+  const EmptyState = () => (
+    <div style={{ textAlign:"center", padding:"60px 20px" }}>
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="1.2" strokeLinecap="round" style={{ margin:"0 auto 14px", display:"block", opacity:0.3 }}><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+      <p style={{ fontSize:15, fontWeight:700, color:B.muted }}>{search?"Nenhum resultado":"Pasta vazia"}</p>
+      <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{search?"Tente outra busca":"Arraste arquivos ou clique nos botões acima"}</p>
+    </div>
+  );
+
+  /* Detail panel (desktop) */
+  const DetailPanel = () => {
+    if (!viewFile) return null;
+    const fi = fileIcon(viewFile);
+    const ext = getExt(viewFile.name);
+    const image = isImg(viewFile);
+    const video = isVid(viewFile);
+    return (
+      <div style={{ width:320, flexShrink:0, background:B.bgCard, borderRadius:16, border:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+        <div style={{ padding:"10px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:8 }}>
+          <button onClick={()=>setViewFile(null)} style={{ width:28, height:28, borderRadius:8, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.text} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <p style={{ fontSize:13, fontWeight:700, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{viewFile.name}</p>
+        </div>
+        <div style={{ flex:1, overflowY:"auto" }}>
+          {viewFile.url && image && <div style={{ background:B.dark, padding:8 }}><img src={viewFile.url} alt={viewFile.name} style={{ width:"100%", maxHeight:200, objectFit:"contain", display:"block", margin:"0 auto", borderRadius:8 }}/></div>}
+          {viewFile.url && video && <div style={{ background:B.dark }}><video src={viewFile.url} controls style={{ width:"100%", maxHeight:200, display:"block" }}/></div>}
+          {!(viewFile.url && (image||video)) && <div style={{ padding:"30px 16px", textAlign:"center", background:`${fi.c}04` }}><div style={{ color:fi.c, margin:"0 auto", display:"flex", justifyContent:"center", transform:"scale(2)", marginBottom:16 }}>{fi.ic}</div><p style={{ fontSize:12, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()||"FILE"}</p></div>}
+          <div style={{ padding:"12px 14px" }}>
+            {[{l:"Tamanho",v:fmtSize(viewFile.size_bytes)},{l:"Tipo",v:viewFile.mime_type||"—"},{l:"Criado",v:fmtDate(viewFile.created_at)},{l:"Modificado",v:fmtDate(viewFile.updated_at)}].map((item,ii)=>(
+              <div key={ii} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderTop:ii?`1px solid ${B.border}`:"none" }}>
+                <span style={{ fontSize:10, color:B.muted }}>{item.l}</span>
+                <span style={{ fontSize:12, fontWeight:600, maxWidth:180, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.v||"—"}</span>
+              </div>
+            ))}
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginTop:12 }}>
+              {viewFile.url && <button onClick={()=>{const a=document.createElement("a");a.href=viewFile.url;a.download=viewFile.name;a.target="_blank";document.body.appendChild(a);a.click();document.body.removeChild(a);showToast("Download ✓");}} style={{ padding:"8px 0", borderRadius:8, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>Baixar</button>}
+              {viewFile.url && <button onClick={()=>window.open(viewFile.url,"_blank","noopener")} style={{ padding:"8px 0", borderRadius:8, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>Abrir</button>}
+            </div>
+            {viewFile.url && <button onClick={()=>{navigator.clipboard.writeText(viewFile.url);showToast("Link copiado ✓");}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:`${B.blue}08`, border:`1px solid ${B.blue}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.blue, marginTop:6 }}>Copiar link</button>}
+            <button onClick={()=>{setRenamingId(viewFile.id);setRenameVal(viewFile.name);}} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:`${B.accent}08`, border:`1px solid ${B.accent}20`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:600, color:B.accent, marginTop:6 }}>Renomear</button>
+            <button onClick={()=>handleDelete(viewFile)} style={{ width:"100%", padding:"8px 0", borderRadius:8, background:(B.red||"#EF4444")+"08", border:"1px solid "+(B.red||"#EF4444")+"20", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.red||"#EF4444", marginTop:6, display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>Apagar</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* ══════════ DESKTOP VIEW ══════════ */
+  if (isLibDesktop) return (
+    <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
+      {ToastEl}<NewFolderModal /><RenameModal /><UploadOverlay /><ContextMenuEl />
+      <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" onBack={onBack} collapsed={false} stats={[]} />
+      <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:12, flex:1, minHeight:0 }}>
+        {/* Toolbar */}
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <Breadcrumbs />
+          <div style={{ flex:1 }} />
+          <div style={{ position:"relative" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round" style={{ position:"absolute", left:10, top:"50%", transform:"translateY(-50%)" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." style={{ padding:"8px 12px 8px 32px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bgCard, fontFamily:"inherit", fontSize:12, outline:"none", width:200 }} />
+          </div>
+          <div style={{ display:"flex", borderRadius:10, border:`1.5px solid ${B.border}`, overflow:"hidden" }}>
+            <button onClick={()=>setLibView("grid")} style={{ padding:"7px 9px", border:"none", cursor:"pointer", background:libView==="grid"?`${B.accent}12`:"transparent", color:libView==="grid"?B.accent:B.muted, display:"flex" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></button>
+            <button onClick={()=>setLibView("list")} style={{ padding:"7px 9px", border:"none", cursor:"pointer", background:libView==="list"?`${B.accent}12`:"transparent", color:libView==="list"?B.accent:B.muted, display:"flex" }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+          </div>
+          <button onClick={()=>{setShowNewFolder(true);setNewFolderName("");}} style={{ display:"flex", alignItems:"center", gap:5, padding:"8px 12px", borderRadius:10, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>Pasta</button>
+          <label style={{ display:"flex", alignItems:"center", gap:5, padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Enviar
+            <input type="file" multiple style={{display:"none"}} onChange={e=>handleUpload(e.target.files)} />
+          </label>
+        </div>
+
+        {/* Content area */}
+        <div style={{ flex:1, display:"flex", gap:12, minHeight:0 }}>
+          {/* Files area with drag & drop */}
+          <div onDragOver={e=>{e.preventDefault();if(!e.dataTransfer.types.includes("application/uh-lib-item"))setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop} style={{ flex:1, background:B.bgCard, borderRadius:16, border:dragOver?`2px dashed ${B.accent}`:`1px solid ${B.border}`, overflow:"hidden", display:"flex", flexDirection:"column", transition:"border .2s", position:"relative", minWidth:0 }}>
+            {dragOver && <div style={{ position:"absolute", inset:0, background:`${B.accent}08`, zIndex:10, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:16 }}><div style={{ textAlign:"center" }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={B.accent} strokeWidth="1.5" strokeLinecap="round" style={{ margin:"0 auto 8px" }}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><p style={{ fontSize:14, fontWeight:700, color:B.accent }}>Solte os arquivos aqui</p></div></div>}
+            {/* Stats bar */}
+            <div style={{ padding:"8px 14px", borderBottom:`1px solid ${B.border}`, display:"flex", alignItems:"center", gap:12 }}>
+              <span style={{ fontSize:11, color:B.muted }}>{loading?"Carregando...":`${totalFolders} pasta${totalFolders!==1?"s":""} · ${totalFiles} arquivo${totalFiles!==1?"s":""}`}</span>
+            </div>
+            <div style={{ flex:1, overflowY:"auto", padding:libView==="grid"?"12px":"6px 8px" }}>
+              {!loading && filtered.length===0 && <EmptyState />}
+
+              {/* GRID VIEW */}
+              {libView==="grid" && filtered.length>0 && <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(155px, 1fr))", gap:10 }}>
+                {filtered.map(item => <GridItem key={item.id} item={item} />)}
+              </div>}
+              {/* LIST VIEW */}
+              {libView==="list" && filtered.length>0 && filtered.map(item => {
+                const fi = fileIcon(item);
+                const isSel = viewFile?.id === item.id;
+                return (
+                  <div key={item.id} draggable onDragStart={e=>{e.dataTransfer.setData("application/uh-lib-item",JSON.stringify({id:item.id,name:item.name,is_folder:item.is_folder}));e.dataTransfer.effectAllowed="move";}} onDragOver={e=>{if(item.is_folder){e.preventDefault();e.stopPropagation();setDragOverFolder(item.id);}}} onDragLeave={()=>setDragOverFolder(null)} onDrop={e=>{if(item.is_folder)handleItemDrop(e,item.id);}} onClick={()=>{if(item.is_folder)navigateToFolder(item);else setViewFile(item);}} onContextMenu={e=>{e.preventDefault();setContextMenu({x:e.clientX,y:e.clientY,item});}} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}06`:dragOverFolder===item.id?`${B.green}06`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:dragOverFolder===item.id?`1.5px solid ${B.green}`:"1.5px solid transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel&&dragOverFolder!==item.id)e.currentTarget.style.background="transparent";}}>
+                    {item.is_folder ? <div style={{ width:40, height:40, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill={`${B.accent}20`} stroke={B.accent} strokeWidth="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div> : isImg(item)&&item.url ? <div style={{ width:40, height:40, borderRadius:8, background:`url(${item.url}) center/cover`, flexShrink:0 }}/> : <div style={{ width:40, height:40, borderRadius:8, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</p>
+                      <p style={{ fontSize:10, color:B.muted }}>{item.is_folder?"Pasta":fmtSize(item.size_bytes)}</p>
+                    </div>
+                    {!item.is_folder && <span style={{ fontSize:8, fontWeight:700, padding:"2px 6px", borderRadius:4, background:`${fi.c}10`, color:fi.c, textTransform:"uppercase" }}>{getExt(item.name)}</span>}
+                    <span style={{ fontSize:10, color:B.muted }}>{fmtDate(item.created_at)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {/* Detail panel */}
+          <DetailPanel />
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ══════════ MOBILE: File detail ══════════ */
+  if (viewFile && !isLibDesktop) {
+    const fi = fileIcon(viewFile);
+    const ext = getExt(viewFile.name);
+    const image = isImg(viewFile);
+    const video = isVid(viewFile);
+    return (
+      <div className="pg">{ToastEl}<RenameModal />
+        <Head title={viewFile.name} onBack={()=>setViewFile(null)} />
+        <Card>
+          {viewFile.url && image && <img src={viewFile.url} alt={viewFile.name} style={{ width:"100%", maxHeight:250, objectFit:"contain", borderRadius:10, display:"block", marginBottom:12 }} />}
+          {viewFile.url && video && <video src={viewFile.url} controls style={{ width:"100%", maxHeight:250, borderRadius:10, display:"block", marginBottom:12 }} />}
+          {!(viewFile.url && (image||video)) && <div style={{ textAlign:"center", padding:24, background:`${fi.c}06`, borderRadius:12, marginBottom:12 }}><div style={{ color:fi.c, display:"flex", justifyContent:"center", transform:"scale(2.5)", marginBottom:20 }}>{fi.ic}</div><p style={{ fontSize:14, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()||"FILE"}</p></div>}
+          {[{l:"Nome",v:viewFile.name},{l:"Tamanho",v:fmtSize(viewFile.size_bytes)},{l:"Tipo",v:viewFile.mime_type||"—"},{l:"Criado",v:fmtDate(viewFile.created_at)}].map((item,i)=>(<div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.l}</span><span style={{ fontSize:13, fontWeight:600, maxWidth:"60%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.v}</span></div>))}
+        </Card>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
+          {viewFile.url && <button onClick={()=>{const a=document.createElement("a");a.href=viewFile.url;a.download=viewFile.name;a.target="_blank";document.body.appendChild(a);a.click();document.body.removeChild(a);showToast("Download ✓");}} className="pill full accent" style={{ padding:"12px 0" }}>Baixar</button>}
+          {viewFile.url && <button onClick={()=>window.open(viewFile.url,"_blank")} className="pill full" style={{ padding:"12px 0", background:`${B.accent}10`, border:`1px solid ${B.accent}30`, color:B.accent }}>Abrir</button>}
+        </div>
+        <button onClick={()=>{setRenamingId(viewFile.id);setRenameVal(viewFile.name);}} className="pill full" style={{ marginTop:6, padding:"12px 0", background:`${B.accent}08`, border:`1px solid ${B.accent}20`, color:B.accent }}>Renomear</button>
+        <button onClick={()=>handleDelete(viewFile)} className="pill full" style={{ marginTop:6, padding:"12px 0", background:(B.red||"#EF4444")+"08", border:"1px solid "+(B.red||"#EF4444")+"20", color:B.red||"#EF4444" }}>Apagar</button>
+      </div>
+    );
+  }
+
+  /* ══════════ MOBILE: Main list ══════════ */
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      {ToastEl}
+      {ToastEl}<NewFolderModal /><RenameModal /><UploadOverlay />
       <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" collapsed={pgC} stats={[]} onBack={onBack} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
-      {/* Stats */}
-      <Card style={{ background:B.dark, color:"#fff", border:"none", marginBottom:12 }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-          <div style={{ display:"flex", justifyContent:"space-around", textAlign:"center", flex:1 }}>
-            <div><p style={{ fontSize:22, fontWeight:900 }}>{totalFiles}</p><p style={{ fontSize:10, opacity:.7 }}>Arquivos</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.accent }}>{clientsWithFiles}</p><p style={{ fontSize:10, opacity:.7 }}>Clientes</p></div>
-            <div><p style={{ fontSize:22, fontWeight:900, color:B.orange }}>{LIB_CATS.filter(c=>catCounts[c.key]).length}</p><p style={{ fontSize:10, opacity:.7 }}>Categorias</p></div>
-          </div>
-          <button onClick={()=>{setFileForm({});setAddingFile(true);}} style={{ display:"flex", alignItems:"center", gap:5, padding:"8px 14px", borderRadius:12, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark, flexShrink:0, marginLeft:10 }}>{IC.plus} Adicionar</button>
-        </div>
-      </Card>
+      {/* Breadcrumbs */}
+      <Breadcrumbs />
+
+      {/* Action bar */}
+      <div style={{ display:"flex", gap:6, marginBottom:10 }}>
+        <button onClick={()=>{setShowNewFolder(true);setNewFolderName("");}} style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 12px", borderRadius:10, background:`${B.accent}10`, border:`1px solid ${B.accent}30`, cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.accent }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>Pasta
+        </button>
+        <label style={{ display:"flex", alignItems:"center", gap:4, padding:"8px 14px", borderRadius:10, background:B.accent, border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:B.dark }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Enviar
+          <input type="file" multiple style={{display:"none"}} onChange={e=>handleUpload(e.target.files)} />
+        </label>
+        <div style={{ flex:1 }} />
+        <span style={{ fontSize:10, color:B.muted, alignSelf:"center" }}>{totalItems} ite{totalItems!==1?"ns":"m"}</span>
+      </div>
 
       {/* Search */}
       <div style={{ position:"relative", marginBottom:10 }}>
         <div style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:B.muted, display:"flex" }}>{IC.search(B.muted)}</div>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar arquivo, cliente, categoria..." className="tinput" style={{ paddingLeft:"40px" }} />
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar..." className="tinput" style={{ paddingLeft:"40px" }} />
       </div>
 
-      {/* Client filter — hidden for client view */}
-      {!isClientView && <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:6, overflowX:"auto", paddingBottom:4 }}>
-        <button onClick={()=>setFilterClient("all")} className={`htab${filterClient==="all"?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>Todos os clientes</button>
-        {CDATA.filter(c=>(c.files||[]).length>0).map(c => (
-          <button key={c.id} onClick={()=>setFilterClient(c.name)} className={`htab${filterClient===c.name?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{c.name} ({(c.files||[]).length})</button>
-        ))}
-      </div>}
+      {/* Loading */}
+      {loading && <div style={{ textAlign:"center", padding:30 }}><p style={{ fontSize:12, color:B.muted }}>Carregando...</p></div>}
 
-      {/* Category filter */}
-      <div className="hscroll" style={{ display:"flex", gap:4, marginBottom:12, overflowX:"auto", paddingBottom:4 }}>
-        <button onClick={()=>setFilterCat("all")} className={`htab${filterCat==="all"?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>Todas categorias</button>
-        {LIB_CATS.map(cat => {
-          const count = allFiles.filter(f=>getFileCat(f)===cat.key).length;
-          if (count === 0) return null;
-          return <button key={cat.key} onClick={()=>setFilterCat(cat.key)} className={`htab${filterCat===cat.key?" a":""}`} style={{ fontSize:10, whiteSpace:"nowrap", flexShrink:0 }}>{cat.label} ({count})</button>;
-        })}
-      </div>
+      {/* Empty */}
+      {!loading && filtered.length===0 && <EmptyState />}
 
-      {/* Results count */}
-      <p style={{ fontSize:11, color:B.muted, marginBottom:8 }}>{filtered.length} arquivo{filtered.length!==1?"s":""} encontrado{filtered.length!==1?"s":""}</p>
+      {/* Folders */}
+      {folders.length>0 && <p className="sl" style={{ marginBottom:4 }}>Pastas</p>}
+      {folders.map(item => {
+        const fi = fileIcon(item);
+        return (
+          <Card key={item.id} onClick={()=>navigateToFolder(item)} style={{ marginTop:4, cursor:"pointer" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:38, height:38, borderRadius:10, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill={`${B.accent}20`} stroke={B.accent} strokeWidth="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:13, fontWeight:700, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:1 }}>Pasta · {fmtDate(item.created_at)}</p>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.muted} strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </Card>
+        );
+      })}
 
-      {/* Grouped file list */}
-      {filtered.length === 0 ? (
-        <Card style={{ textAlign:"center", padding:24 }}>
-          <p style={{ fontSize:14, fontWeight:700 }}>Nenhum arquivo encontrado</p>
-          <p style={{ fontSize:12, color:B.muted, marginTop:4 }}>Tente ajustar os filtros ou busca.</p>
-        </Card>
-      ) : Object.entries(grouped).map(([groupName, groupFiles]) => (
-        <div key={groupName}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:10, marginBottom:6 }}>
-            <p className="sl">{filterClient !== "all" ? (LIB_CATS.find(c=>c.label===groupName)?.icon||"📁")+" " : ""}{groupName}</p>
-            <span style={{ fontSize:10, color:B.muted }}>{groupFiles.length}</span>
-          </div>
-          {groupFiles.map(f => {
-            const fi = fileIcon(f.name);
-            const cat = LIB_CATS.find(c=>c.key===getFileCat(f));
-            return (
-              <Card key={`${f.clientId}-${f.id}`} onClick={() => setViewFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p>
-                    <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
-                      <span style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</span>
-                      {filterClient === "all" && <Tag color={cat?.c||B.muted} style={{ fontSize:8, padding:"1px 6px" }}>{cat?.icon}</Tag>}
-                    </div>
-                  </div>
-                  {filterClient === "all" && <span style={{ fontSize:9, color:B.muted, maxWidth:60, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.clientName}</span>}
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      ))}
+      {/* Files */}
+      {files.length>0 && <p className="sl" style={{ marginTop:folders.length?10:0, marginBottom:4 }}>Arquivos</p>}
+      {files.map(item => {
+        const fi = fileIcon(item);
+        return (
+          <Card key={item.id} onClick={()=>setViewFile(item)} style={{ marginTop:4, cursor:"pointer" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</p>
+                <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{fmtSize(item.size_bytes)} · {fmtDate(item.created_at)}</p>
+              </div>
+              <span style={{ fontSize:8, fontWeight:700, padding:"2px 6px", borderRadius:4, background:`${fi.c}10`, color:fi.c, textTransform:"uppercase" }}>{getExt(item.name)}</span>
+            </div>
+          </Card>
+        );
+      })}
+
       </div>
     </div>
   );
