@@ -1,4 +1,7 @@
 {
+  "redirects": [
+    { "source": "/:path*", "has": [{ "type": "host", "value": "www.uniquehub.com.br" }], "destination": "https://uniquehub.com.br/:path*", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/((?!assets|manifest|favicon|icon|apple|debug).*)", "destination": "/index.html" }
   ],
