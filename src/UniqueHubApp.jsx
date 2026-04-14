@@ -539,13 +539,18 @@ const libUploadFile = async (file, parentId = null) => {
     const path = "library/" + _currentOrgId + "/" + Date.now() + "_" + safeName;
     let url = "";
     const R2_THRESHOLD = 10 * 1024 * 1024;
-    /* Route large files / videos to Cloudflare R2 */
+    /* Route large files / videos to Cloudflare R2 via presigned URL */
     if (processed.size > R2_THRESHOLD || isVideo) {
       try {
-        const r2Res = await fetch(SUPA_URL + "/functions/v1/r2-upload", { method:"POST", headers:{ "Authorization":"Bearer "+SUPA_KEY, "x-file-name":safeName, "x-content-type":processed.type||file.type||"application/octet-stream" }, body:processed });
+        const ct = processed.type || file.type || "application/octet-stream";
+        const r2Res = await fetch(SUPA_URL + "/functions/v1/r2-upload", { method:"POST", headers:{ "Authorization":"Bearer "+SUPA_KEY, "Content-Type":"application/json" }, body:JSON.stringify({ fileName:safeName, contentType:ct }) });
         const r2Data = await r2Res.json();
-        if (r2Data.url) { url = r2Data.url; console.log("[LibDrive] R2 upload OK:", url); }
-        else { console.warn("[LibDrive] R2 failed:", r2Data.error); }
+        if (r2Data.signedUrl) {
+          console.log("[LibDrive] R2 uploading", (processed.size/1048576).toFixed(1)+"MB...");
+          const ok = await xhrUpload(r2Data.signedUrl, processed, ct);
+          if (ok) { url = r2Data.publicUrl; console.log("[LibDrive] R2 OK:", url); }
+          else { console.warn("[LibDrive] R2 XHR failed"); }
+        } else { console.warn("[LibDrive] R2 no signedUrl:", r2Data.error); }
       } catch (r2Err) { console.warn("[LibDrive] R2 error:", r2Err); }
     }
     /* Supabase Storage fallback (small files or R2 failure) */
