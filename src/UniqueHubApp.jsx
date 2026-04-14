@@ -19071,13 +19071,15 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     );
   };
 
-  /* Upload overlay */
+  /* Upload float bar — non-blocking */
   const UploadOverlay = () => uploading ? (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div style={{ background:B.bgCard, borderRadius:16, padding:32, textAlign:"center", border:`1px solid ${B.border}` }}>
-        <div style={{ width:40, height:40, borderRadius:20, border:`3px solid ${B.accent}30`, borderTopColor:B.accent, animation:"spin 1s linear infinite", margin:"0 auto 12px" }} />
-        <p style={{ fontSize:14, fontWeight:700 }}>Enviando...</p>
-        <p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{uploadProgress}</p>
+    <div style={{ position:"fixed", bottom:isLibDesktop?24:90, right:isLibDesktop?24:16, left:isLibDesktop?"auto":16, zIndex:9990, maxWidth:isLibDesktop?360:"none", animation:"slideUp .3s ease" }}>
+      <div style={{ background:B.bgCard, borderRadius:14, padding:"12px 16px", border:`1.5px solid ${B.accent}30`, boxShadow:"0 8px 32px rgba(0,0,0,0.25)", display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ width:28, height:28, borderRadius:14, border:`2.5px solid ${B.accent}30`, borderTopColor:B.accent, animation:"spin 1s linear infinite", flexShrink:0 }} />
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:12, fontWeight:700, color:B.text }}>Enviando arquivos...</p>
+          <p style={{ fontSize:10, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{uploadProgress}</p>
+        </div>
       </div>
     </div>
   ) : null;
