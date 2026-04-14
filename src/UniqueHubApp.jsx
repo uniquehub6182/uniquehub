@@ -593,6 +593,36 @@ const libMigrateClientFiles = async (clients) => {
   return count;
 };
 
+/* ── Global Background Upload System ── */
+const _uploadState = { active:false, progress:"", done:0, total:0, ok:0, errors:0, listeners:new Set() };
+const _notifyUpload = () => _uploadState.listeners.forEach(fn => { try { fn({..._uploadState}); } catch {} });
+const libStartBgUpload = (files, parentId, onComplete) => {
+  if (_uploadState.active) return false;
+  _uploadState.active = true; _uploadState.done = 0; _uploadState.total = files.length; _uploadState.ok = 0; _uploadState.errors = 0; _uploadState.progress = "Iniciando...";
+  _notifyUpload();
+  const CONCURRENCY = 3;
+  (async () => {
+    const arr = Array.from(files);
+    const uploadOne = async (f) => {
+      try { const result = await libUploadFile(f, parentId); if (result && !result.error) _uploadState.ok++; else _uploadState.errors++; } catch { _uploadState.errors++; }
+      _uploadState.done++; _uploadState.progress = _uploadState.done + "/" + _uploadState.total + " concluido(s)"; _notifyUpload();
+    };
+    for (let i = 0; i < arr.length; i += CONCURRENCY) {
+      const batch = arr.slice(i, i + CONCURRENCY);
+      _uploadState.progress = _uploadState.done + "/" + _uploadState.total + " — enviando..."; _notifyUpload();
+      await Promise.all(batch.map(uploadOne));
+    }
+    _uploadState.active = false; _uploadState.progress = ""; _notifyUpload();
+    if (onComplete) onComplete(_uploadState.ok, _uploadState.errors);
+  })();
+  return true;
+};
+const useLibUploadStatus = () => {
+  const [st, setSt] = React.useState({..._uploadState});
+  React.useEffect(() => { const fn = (s) => setSt(s); _uploadState.listeners.add(fn); return () => _uploadState.listeners.delete(fn); }, []);
+  return st;
+};
+
 const supaDeleteFile = async (path) => {
   if (!supabase) return;
   try { await supabase.storage.from("demand-files").remove([path]); } catch(e) {}
@@ -18800,8 +18830,6 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   const [dragOverFolder, setDragOverFolder] = useState(null);
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState("");
   const [renamingId, setRenamingId] = useState(null);
   const [renameVal, setRenameVal] = useState("");
   const [contextMenu, setContextMenu] = useState(null);
@@ -18906,32 +18934,16 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     return { ic: IC.doc, c: B.muted };
   };
 
-  /* Upload handler — multi-file PARALLEL (3 concurrent) */
-  const handleUpload = async (fileList) => {
+  /* Upload handler — uses global background system */
+  const handleUpload = (fileList) => {
     if (!fileList?.length) return;
-    setUploading(true);
-    const files = Array.from(fileList);
-    let ok = 0; let errors = []; let done = 0;
-    const CONCURRENCY = 3;
-    const update = () => setUploadProgress(`${done}/${files.length} concluído(s)${errors.length?" · "+errors.length+" erro(s)":""}`);
-    const uploadOne = async (f) => {
-      try {
-        const result = await libUploadFile(f, currentFolderId);
-        if (result?.error) errors.push(f.name);
-        else if (result) ok++;
-        else errors.push(f.name);
-      } catch { errors.push(f.name); }
-      done++; update();
-    };
-    /* Process in batches of CONCURRENCY */
-    for (let i = 0; i < files.length; i += CONCURRENCY) {
-      const batch = files.slice(i, i + CONCURRENCY);
-      setUploadProgress(`${done}/${files.length} — enviando ${batch.map(f=>f.name.slice(0,20)).join(", ")}...`);
-      await Promise.all(batch.map(uploadOne));
-    }
-    setUploading(false); setUploadProgress("");
-    if (ok > 0) { showToast(ok + " enviado(s)" + (errors.length ? ", " + errors.length + " erro(s)" : "") + " ✓"); loadItems(currentFolderId); }
-    else showToast("Erro: " + (errors[0] || "falha no upload"));
+    const fid = currentFolderId;
+    const started = libStartBgUpload(Array.from(fileList), fid, (ok, errs) => {
+      if (ok > 0) showToast(ok + " enviado(s)" + (errs ? ", " + errs + " erro(s)" : "") + " ✓");
+      else showToast("Erro no upload");
+      loadItems(fid);
+    });
+    if (!started) showToast("Aguarde o upload anterior terminar");
   };
 
   /* Drag & drop handler */
@@ -19071,18 +19083,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     );
   };
 
-  /* Upload float bar — non-blocking */
-  const UploadOverlay = () => uploading ? (
-    <div style={{ position:"fixed", bottom:isLibDesktop?24:90, right:isLibDesktop?24:16, left:isLibDesktop?"auto":16, zIndex:9990, maxWidth:isLibDesktop?360:"none", animation:"slideUp .3s ease" }}>
-      <div style={{ background:B.bgCard, borderRadius:14, padding:"12px 16px", border:`1.5px solid ${B.accent}30`, boxShadow:"0 8px 32px rgba(0,0,0,0.25)", display:"flex", alignItems:"center", gap:12 }}>
-        <div style={{ width:28, height:28, borderRadius:14, border:`2.5px solid ${B.accent}30`, borderTopColor:B.accent, animation:"spin 1s linear infinite", flexShrink:0 }} />
-        <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ fontSize:12, fontWeight:700, color:B.text }}>Enviando arquivos...</p>
-          <p style={{ fontSize:10, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{uploadProgress}</p>
-        </div>
-      </div>
-    </div>
-  ) : null;
+
 
   /* PDF Thumbnail — renders first page via pdf.js */
   const pdfJsLoaded = useRef(false);
@@ -19220,7 +19221,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   /* ══════════ DESKTOP VIEW ══════════ */
   if (isLibDesktop) return (
     <div className="content-wide" style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      {ToastEl}<NewFolderModal /><RenameModal /><ShareModal /><UploadOverlay /><ContextMenuEl />
+      {ToastEl}<NewFolderModal /><RenameModal /><ShareModal /><ContextMenuEl />
       <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" onBack={onBack} collapsed={false} stats={[]} />
       <div style={{ display:"flex", flexDirection:"column", gap:10, marginTop:12, flex:1, minHeight:0 }}>
         {/* Toolbar */}
@@ -19312,7 +19313,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   /* ══════════ MOBILE: Main list ══════════ */
   return (
     <div style={{ paddingTop:TOP, minHeight:"100%", display:"flex", flexDirection:"column" }}>
-      {ToastEl}<NewFolderModal /><RenameModal /><ShareModal /><UploadOverlay />
+      {ToastEl}<NewFolderModal /><RenameModal /><ShareModal />
       <CollapseHeader icon={IC.library} label="Arquivos" title="Biblioteca" collapsed={pgC} stats={[]} onBack={onBack} />
       <div ref={pgRef} onScroll={e=>setPgC(e.currentTarget.scrollTop>60)} style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
 
@@ -28013,6 +28014,26 @@ function ClientOnboarding({ onComplete, onBack }) {
 
 class ClientEB extends React.Component{constructor(p){super(p);this.state={err:null};}static getDerivedStateFromError(e){return{err:e};}render(){if(this.state.err)return React.createElement("div",{className:"app",style:{position:"fixed",inset:0,background:"#F5F5F5",color:"#0D0D0D",padding:20,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}},React.createElement("h2",{style:{color:"#EF4444",marginBottom:10,fontSize:18}},"Erro na pagina"),React.createElement("pre",{style:{fontSize:11,color:"#666",maxWidth:320,textAlign:"center",lineHeight:1.5,whiteSpace:"pre-wrap",wordBreak:"break-all"}},String(this.state.err?.message||this.state.err)),React.createElement("button",{onClick:()=>{this.setState({err:null});},style:{marginTop:16,padding:"10px 20px",borderRadius:10,background:"#BBF246",border:"none",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}},"Voltar"));return this.props.children;}}
 
+/* ── Global Upload Bar — renders everywhere, survives page navigation ── */
+function GlobalUploadBar() {
+  const st = useLibUploadStatus();
+  const isDesktop = useIsDesktop();
+  if (!st.active) return null;
+  return (
+    <div style={{ position:"fixed", bottom:isDesktop?24:90, right:isDesktop?24:16, left:isDesktop?"auto":16, zIndex:9990, maxWidth:isDesktop?360:"none", animation:"slideUp .3s ease" }}>
+      <div style={{ background:B.bgCard, borderRadius:14, padding:"12px 16px", border:"1.5px solid "+B.accent+"30", boxShadow:"0 8px 32px rgba(0,0,0,0.25)", display:"flex", alignItems:"center", gap:12 }}>
+        <div style={{ width:28, height:28, borderRadius:14, border:"2.5px solid "+B.accent+"30", borderTopColor:B.accent, animation:"spin 1s linear infinite", flexShrink:0 }} />
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ fontSize:12, fontWeight:700, color:B.text }}>Enviando arquivos...</p>
+          <p style={{ fontSize:10, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{st.progress}</p>
+          <div style={{ marginTop:4, height:3, borderRadius:2, background:B.border, overflow:"hidden" }}><div style={{ height:"100%", borderRadius:2, background:B.accent, transition:"width .3s", width:(st.total?Math.round(st.done/st.total*100):0)+"%" }} /></div>
+        </div>
+        {st.errors > 0 && <span style={{ fontSize:10, fontWeight:700, color:B.red||"#EF4444", flexShrink:0 }}>{st.errors} erro{st.errors>1?"s":""}</span>}
+      </div>
+    </div>
+  );
+}
+
 function MainClientApp({ user: userProp, onLogout, dark: darkProp }) {
   const [dark, setDark] = useState(() => { try { const s = localStorage.getItem("uh_dark"); return s ? s === "1" : darkProp; } catch { return darkProp; } });
   const [localUser, setLocalUser] = useState(userProp);
@@ -28927,7 +28948,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     const isRejected = d.steps?.client?.status === "rejected" || d.steps?.client?.status === "revision";
     return (
       <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background:B.transparent?"transparent":B.bg, color:B.text }}>
-        {ToastEl}
+        <GlobalUploadBar />{ToastEl}
         <div style={{ paddingTop:TOP, display:"flex", flexDirection:"column", flex:1, overflow:"hidden", minWidth:0 }}>
           <div style={{ padding:"0 20px" }}><Head title={d.title} onBack={() => setSub(null)} /></div>
           <div style={{ flex:1, overflowY:"auto", WebkitOverflowScrolling:"touch", padding:"14px 16px calc(90px + env(safe-area-inset-bottom,0px))" }}>
@@ -30698,7 +30719,7 @@ BRIEFING: [briefing detalhado pro designer: formato da arte (feed/carrossel/reel
     <div style={{ display:"flex" }}>
       <div className={isDesktop ? "d-main" : ""} style={{ flex:1, minWidth:0 }}>
     <div className={"app" + (B.transparent ? " uh-glass" : "") + (typeof dark!=="undefined"&&dark ? " uh-dark" : "")} style={{ background: B.bg, color: B.text }}>
-      {ToastEl}
+      <GlobalUploadBar />{ToastEl}
       {/* ── NEWS TO POST: CLIENT PICKER ── */}
       {newsToPostArticle && !newsToPostLoading && <div style={{position:"fixed",inset:0,zIndex:99997,display:"flex",alignItems:"flex-end",justifyContent:"center",background:"rgba(0,0,0,0.5)",backdropFilter:"blur(4px)"}} onClick={()=>{setNewsToPostArticle(null);setNewsToPostClient(null);}}>
         <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:430,background:B.bgCard,borderRadius:"24px 24px 0 0",padding:"20px 20px calc(20px + env(safe-area-inset-bottom,0px))",maxHeight:"70vh",display:"flex",flexDirection:"column"}}>
