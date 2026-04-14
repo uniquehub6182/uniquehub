@@ -18764,7 +18764,7 @@ function CalendarPage({ onBack, clients: propClients, team: propTeam, user: prop
   );
 }
 
-function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientView, clientFilter }) {
+function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientView, clientFilter, clientId: propClientId }) {
   const isLibDesktop = useIsDesktop();
   const CDATA = propClients || [];
   const { showToast, ToastEl } = useToast();
@@ -18796,9 +18796,9 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     let data = await libFetch(parentId);
     /* Client view: if at root and no locked folder yet, filter by client_id */
     if (isClientView && !parentId && !clientRootRef.current) {
-      const client = CDATA.find(c => c.name === clientFilter || (c.contact_email||"").toLowerCase() === (clientFilter||"").toLowerCase());
-      const cid = client?.supaId || client?.id;
-      if (cid) data = data.filter(it => it.client_id === cid || it.name === clientFilter);
+      const cid = propClientId || (CDATA.find(c => c.name === clientFilter)?.supaId) || (CDATA.find(c => c.name === clientFilter)?.id);
+      if (cid) data = data.filter(it => it.client_id === cid);
+      else data = data.filter(it => (it.name||"").toLowerCase() === (clientFilter||"").toLowerCase());
     }
     setItems(data);
     setLoading(false);
@@ -18811,14 +18811,17 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     if (!isClientView || clientRootRef.current) return;
     (async () => {
       const allRoot = await libFetch(null);
-      const clientFolder = allRoot.find(it => it.is_folder && it.name.toLowerCase() === (clientFilter||"").toLowerCase());
+      const cid = propClientId || (CDATA.find(c => c.name === clientFilter)?.supaId) || (CDATA.find(c => c.name === clientFilter)?.id);
+      /* Match by client_id first (most reliable), then by name */
+      let clientFolder = cid ? allRoot.find(it => it.is_folder && it.client_id === cid) : null;
+      if (!clientFolder) clientFolder = allRoot.find(it => it.is_folder && it.name.toLowerCase() === (clientFilter||"").toLowerCase());
       if (clientFolder) {
         clientRootRef.current = clientFolder.id;
         setCurrentFolderId(clientFolder.id);
         setFolderPath([{ id: clientFolder.id, name: clientFolder.name }]);
       }
     })();
-  }, [isClientView, clientFilter]);
+  }, [isClientView, clientFilter, propClientId, CDATA]);
 
   /* Auto-migrate old client files on first load */
   useEffect(() => {
@@ -30071,7 +30074,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
       sub === "match4biz" ? <ClientMatch4Biz onBack={() => setSub(null)} user={user} clients={clients} demands={demands} /> :
       sub === "academy" ? <AcademyPage onBack={() => setSub(null)} isClientView /> :
       sub === "calendar" ? <CalendarPage onBack={() => setSub(null)} clients={clients} team={team} user={user} clientFilter={resolvedClient?.name||user?.company||user?.name} canAccess={canAccessFn} demands={demands} onEventCreate={(ev) => gamifyScore(ev?.type==="meeting"?"schedule_meeting":"create_event", ev?.type==="meeting"?3.0:2.0, "estrategia", ev?.type==="meeting"?`Agendou reunião: ${ev.title}`:`Criou evento: ${ev.title}`)} /> :
-      sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={resolvedClient?.name||user?.company||user?.name} /> :
+      sub === "library" ? <LibraryPage onBack={() => setSub(null)} clients={clients} onUpdateClients={setClients} isClientView clientFilter={resolvedClient?.name||user?.company||user?.name} clientId={resolvedClient?.id} /> :
       sub === "news" ? <NewsPage onBack={() => setSub(null)} user={user} isClientView initialArticleId={openArticleId} onOpenIdConsumed={() => setOpenArticleId(null)} onArticleRead={(a) => gamifyScore("read_news_"+a.id, 0.5, "educacao", `Leu: ${a.title}`)} /> :
       sub === "ideas" ? <IdeasPage onBack={() => setSub(null)} user={user} clients={clients} isClientView clientFilter={resolvedClient?.name||user?.company||user?.name} /> :
       sub === "ai" ? <AIPage onBack={() => setSub(null)} user={user} isClientView /> :
