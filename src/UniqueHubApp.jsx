@@ -18787,6 +18787,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   const [migrated, setMigrated] = useState(false);
   const [pgC, setPgC] = useState(false);
   const pgRef = useRef(null);
+  const isComposingRef = useRef(false);
 
   /* Load items from Supabase */
   const loadItems = useCallback(async (parentId = null) => {
@@ -18936,7 +18937,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>setShowNewFolder(false)}>
       <div onClick={e=>e.stopPropagation()} style={{ background:B.bgCard, borderRadius:16, padding:24, width:340, border:`1px solid ${B.border}` }}>
         <p style={{ fontSize:15, fontWeight:700, marginBottom:14 }}>Nova Pasta</p>
-        <input value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter")handleCreateFolder();}} onClick={e=>e.stopPropagation()} placeholder="Nome da pasta (ex: Clientes 2026)" autoFocus style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box" }} />
+        <input value={newFolderName} onChange={e=>setNewFolderName(e.target.value)} onCompositionStart={()=>{isComposingRef.current=true;}} onCompositionEnd={e=>{isComposingRef.current=false;setNewFolderName(e.target.value);}} onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"&&!isComposingRef.current)handleCreateFolder();}} onClick={e=>e.stopPropagation()} placeholder="Nome da pasta (ex: Clientes 2026)" autoFocus autoComplete="off" spellCheck="false" style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box", color:B.text }} />
         <div style={{ display:"flex", gap:8, marginTop:14 }}>
           <button onClick={()=>setShowNewFolder(false)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text }}>Cancelar</button>
           <button onClick={handleCreateFolder} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", background:B.accent, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Criar</button>
@@ -18950,7 +18951,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }} onClick={()=>setRenamingId(null)}>
       <div onClick={e=>e.stopPropagation()} style={{ background:B.bgCard, borderRadius:16, padding:24, width:340, border:`1px solid ${B.border}` }}>
         <p style={{ fontSize:15, fontWeight:700, marginBottom:14 }}>Renomear</p>
-        <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter")handleRename();}} onClick={e=>e.stopPropagation()} autoFocus style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box" }} />
+        <input value={renameVal} onChange={e=>setRenameVal(e.target.value)} onCompositionStart={()=>{isComposingRef.current=true;}} onCompositionEnd={e=>{isComposingRef.current=false;setRenameVal(e.target.value);}} onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"&&!isComposingRef.current)handleRename();}} onClick={e=>e.stopPropagation()} autoFocus autoComplete="off" spellCheck="false" style={{ width:"100%", padding:"10px 14px", borderRadius:10, border:`1.5px solid ${B.border}`, background:B.bg, fontFamily:"inherit", fontSize:13, outline:"none", boxSizing:"border-box", color:B.text }} />
         <div style={{ display:"flex", gap:8, marginTop:14 }}>
           <button onClick={()=>setRenamingId(null)} style={{ flex:1, padding:"10px 0", borderRadius:10, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color:B.text }}>Cancelar</button>
           <button onClick={handleRename} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", background:B.accent, cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:B.dark }}>Salvar</button>
@@ -19037,7 +19038,8 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
         <div style={{ flex:1, overflowY:"auto" }}>
           {viewFile.url && image && <div style={{ background:B.dark, padding:8 }}><img src={viewFile.url} alt={viewFile.name} style={{ width:"100%", maxHeight:200, objectFit:"contain", display:"block", margin:"0 auto", borderRadius:8 }}/></div>}
           {viewFile.url && video && <div style={{ background:B.dark }}><video src={viewFile.url} controls style={{ width:"100%", maxHeight:200, display:"block" }}/></div>}
-          {!(viewFile.url && (image||video)) && <div style={{ padding:"30px 16px", textAlign:"center", background:`${fi.c}04` }}><div style={{ color:fi.c, margin:"0 auto", display:"flex", justifyContent:"center", transform:"scale(2)", marginBottom:16 }}>{fi.ic}</div><p style={{ fontSize:12, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()||"FILE"}</p></div>}
+          {viewFile.url && ext==="pdf" && <div style={{ background:B.dark, height:280 }}><iframe src={viewFile.url+"#toolbar=0&view=FitH"} title={viewFile.name} style={{ width:"100%", height:"100%", border:"none" }} /></div>}
+          {!(viewFile.url && (image||video||ext==="pdf")) && <div style={{ padding:"30px 16px", textAlign:"center", background:`${fi.c}04` }}><div style={{ color:fi.c, margin:"0 auto", display:"flex", justifyContent:"center", transform:"scale(2)", marginBottom:16 }}>{fi.ic}</div><p style={{ fontSize:12, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()||"FILE"}</p></div>}
           <div style={{ padding:"12px 14px" }}>
             {[{l:"Tamanho",v:fmtSize(viewFile.size_bytes)},{l:"Tipo",v:viewFile.mime_type||"—"},{l:"Criado",v:fmtDate(viewFile.created_at)},{l:"Modificado",v:fmtDate(viewFile.updated_at)}].map((item,ii)=>(
               <div key={ii} style={{ display:"flex", justifyContent:"space-between", padding:"7px 0", borderTop:ii?`1px solid ${B.border}`:"none" }}>
@@ -19137,7 +19139,8 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
         <Card>
           {viewFile.url && image && <img src={viewFile.url} alt={viewFile.name} style={{ width:"100%", maxHeight:250, objectFit:"contain", borderRadius:10, display:"block", marginBottom:12 }} />}
           {viewFile.url && video && <video src={viewFile.url} controls style={{ width:"100%", maxHeight:250, borderRadius:10, display:"block", marginBottom:12 }} />}
-          {!(viewFile.url && (image||video)) && <div style={{ textAlign:"center", padding:24, background:`${fi.c}06`, borderRadius:12, marginBottom:12 }}><div style={{ color:fi.c, display:"flex", justifyContent:"center", transform:"scale(2.5)", marginBottom:20 }}>{fi.ic}</div><p style={{ fontSize:14, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()||"FILE"}</p></div>}
+          {viewFile.url && ext==="pdf" && <div style={{ borderRadius:10, overflow:"hidden", marginBottom:12, background:B.dark }}><iframe src={viewFile.url+"#toolbar=0&view=FitH"} title={viewFile.name} style={{ width:"100%", height:350, border:"none" }} /></div>}
+          {!(viewFile.url && (image||video||ext==="pdf")) && <div style={{ textAlign:"center", padding:24, background:`${fi.c}06`, borderRadius:12, marginBottom:12 }}><div style={{ color:fi.c, display:"flex", justifyContent:"center", transform:"scale(2.5)", marginBottom:20 }}>{fi.ic}</div><p style={{ fontSize:14, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()||"FILE"}</p></div>}
           {[{l:"Nome",v:viewFile.name},{l:"Tamanho",v:fmtSize(viewFile.size_bytes)},{l:"Tipo",v:viewFile.mime_type||"—"},{l:"Criado",v:fmtDate(viewFile.created_at)}].map((item,i)=>(<div key={i} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"9px 0", borderTop:i?`1px solid ${B.border}`:"none" }}><span style={{ fontSize:11, color:B.muted }}>{item.l}</span><span style={{ fontSize:13, fontWeight:600, maxWidth:"60%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.v}</span></div>))}
         </Card>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginTop:8 }}>
