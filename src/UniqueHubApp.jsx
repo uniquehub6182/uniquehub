@@ -18971,6 +18971,46 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     </div>
   ) : null;
 
+  /* PDF Thumbnail — renders first page via pdf.js */
+  const pdfJsLoaded = useRef(false);
+  const PdfThumb = ({ url, style }) => {
+    const canvasRef = useRef(null);
+    const [ready, setReady] = useState(false);
+    useEffect(() => {
+      if (!url) return;
+      let cancelled = false;
+      const loadPdfJs = () => {
+        if (window.pdfjsLib) return Promise.resolve();
+        if (pdfJsLoaded.current) return new Promise(r => { const iv = setInterval(() => { if (window.pdfjsLib) { clearInterval(iv); r(); } }, 100); setTimeout(() => { clearInterval(iv); r(); }, 5000); });
+        pdfJsLoaded.current = true;
+        return new Promise(r => {
+          const s = document.createElement("script");
+          s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+          s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; r(); };
+          s.onerror = () => r();
+          document.head.appendChild(s);
+        });
+      };
+      (async () => {
+        await loadPdfJs();
+        if (cancelled || !window.pdfjsLib || !canvasRef.current) return;
+        try {
+          const pdf = await window.pdfjsLib.getDocument(url).promise;
+          const page = await pdf.getPage(1);
+          const vp = page.getViewport({ scale: 0.5 });
+          const canvas = canvasRef.current;
+          if (!canvas || cancelled) return;
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          await page.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise;
+          if (!cancelled) setReady(true);
+        } catch (e) { console.warn("[PdfThumb]", e); }
+      })();
+      return () => { cancelled = true; };
+    }, [url]);
+    return <canvas ref={canvasRef} style={{ ...style, display: ready ? "block" : "none", width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0, zIndex:2 }} />;
+  };
+
   /* Single item renderer for grid */
   const GridItem = ({ item }) => {
     const fi = fileIcon(item);
@@ -18985,7 +19025,8 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
           {!item.is_folder && isImage && item.url && <img src={item.url} alt={item.name} loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} onError={e=>{e.target.style.display="none";e.target.nextSibling&&(e.target.nextSibling.style.display="flex");}} />}
           {!item.is_folder && isImage && item.url && <div style={{ display:"none", color:fi.c, opacity:0.6, transform:"scale(1.5)", position:"absolute", inset:0, alignItems:"center", justifyContent:"center" }}>{fi.ic}</div>}
           {!item.is_folder && isVideo && item.url && <><video src={item.url+"#t=0.1"} preload="metadata" muted style={{ width:"100%", height:"100%", objectFit:"cover" }} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", background:"rgba(0,0,0,0.3)" }}><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21"/></svg></div></>}
-          {!item.is_folder && ext==="pdf" && <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style={{ fontSize:10, fontWeight:800, color:B.red||"#EF4444" }}>PDF</span></div>}
+          {!item.is_folder && ext==="pdf" && item.url && <><PdfThumb url={item.url} style={{}} /><div className="pdf-fallback-icon" style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4 }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style={{ fontSize:10, fontWeight:800, color:B.red||"#EF4444" }}>PDF</span></div></>}
+          {!item.is_folder && ext==="pdf" && !item.url && <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4 }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style={{ fontSize:10, fontWeight:800, color:B.red||"#EF4444" }}>PDF</span></div>}
           {!item.is_folder && !isImage && !isVideo && ext!=="pdf" && <div style={{ color:fi.c, opacity:0.6, transform:"scale(1.5)" }}>{fi.ic}</div>}
           {!item.is_folder && <span style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:700, padding:"2px 5px", borderRadius:4, background:"rgba(0,0,0,0.5)", color:"#fff", textTransform:"uppercase" }}>{ext}</span>}
         </div>
@@ -19108,7 +19149,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                 const isSel = viewFile?.id === item.id;
                 return (
                   <div key={item.id} draggable onDragStart={e=>{e.dataTransfer.setData("application/uh-lib-item",JSON.stringify({id:item.id,name:item.name,is_folder:item.is_folder}));e.dataTransfer.effectAllowed="move";}} onDragOver={e=>{if(item.is_folder){e.preventDefault();e.stopPropagation();setDragOverFolder(item.id);}}} onDragLeave={()=>setDragOverFolder(null)} onDrop={e=>{if(item.is_folder)handleItemDrop(e,item.id);}} onClick={()=>{if(item.is_folder)navigateToFolder(item);else setViewFile(item);}} onContextMenu={e=>{e.preventDefault();setContextMenu({x:e.clientX,y:e.clientY,item});}} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}06`:dragOverFolder===item.id?`${B.green}06`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:dragOverFolder===item.id?`1.5px solid ${B.green}`:"1.5px solid transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel&&dragOverFolder!==item.id)e.currentTarget.style.background="transparent";}}>
-                    {item.is_folder ? <div style={{ width:40, height:40, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill={`${B.accent}20`} stroke={B.accent} strokeWidth="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div> : isImg(item)&&item.url ? <div style={{ width:40, height:40, borderRadius:8, overflow:"hidden", flexShrink:0 }}><img src={item.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /></div> : <div style={{ width:40, height:40, borderRadius:8, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>}
+                    {item.is_folder ? <div style={{ width:40, height:40, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill={`${B.accent}20`} stroke={B.accent} strokeWidth="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div> : isImg(item)&&item.url ? <div style={{ width:40, height:40, borderRadius:8, overflow:"hidden", flexShrink:0 }}><img src={item.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /></div> : getExt(item.name)==="pdf"&&item.url ? <div style={{ width:40, height:40, borderRadius:8, overflow:"hidden", flexShrink:0, position:"relative", background:`${B.red||"#EF4444"}08` }}><PdfThumb url={item.url} style={{}} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div> : <div style={{ width:40, height:40, borderRadius:8, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>}
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</p>
                       <p style={{ fontSize:10, color:B.muted }}>{item.is_folder?"Pasta":fmtSize(item.size_bytes)}</p>
@@ -19213,7 +19254,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
         return (
           <Card key={item.id} onClick={()=>setViewFile(item)} style={{ marginTop:4, cursor:"pointer" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
+              {isImg(item)&&item.url ? <div style={{ width:38, height:38, borderRadius:10, overflow:"hidden", flexShrink:0 }}><img src={item.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /></div> : getExt(item.name)==="pdf"&&item.url ? <div style={{ width:38, height:38, borderRadius:10, overflow:"hidden", flexShrink:0, position:"relative", background:`${B.red||"#EF4444"}08` }}><PdfThumb url={item.url} style={{}} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div> : <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>}
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</p>
                 <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{fmtSize(item.size_bytes)} · {fmtDate(item.created_at)}</p>
