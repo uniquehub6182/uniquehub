@@ -19426,14 +19426,14 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
   const clientMetrics = CDATA.map(c => {
     const ins = insights[c.name];
     const hasData = !!ins && (!!ins.fb || !!ins.ig || !!ins.fbPosts || !!ins.fbPage || !!ins.igMedia || !!ins.igTotals);
-    const fbImpressions = sumInsight(ins?.fb, "page_posts_impressions") + sumInsight(ins?.fb, "page_views_total");
+    const fbImpressions = (sumInsight(ins?.fb, "page_media_view") || sumInsight(ins?.fb, "page_posts_impressions")) + sumInsight(ins?.fb, "page_views_total");
     const fbEngagedUsers = sumInsight(ins?.fb, "page_post_engagements");
     const fbPostEngagement = sumInsight(ins?.fb, "page_post_engagements");
     const fbFanAdds = sumInsight(ins?.fb, "page_daily_follows");
     const fbPageViews = sumInsight(ins?.fb, "page_views_total");
-    const fbVideoViews = sumInsight(ins?.fb, "page_video_views");
+    const fbVideoViews = sumInsight(ins?.fb, "page_media_view") || sumInsight(ins?.fb, "page_video_views");
     const fbReactions = sumInsight(ins?.fb, "page_actions_post_reactions_total");
-    const fbPrevImp = sumInsight(ins?.fbPrev, "page_posts_impressions") + sumInsight(ins?.fbPrev, "page_views_total");
+    const fbPrevImp = (sumInsight(ins?.fbPrev, "page_media_view") || sumInsight(ins?.fbPrev, "page_posts_impressions")) + sumInsight(ins?.fbPrev, "page_views_total");
     const fbPrevEng = sumInsight(ins?.fbPrev, "page_post_engagements");
 
     /* v21: daily metrics (reach, follower_count) */
@@ -19942,7 +19942,7 @@ function ReportsPage({ onBack, clients: propClients, team: propTeam, isClientVie
                         </div>
                       ))}
                     </div>
-                    {(()=>{const pts=dailyInsight(sc.fbDaily,"page_posts_impressions");const max=Math.max(...pts.map(p=>p.value),1);return pts.length>0?<div style={{ padding:"14px", borderRadius:12, border:`1px solid ${B.border}` }}>
+                    {(()=>{const pts=(dailyInsight(sc.fbDaily,"page_media_view").some(p=>p.value)?dailyInsight(sc.fbDaily,"page_media_view"):dailyInsight(sc.fbDaily,"page_posts_impressions"));const max=Math.max(...pts.map(p=>p.value),1);return pts.length>0?<div style={{ padding:"14px", borderRadius:12, border:`1px solid ${B.border}` }}>
                       <p style={{ fontSize:11, fontWeight:700, color:B.muted, marginBottom:10 }}>Impressões diárias</p>
                       <div style={{ display:"flex", alignItems:"flex-end", gap:1, height:60 }}>{pts.map((p,pi)=><div key={pi} style={{ flex:1, borderRadius:2, background:"#4267B2", height:`${Math.max((p.value/max)*55,2)}px`, opacity:pi===pts.length-1?1:0.5 }} title={`${p.date}: ${formatNum(p.value)}`}/>)}</div>
                       <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}><span style={{ fontSize:7, color:B.muted }}>{pts[0]?.date?.slice(5)}</span><span style={{ fontSize:7, color:B.muted }}>{pts[pts.length-1]?.date?.slice(5)}</span></div>

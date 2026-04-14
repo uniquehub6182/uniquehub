@@ -15,7 +15,7 @@ serve(async (req) => {
     try { const { data } = await sb.from("app_settings").select("value").eq("key", `ig_token_${client_id}`).single(); if (data?.value) igToken = JSON.parse(data.value); } catch {}
     if (!metaToken && !igToken) return json({ error: "Nenhum token social encontrado" });
     const safeFetch = async (url: string) => { try { const r = await fetch(url); const d = await r.json(); if (d.error) { console.log("API err:", d.error.message?.substring(0,80)); return null; } return d; } catch { return null; } };
-    const V = "v21.0";
+    const V = "v25.0";
     const result: any = { fbPage: null, fbPosts: null, fb: null, fbPrev: null, igProfile: null, igMedia: null, ig: null, igPrev: null, igTotals: null, igTotalsPrev: null, needsPermission: [] };
     const now = new Date();
     const sinceStr = since || new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
@@ -43,14 +43,22 @@ serve(async (req) => {
     /* ═══ FACEBOOK ═══ */
     if (metaToken?.page_id && metaToken?.page_token) {
       const at = metaToken.page_token, pid = metaToken.page_id;
-      const fbMetrics = "page_views_total,page_post_engagements,page_posts_impressions,page_video_views,page_actions_post_reactions_total,page_daily_follows,page_daily_unfollows";
-      const [page, posts, d1, d2, igCheck] = await Promise.all([
+      /* v25 new metrics: page_media_view replaces page_posts_impressions + page_video_views */
+      const fbMetricsNew = "page_views_total,page_post_engagements,page_media_view,page_total_media_view_unique,page_actions_post_reactions_total,page_daily_follows,page_daily_unfollows";
+      const fbMetricsOld = "page_views_total,page_post_engagements,page_posts_impressions,page_video_views,page_actions_post_reactions_total,page_daily_follows,page_daily_unfollows";
+
+      const [page, posts, igCheck] = await Promise.all([
         safeFetch(`https://graph.facebook.com/${V}/${pid}?fields=name,fan_count,followers_count,talking_about_count,picture{url},link,category&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}/published_posts?fields=id,message,created_time,full_picture,permalink_url,shares,reactions.summary(true),comments.summary(true)&limit=25&access_token=${at}`),
-        safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${fbMetrics}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`),
-        safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${fbMetrics}&period=day&since=${prevStart}&until=${prevEndStr}&access_token=${at}`),
         safeFetch(`https://graph.facebook.com/${V}/${pid}?fields=instagram_business_account{id,username,followers_count,follows_count,media_count,profile_picture_url,biography}&access_token=${at}`),
       ]);
+
+      /* Try new metrics first, fallback to old */
+      let d1 = await safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${fbMetricsNew}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
+      if (!d1?.data) d1 = await safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${fbMetricsOld}&period=day&since=${sinceStr}&until=${untilStr}&access_token=${at}`);
+      let d2 = await safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${fbMetricsNew}&period=day&since=${prevStart}&until=${prevEndStr}&access_token=${at}`);
+      if (!d2?.data) d2 = await safeFetch(`https://graph.facebook.com/${V}/${pid}/insights?metric=${fbMetricsOld}&period=day&since=${prevStart}&until=${prevEndStr}&access_token=${at}`);
+
       if (page) result.fbPage = page;
       if (posts?.data) result.fbPosts = posts.data.map((p: any) => ({ ...p, likes_count: p.reactions?.summary?.total_count || 0, comments_count: p.comments?.summary?.total_count || 0, shares_count: p.shares?.count || 0 }));
       if (d1?.data) result.fb = d1.data; else if (page) result.needsPermission.push("read_insights");
@@ -100,12 +108,15 @@ serve(async (req) => {
         }
         if (Object.keys(totalsPrev).length) result.igTotalsPrev = totalsPrev;
 
-        /* IG media with per-post insights */
+        /* IG media with per-post insights — v25: try views metric, fallback to reach */
         if (igMedia?.data) {
           const mediaWithInsights = await Promise.all(igMedia.data.slice(0, 15).map(async (m: any) => {
-            const ins = await safeFetch(`https://graph.facebook.com/${V}/${m.id}/insights?metric=reach,saved,shares,total_interactions&access_token=${at}`);
+            let ins = await safeFetch(`https://graph.facebook.com/${V}/${m.id}/insights?metric=views,saved,shares,total_interactions&access_token=${at}`);
+            if (!ins?.data) ins = await safeFetch(`https://graph.facebook.com/${V}/${m.id}/insights?metric=reach,saved,shares,total_interactions&access_token=${at}`);
             const insMap: any = {};
             if (ins?.data) ins.data.forEach((i: any) => { insMap[i.name] = i.values?.[0]?.value || 0; });
+            /* Normalize: map "views" to "reach" for frontend compatibility */
+            if (insMap.views !== undefined && insMap.reach === undefined) insMap.reach = insMap.views;
             return { ...m, insights: insMap };
           }));
           result.igMedia = mediaWithInsights;
