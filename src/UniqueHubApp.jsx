@@ -18788,16 +18788,37 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   const [pgC, setPgC] = useState(false);
   const pgRef = useRef(null);
   const isComposingRef = useRef(false);
+  const clientRootRef = useRef(null); /* Locked folder for client view */
 
   /* Load items from Supabase */
   const loadItems = useCallback(async (parentId = null) => {
     setLoading(true);
-    const data = await libFetch(parentId);
+    let data = await libFetch(parentId);
+    /* Client view: if at root and no locked folder yet, filter by client_id */
+    if (isClientView && !parentId && !clientRootRef.current) {
+      const client = CDATA.find(c => c.name === clientFilter || (c.contact_email||"").toLowerCase() === (clientFilter||"").toLowerCase());
+      const cid = client?.supaId || client?.id;
+      if (cid) data = data.filter(it => it.client_id === cid || it.name === clientFilter);
+    }
     setItems(data);
     setLoading(false);
-  }, []);
+  }, [isClientView, clientFilter, CDATA]);
 
   useEffect(() => { loadItems(currentFolderId); }, [currentFolderId, loadItems]);
+
+  /* Client view: auto-navigate into client's folder */
+  useEffect(() => {
+    if (!isClientView || clientRootRef.current) return;
+    (async () => {
+      const allRoot = await libFetch(null);
+      const clientFolder = allRoot.find(it => it.is_folder && it.name.toLowerCase() === (clientFilter||"").toLowerCase());
+      if (clientFolder) {
+        clientRootRef.current = clientFolder.id;
+        setCurrentFolderId(clientFolder.id);
+        setFolderPath([{ id: clientFolder.id, name: clientFolder.name }]);
+      }
+    })();
+  }, [isClientView, clientFilter]);
 
   /* Auto-migrate old client files on first load */
   useEffect(() => {
@@ -18821,6 +18842,12 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   };
   /* Navigate to specific breadcrumb */
   const navigateTo = (index) => {
+    /* Client view: prevent going above locked folder */
+    if (isClientView && clientRootRef.current) {
+      if (index < 0) { setFolderPath([{ id: clientRootRef.current, name: clientFilter }]); setCurrentFolderId(clientRootRef.current); setViewFile(null); setSearch(""); return; }
+      const target = folderPath[index];
+      if (!target) return;
+    }
     if (index < 0) { setFolderPath([]); setCurrentFolderId(null); }
     else { setFolderPath(p => p.slice(0, index + 1)); setCurrentFolderId(folderPath[index].id); }
     setViewFile(null); setSearch("");
@@ -18920,17 +18947,25 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
   const totalFiles = items.filter(it => !it.is_folder).length;
 
   /* Breadcrumbs */
-  const Breadcrumbs = () => (
+  const Breadcrumbs = () => {
+    /* Client view: show from client folder level, not root */
+    const visiblePath = isClientView && clientRootRef.current ? folderPath.slice(1) : folderPath;
+    const rootLabel = isClientView ? (clientFilter || "Meus Arquivos") : "Biblioteca";
+    return (
     <div style={{ display:"flex", alignItems:"center", gap:4, flexWrap:"wrap", padding:"0 0 8px" }}>
-      <button onClick={()=>navigateTo(-1)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:700, color:folderPath.length?B.accent:B.text, padding:"4px 6px", borderRadius:6 }}>Biblioteca</button>
-      {folderPath.map((fp, i) => (
+      <button onClick={()=>navigateTo(-1)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:visiblePath.length?700:700, color:visiblePath.length?B.accent:B.text, padding:"4px 6px", borderRadius:6 }}>{rootLabel}</button>
+      {visiblePath.map((fp, i) => {
+        const realIndex = isClientView && clientRootRef.current ? i + 1 : i;
+        return (
         <React.Fragment key={fp.id}>
           <span style={{ color:B.muted, fontSize:10 }}>/</span>
-          <button onClick={()=>navigateTo(i)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:i===folderPath.length-1?700:500, color:i===folderPath.length-1?B.text:B.accent, padding:"4px 6px", borderRadius:6, maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fp.name}</button>
+          <button onClick={()=>navigateTo(realIndex)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:realIndex===folderPath.length-1?700:500, color:realIndex===folderPath.length-1?B.text:B.accent, padding:"4px 6px", borderRadius:6, maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{fp.name}</button>
         </React.Fragment>
-      ))}
+        );
+      })}
     </div>
-  );
+    );
+  };
 
   /* New Folder Modal */
   const NewFolderModal = () => showNewFolder ? (
