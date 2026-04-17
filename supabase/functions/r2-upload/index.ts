@@ -105,6 +105,26 @@ serve(async (req) => {
     const R2_EP = Deno.env.get("R2_ENDPOINT")!;
     const R2_BK = Deno.env.get("R2_BUCKET") || "uniquehub-files";
     const R2_PU = Deno.env.get("R2_PUBLIC_URL") || "";
+    const directFileName = req.headers.get("x-file-name");
+    const directContentType = req.headers.get("x-content-type");
+
+    /* MODE 3: Direct binary upload — browser sends file, Edge proxies to R2 (no CORS issues) */
+    if (directFileName && directContentType) {
+      const safeName = directFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const key = `uploads/${Date.now()}-${safeName}`;
+      const ct = directContentType;
+      const blob = await req.blob();
+      console.log(`[R2 Direct] ${safeName} (${(blob.size/1048576).toFixed(1)}MB) -> R2`);
+      const signedUrl = await generatePresignedPutUrl(R2_EP, R2_BK, key, R2_AK, R2_SK, ct);
+      const upResp = await fetch(signedUrl, { method: "PUT", headers: { "Content-Type": ct }, body: blob });
+      if (!upResp.ok) throw new Error(`R2 PUT failed: ${upResp.status}`);
+      const publicUrl = R2_PU ? `${R2_PU}/${key}` : `${R2_EP}/${R2_BK}/${key}`;
+      console.log("[R2 Direct] OK:", publicUrl);
+      return new Response(JSON.stringify({ url: publicUrl, key }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const body = await req.json();
     const { fileName, contentType, sourceUrl } = body;
     const safeName = (fileName || `file-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, "_");
