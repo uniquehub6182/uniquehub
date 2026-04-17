@@ -3217,7 +3217,7 @@ function LoginPage({ onAuth, onClientAuth }) {
       {isDesktopLogin && <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 30% 20%, rgba(187,242,70,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(187,242,70,0.04) 0%, transparent 60%)" }} />
         <div style={{ position:"relative", textAlign:"center", maxWidth:400, padding:"0 40px" }}>
-          <img src={LOGO_B64} alt="UniqueHub" style={{ height:72, objectFit:"contain", marginBottom:24 }} />
+          <img src={LOGO_B64} alt="UniqueHub" style={{ height:72, objectFit:"contain", marginBottom:24, display:"block", margin:"0 auto 24px" }} />
           <h2 style={{ fontSize:28, fontWeight:900, color:"#fff", margin:"0 0 12px", letterSpacing:"-0.5px", lineHeight:1.2 }}>Gerencie seu marketing digital em um só lugar</h2>
           <p style={{ fontSize:15, color:"rgba(255,255,255,0.4)", lineHeight:1.6, margin:0 }}>Publicação, métricas, aprovações e relatórios — tudo integrado para sua agência crescer.</p>
           <div style={{ display:"flex", gap:24, justifyContent:"center", marginTop:32 }}>
