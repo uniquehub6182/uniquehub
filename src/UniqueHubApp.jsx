@@ -2535,8 +2535,10 @@ function LoginPage({ onAuth, onClientAuth }) {
       setLoginLoading(true); setError("");
       const loginTimeout = setTimeout(() => { setError("Servidor demorou para responder. Tente novamente."); setLoginLoading(false); }, 25000);
       try {
+        /* Pre-check: verify connectivity before login attempt */
+        try { const hc = await fetch(SUPA_URL+"/auth/v1/health", {headers:{"apikey":SUPA_KEY}}); if (!hc.ok && hc.status !== 401) throw new Error("offline"); } catch(hcErr) { clearTimeout(loginTimeout); setError("Sem conexão com o servidor. Verifique sua internet, desative VPN/bloqueadores e tente novamente."); setLoginLoading(false); return; }
         const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
-        if (authErr) { clearTimeout(loginTimeout); setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); supaAuditLog("login_failed", { email, portal: "agency" });
+        if (authErr) { clearTimeout(loginTimeout); const isNetErr = (authErr.message||"").includes("fetch")||(authErr.message||"").includes("network"); setError(isNetErr?"Erro de conexão. Verifique sua internet, limpe o cache do navegador (Ctrl+Shift+Del) e tente novamente.":authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); if(!isNetErr)supaAuditLog("login_failed", { email, portal: "agency" });
           /* Suspicious login detection: alert after 3+ failures for same email */
           try {
             const { data: recentFails } = await supabase.from("app_settings").select("key,value").like("key", "audit_%").order("updated_at", { ascending: false }).limit(20);
@@ -2597,7 +2599,7 @@ function LoginPage({ onAuth, onClientAuth }) {
           }
         }
         clearTimeout(loginTimeout); setLoginLoading(false); try { localStorage.removeItem("uh_login_attempts"); } catch {} try { await supabase.auth.signOut({ scope: 'others' }); } catch {} supaAuditLog("login", { email, portal: "agency" }, userObj.id); onAuth(userObj);
-      } catch (e) { setError("Erro de conexão: " + (e?.message || "tente novamente")); setLoginLoading(false); }
+      } catch (e) { const msg = (e?.message||""); const isNet = msg.includes("fetch")||msg.includes("network")||msg.includes("CORS"); setError(isNet?"Sem conexão com o servidor. Tente: 1) Verificar sua internet 2) Limpar cache (Ctrl+Shift+Del) 3) Abrir em aba anônima 4) Desativar extensões/VPN":"Erro: "+(msg||"tente novamente")); setLoginLoading(false); }
       return;
     }
     /* No fallback: Supabase required */
