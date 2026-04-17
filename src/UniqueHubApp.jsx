@@ -3212,26 +3212,35 @@ function LoginPage({ onAuth, onClientAuth }) {
   const isDesktopLogin = typeof window !== "undefined" && window.innerWidth > 900;
 
   return (
-    <div style={{ position:"fixed", inset:0, display:"flex", background:"#0A0A0A" }}>
+    <div style={{ position:"fixed", inset:0, display:"flex", background:"#09090B", overflow:"hidden" }}>
+      {/* Animated background orbs */}
+      <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}>
+        <div className="uh-orb1" style={{ position:"absolute", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, rgba(187,242,70,0.10) 0%, transparent 70%)", filter:"blur(80px)", top:"-10%", left:"-10%" }} />
+        <div className="uh-orb2" style={{ position:"absolute", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle, rgba(187,242,70,0.06) 0%, transparent 70%)", filter:"blur(100px)", bottom:"-15%", right:"-10%" }} />
+        <div style={{ position:"absolute", inset:0, opacity:0.025, backgroundImage:"linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)", backgroundSize:"60px 60px" }} />
+      </div>
       {/* Desktop: left branding panel */}
-      {isDesktopLogin && <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 30% 20%, rgba(187,242,70,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(187,242,70,0.04) 0%, transparent 60%)" }} />
-        <div style={{ position:"relative", textAlign:"center", maxWidth:400, padding:"0 40px" }}>
-          <img src={LOGO_B64} alt="UniqueHub" style={{ height:72, objectFit:"contain", marginBottom:24, display:"block", margin:"0 auto 24px" }} />
-          <h2 style={{ fontSize:28, fontWeight:900, color:"#fff", margin:"0 0 12px", letterSpacing:"-0.5px", lineHeight:1.2 }}>Gerencie seu marketing digital em um só lugar</h2>
-          <p style={{ fontSize:15, color:"rgba(255,255,255,0.4)", lineHeight:1.6, margin:0 }}>Publicação, métricas, aprovações e relatórios — tudo integrado para sua agência crescer.</p>
-          <div style={{ display:"flex", gap:24, justifyContent:"center", marginTop:32 }}>
-            {[{n:"12+",l:"Agências"},{n:"200+",l:"Clientes"},{n:"50k+",l:"Posts"}].map((s,i)=><div key={i} style={{textAlign:"center"}}><div style={{fontSize:24,fontWeight:900,color:"#BBF246"}}>{s.n}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.3)",fontWeight:600,marginTop:2}}>{s.l}</div></div>)}
+      {isDesktopLogin && <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", zIndex:1 }}>
+        <div style={{ textAlign:"center", maxWidth:420, padding:"0 48px" }}>
+          <img src={LOGO_B64} alt="UniqueHub" style={{ height:72, objectFit:"contain", display:"block", margin:"0 auto 28px" }} />
+          <h2 style={{ fontSize:28, fontWeight:900, color:"#fff", margin:"0 0 14px", letterSpacing:"-0.5px", lineHeight:1.25 }}>Gerencie seu marketing digital em um só lugar</h2>
+          <p style={{ fontSize:15, color:"rgba(255,255,255,0.35)", lineHeight:1.7, margin:"0 0 40px" }}>Publicação, métricas, aprovações e relatórios — tudo integrado para sua agência crescer.</p>
+          <div style={{ display:"flex", gap:32, justifyContent:"center" }}>
+            {[{n:"12+",l:"Agências"},{n:"200+",l:"Clientes"},{n:"50k+",l:"Posts"}].map((s,i)=><div key={i} style={{textAlign:"center"}}><div style={{fontSize:26,fontWeight:900,color:"#BBF246",letterSpacing:"-1px"}}>{s.n}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.25)",fontWeight:600,marginTop:4,textTransform:"uppercase",letterSpacing:"0.1em"}}>{s.l}</div></div>)}
           </div>
         </div>
-        <div style={{ position:"absolute", bottom:24, fontSize:11, color:"rgba(255,255,255,0.15)" }}>© 2026 Unique Marketing 360</div>
+        <div style={{ position:"absolute", bottom:28, fontSize:11, color:"rgba(255,255,255,0.12)" }}>© 2026 Unique Marketing 360</div>
       </div>}
       {/* Right panel / Mobile full */}
-      <div style={isDesktopLogin ? { width:480, minWidth:420, display:"flex", flexDirection:"column", background:"#0A0A0A" } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div style={isDesktopLogin ? { width:480, minWidth:420, display:"flex", flexDirection:"column", zIndex:1 } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden", zIndex:1 }}>
       <style>{`
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+        @keyframes orbDrift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(30vw,20vh) scale(1.2)} 66%{transform:translate(15vw,50vh) scale(0.9)} }
+        @keyframes orbDrift2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-25vw,-15vh) scale(1.1)} 66%{transform:translate(-10vw,-40vh) scale(0.85)} }
+        .uh-orb1 { animation:orbDrift1 14s ease-in-out infinite; }
+        .uh-orb2 { animation:orbDrift2 18s ease-in-out infinite; }
         .lcard { animation: cardUp 0.5s cubic-bezier(0.34,1.1,0.64,1) both; }
         .llogo { animation: logoIn 0.4s ease both; }
         .lf-wrap { position:relative; width:100%; }
@@ -3270,7 +3279,7 @@ function LoginPage({ onAuth, onClientAuth }) {
       </div>}
 
       {/* ── WHITE CARD ── */}
-      <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:isDesktopLogin?"32px 0 0 0":"32px 32px 0 0", overflowY:"auto", padding:isDesktopLogin?"40px 48px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
+      <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:isDesktopLogin?"32px 0 0 32px":"32px 32px 0 0", overflowY:"auto", padding:isDesktopLogin?"40px 48px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)", boxShadow:isDesktopLogin?"0 0 60px rgba(0,0,0,0.3)":"none" }}>
         <div style={isDesktopLogin?{maxWidth:400,margin:"0 auto"}:{}}>
 
         {/* Portal toggle — Colaborador | Cliente */}
