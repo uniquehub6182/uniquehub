@@ -2537,6 +2537,8 @@ function LoginPage({ onAuth, onClientAuth }) {
       try {
         /* Pre-check: verify connectivity before login attempt */
         try { const hc = await fetch(SUPA_URL+"/auth/v1/health", {headers:{"apikey":SUPA_KEY}}); if (!hc.ok && hc.status !== 401) throw new Error("offline"); } catch(hcErr) { clearTimeout(loginTimeout); setError("Sem conexão com o servidor. Verifique sua internet, desative VPN/bloqueadores e tente novamente."); setLoginLoading(false); return; }
+        /* Clear any stale session that might block login */
+        try { await supabase.auth.signOut({ scope:"local" }); } catch {}
         const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
         if (authErr) { clearTimeout(loginTimeout); const isNetErr = (authErr.message||"").includes("fetch")||(authErr.message||"").includes("network"); setError(isNetErr?"Erro de conexão. Verifique sua internet, limpe o cache do navegador (Ctrl+Shift+Del) e tente novamente.":authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); if(!isNetErr)supaAuditLog("login_failed", { email, portal: "agency" });
           /* Suspicious login detection: alert after 3+ failures for same email */
@@ -2748,8 +2750,10 @@ function LoginPage({ onAuth, onClientAuth }) {
     } catch {}
     setLoginLoading(true); setError("");
     try {
+      /* Clear any stale session that might block login */
+      try { await supabase.auth.signOut({ scope:"local" }); } catch {}
       const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password: pw });
-      if (authErr) { setError(authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); supaAuditLog("login_failed", { email, portal: "client" });
+      if (authErr) { const isNetErr = (authErr.message||"").includes("fetch")||(authErr.message||"").includes("network"); setError(isNetErr?"Erro de conexão. Verifique sua internet e tente novamente.":authErr.message === "Invalid login credentials" ? "Email ou senha incorretos" : authErr.message); if(!isNetErr)supaAuditLog("login_failed", { email, portal: "client" });
         try {
           const { data: recentFails } = await supabase.from("app_settings").select("key,value").like("key", "audit_%").order("updated_at", { ascending: false }).limit(20);
           const failCount = (recentFails || []).filter(r => { try { const v = typeof r.value === "string" ? JSON.parse(r.value) : r.value; return v.action === "login_failed" && v.details?.email === email; } catch { return false; } }).length;
