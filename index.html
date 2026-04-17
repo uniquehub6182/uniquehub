@@ -45,6 +45,10 @@
         min-height: 100vh;
         overscroll-behavior: auto !important;
       }
+      /* Zoom normalization: prevent layout break at 125%/150% zoom */
+      html.uh-desktop #root {
+        min-width: 1024px;
+      }
     </style>
     <script>
       /* Detect desktop immediately before React loads */
