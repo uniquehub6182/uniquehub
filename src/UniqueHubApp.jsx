@@ -3212,9 +3212,22 @@ function LoginPage({ onAuth, onClientAuth }) {
   const isDesktopLogin = typeof window !== "undefined" && window.innerWidth > 900;
 
   return (
-    <div style={{ position:"fixed", inset:0, display:"flex", alignItems: isDesktopLogin ? "flex-end" : "stretch", justifyContent: isDesktopLogin ? "center" : "stretch", background:"#000" }}>
-      {/* Desktop: centered login container */}
-      <div style={isDesktopLogin ? { width:420, maxWidth:"90vw", display:"flex", flexDirection:"column", flex:1, maxHeight:"none" } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+    <div style={{ position:"fixed", inset:0, display:"flex", background:"#0A0A0A" }}>
+      {/* Desktop: left branding panel */}
+      {isDesktopLogin && <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 30% 20%, rgba(187,242,70,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, rgba(187,242,70,0.04) 0%, transparent 60%)" }} />
+        <div style={{ position:"relative", textAlign:"center", maxWidth:400, padding:"0 40px" }}>
+          <img src={LOGO_B64} alt="UniqueHub" style={{ height:72, objectFit:"contain", marginBottom:24 }} />
+          <h2 style={{ fontSize:28, fontWeight:900, color:"#fff", margin:"0 0 12px", letterSpacing:"-0.5px", lineHeight:1.2 }}>Gerencie seu marketing digital em um só lugar</h2>
+          <p style={{ fontSize:15, color:"rgba(255,255,255,0.4)", lineHeight:1.6, margin:0 }}>Publicação, métricas, aprovações e relatórios — tudo integrado para sua agência crescer.</p>
+          <div style={{ display:"flex", gap:24, justifyContent:"center", marginTop:32 }}>
+            {[{n:"12+",l:"Agências"},{n:"200+",l:"Clientes"},{n:"50k+",l:"Posts"}].map((s,i)=><div key={i} style={{textAlign:"center"}}><div style={{fontSize:24,fontWeight:900,color:"#BBF246"}}>{s.n}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.3)",fontWeight:600,marginTop:2}}>{s.l}</div></div>)}
+          </div>
+        </div>
+        <div style={{ position:"absolute", bottom:24, fontSize:11, color:"rgba(255,255,255,0.15)" }}>© 2026 Unique Marketing 360</div>
+      </div>}
+      {/* Right panel / Mobile full */}
+      <div style={isDesktopLogin ? { width:480, minWidth:420, display:"flex", flexDirection:"column", background:"#0A0A0A" } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
       <style>{`
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
@@ -3249,24 +3262,15 @@ function LoginPage({ onAuth, onClientAuth }) {
         .lsign-btn:disabled { opacity:0.4; }
       `}</style>
 
-      {/* ── DARK HEADER ── */}
-      <div className="llogo" style={{ padding:isDesktopLogin?"32px 28px 24px":"calc(env(safe-area-inset-top,0px) + 72px) 28px 48px", textAlign:"center", position:"relative", zIndex:1 }}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{ height:isDesktopLogin?48:36, objectFit:"contain", marginBottom:isDesktopLogin?14:10 }} />
-        <p style={{ fontSize:isDesktopLogin?13:12, color:"rgba(255,255,255,0.35)", fontWeight:600, letterSpacing:"0.1em", textTransform:"uppercase", marginTop:4 }}>Agency Panel</p>
-
-        {/* Tab top-right: Não tem conta? — hidden now, moved below */}
-        <div style={{ display:"none" }}>
-          <span style={{ fontSize:13, color:"rgba(255,255,255,0.4)" }}>
-            {mode==="login" ? "Sem conta?" : "Já tem conta?"}
-          </span>
-          <button onClick={() => { setMode(mode==="login"?"register":"login"); setError(""); }} style={{ background:"rgba(187,242,70,0.15)", border:"1.5px solid rgba(187,242,70,0.4)", borderRadius:20, padding:"6px 14px", color:"#BBF246", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-            {mode==="login" ? "Solicitar" : "Entrar"}
-          </button>
-        </div>
-      </div>
+      {/* ── DARK HEADER (mobile only, desktop has left panel) ── */}
+      {!isDesktopLogin && <div className="llogo" style={{ padding:"calc(env(safe-area-inset-top,0px) + 48px) 28px 36px", textAlign:"center", position:"relative", zIndex:1 }}>
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 50% 0%, rgba(187,242,70,0.08) 0%, transparent 70%)", pointerEvents:"none" }} />
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:48, objectFit:"contain", marginBottom:12, position:"relative" }} />
+        <p style={{ fontSize:11, color:"rgba(255,255,255,0.25)", fontWeight:600, letterSpacing:"0.15em", textTransform:"uppercase", marginTop:2, position:"relative" }}>{portal==="client" ? "Portal do Cliente" : "Plataforma de Marketing"}</p>
+      </div>}
 
       {/* ── WHITE CARD ── */}
-      <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:isDesktopLogin?"28px 28px 0 0":"32px 32px 0 0", overflowY:"auto", padding:isDesktopLogin?"36px 44px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
+      <div className="lcard" style={{ flex:1, height:0, background:"#fff", borderRadius:isDesktopLogin?"32px 0 0 0":"32px 32px 0 0", overflowY:"auto", padding:isDesktopLogin?"40px 48px 36px":"36px 28px calc(env(safe-area-inset-bottom,0px) + 32px)" }}>
         <div style={isDesktopLogin?{maxWidth:400,margin:"0 auto"}:{}}>
 
         {/* Portal toggle — Colaborador | Cliente */}
