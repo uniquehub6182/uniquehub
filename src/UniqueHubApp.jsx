@@ -3239,10 +3239,9 @@ function LoginPage({ onAuth, onClientAuth }) {
       {isDesktopLogin && <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", zIndex:1 }}>
         <div style={{ textAlign:"center", maxWidth:460, padding:"0 48px" }}>
           <img src={LOGO_B64} alt="UniqueHub" style={{ height:72, objectFit:"contain", display:"block", margin:"0 auto 32px" }} />
-          <h2 style={{ fontSize:42, fontWeight:900, color:"#fff", margin:"0 0 16px", letterSpacing:"-1.5px", lineHeight:1.1 }}>Toda sua agência.<br/><span style={{ color:"#BBF246" }}>Um só lugar.</span></h2>
-          <p style={{ fontSize:16, color:"rgba(255,255,255,0.35)", lineHeight:1.7, margin:"0 auto 44px", maxWidth:380 }}>Publicação, métricas, aprovações e relatórios — tudo integrado para sua agência crescer.</p>
+          <h2 style={{ fontSize:42, fontWeight:900, color:"#fff", margin:"0 0 44px", letterSpacing:"-1.5px", lineHeight:1.1 }}>Toda sua agência.<br/><span style={{ color:"#BBF246" }}>Um só lugar.</span></h2>
           <div style={{ display:"flex", gap:16, justifyContent:"center" }}>
-            {[{n:"12+",l:"Agências"},{n:"200+",l:"Clientes"},{n:"50k+",l:"Posts"}].map((s,i)=><div key={i} style={{flex:1,textAlign:"center",padding:"18px 12px",borderRadius:18,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",backdropFilter:"blur(8px)"}}><div style={{fontSize:28,fontWeight:900,color:"#BBF246",letterSpacing:"-1.5px"}}>{s.n}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.25)",fontWeight:600,marginTop:5,textTransform:"uppercase",letterSpacing:"0.12em"}}>{s.l}</div></div>)}
+            {[{n:"100+",l:"Agências"},{n:"200+",l:"Clientes"},{n:"50k+",l:"Posts"}].map((s,i)=><div key={i} style={{flex:1,textAlign:"center",padding:"18px 12px",borderRadius:18,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",backdropFilter:"blur(8px)"}}><div style={{fontSize:28,fontWeight:900,color:"#BBF246",letterSpacing:"-1.5px"}}>{s.n}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.25)",fontWeight:600,marginTop:5,textTransform:"uppercase",letterSpacing:"0.12em"}}>{s.l}</div></div>)}
           </div>
         </div>
         <div style={{ position:"absolute", bottom:28, fontSize:11, color:"rgba(255,255,255,0.1)" }}>© 2026 Unique Marketing 360</div>
