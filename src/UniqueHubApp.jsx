@@ -3210,26 +3210,42 @@ function LoginPage({ onAuth, onClientAuth }) {
   const emailFloating = emailFocused || email.length > 0;
   const passFloating  = passFocused  || pw.length > 0;
   const isDesktopLogin = typeof window !== "undefined" && window.innerWidth > 900;
+  const auroraRef = React.useRef(null);
+  React.useEffect(() => {
+    const c = auroraRef.current; if (!c) return;
+    const ctx = c.getContext("2d"); let id, t = 0;
+    const resize = () => { c.width = c.offsetWidth; c.height = c.offsetHeight; };
+    resize(); window.addEventListener("resize", resize);
+    const draw = () => {
+      t += 0.0025; ctx.fillStyle = "#09090B"; ctx.fillRect(0, 0, c.width, c.height);
+      [{x:.25+Math.sin(t*.7)*.2, y:.3+Math.cos(t*.5)*.25, r:.45, o:.09},
+       {x:.75+Math.cos(t*.5)*.15, y:.65+Math.sin(t*.8)*.2, r:.4, o:.06},
+       {x:.5+Math.sin(t*.3)*.3, y:.45+Math.cos(t*.4)*.3, r:.5, o:.035}].forEach(b => {
+        const g = ctx.createRadialGradient(b.x*c.width, b.y*c.height, 0, b.x*c.width, b.y*c.height, b.r*Math.max(c.width,c.height));
+        g.addColorStop(0, `rgba(187,242,70,${b.o})`); g.addColorStop(0.5, `rgba(187,242,70,${b.o*0.25})`); g.addColorStop(1, "transparent");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, c.width, c.height);
+      });
+      id = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", resize); };
+  }, []);
 
   return (
     <div style={{ position:"fixed", inset:0, display:"flex", background:"#09090B", overflow:"hidden" }}>
-      {/* Animated background orbs */}
-      <div style={{ position:"absolute", inset:0, pointerEvents:"none", zIndex:0 }}>
-        <div className="uh-orb1" style={{ position:"absolute", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, rgba(187,242,70,0.10) 0%, transparent 70%)", filter:"blur(80px)", top:"-10%", left:"-10%" }} />
-        <div className="uh-orb2" style={{ position:"absolute", width:500, height:500, borderRadius:"50%", background:"radial-gradient(circle, rgba(187,242,70,0.06) 0%, transparent 70%)", filter:"blur(100px)", bottom:"-15%", right:"-10%" }} />
-        <div style={{ position:"absolute", inset:0, opacity:0.025, backgroundImage:"linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)", backgroundSize:"60px 60px" }} />
-      </div>
+      {/* Animated aurora background */}
+      <canvas ref={auroraRef} style={{ position:"absolute", inset:0, width:"100%", height:"100%", zIndex:0 }} />
       {/* Desktop: left branding panel */}
       {isDesktopLogin && <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", position:"relative", zIndex:1 }}>
-        <div style={{ textAlign:"center", maxWidth:420, padding:"0 48px" }}>
-          <img src={LOGO_B64} alt="UniqueHub" style={{ height:72, objectFit:"contain", display:"block", margin:"0 auto 28px" }} />
-          <h2 style={{ fontSize:28, fontWeight:900, color:"#fff", margin:"0 0 14px", letterSpacing:"-0.5px", lineHeight:1.25 }}>Gerencie seu marketing digital em um só lugar</h2>
-          <p style={{ fontSize:15, color:"rgba(255,255,255,0.35)", lineHeight:1.7, margin:"0 0 40px" }}>Publicação, métricas, aprovações e relatórios — tudo integrado para sua agência crescer.</p>
-          <div style={{ display:"flex", gap:32, justifyContent:"center" }}>
-            {[{n:"12+",l:"Agências"},{n:"200+",l:"Clientes"},{n:"50k+",l:"Posts"}].map((s,i)=><div key={i} style={{textAlign:"center"}}><div style={{fontSize:26,fontWeight:900,color:"#BBF246",letterSpacing:"-1px"}}>{s.n}</div><div style={{fontSize:11,color:"rgba(255,255,255,0.25)",fontWeight:600,marginTop:4,textTransform:"uppercase",letterSpacing:"0.1em"}}>{s.l}</div></div>)}
+        <div style={{ textAlign:"center", maxWidth:460, padding:"0 48px" }}>
+          <img src={LOGO_B64} alt="UniqueHub" style={{ height:72, objectFit:"contain", display:"block", margin:"0 auto 32px" }} />
+          <h2 style={{ fontSize:42, fontWeight:900, color:"#fff", margin:"0 0 16px", letterSpacing:"-1.5px", lineHeight:1.1 }}>Toda sua agência.<br/><span style={{ color:"#BBF246" }}>Um só lugar.</span></h2>
+          <p style={{ fontSize:16, color:"rgba(255,255,255,0.35)", lineHeight:1.7, margin:"0 auto 44px", maxWidth:380 }}>Publicação, métricas, aprovações e relatórios — tudo integrado para sua agência crescer.</p>
+          <div style={{ display:"flex", gap:16, justifyContent:"center" }}>
+            {[{n:"12+",l:"Agências"},{n:"200+",l:"Clientes"},{n:"50k+",l:"Posts"}].map((s,i)=><div key={i} style={{flex:1,textAlign:"center",padding:"18px 12px",borderRadius:18,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",backdropFilter:"blur(8px)"}}><div style={{fontSize:28,fontWeight:900,color:"#BBF246",letterSpacing:"-1.5px"}}>{s.n}</div><div style={{fontSize:10,color:"rgba(255,255,255,0.25)",fontWeight:600,marginTop:5,textTransform:"uppercase",letterSpacing:"0.12em"}}>{s.l}</div></div>)}
           </div>
         </div>
-        <div style={{ position:"absolute", bottom:28, fontSize:11, color:"rgba(255,255,255,0.12)" }}>© 2026 Unique Marketing 360</div>
+        <div style={{ position:"absolute", bottom:28, fontSize:11, color:"rgba(255,255,255,0.1)" }}>© 2026 Unique Marketing 360</div>
       </div>}
       {/* Right panel / Mobile full */}
       <div style={isDesktopLogin ? { width:480, minWidth:420, display:"flex", flexDirection:"column", zIndex:1 } : { flex:1, display:"flex", flexDirection:"column", overflow:"hidden", zIndex:1 }}>
@@ -3237,10 +3253,12 @@ function LoginPage({ onAuth, onClientAuth }) {
         @keyframes cardUp { from { transform:translateY(60px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes logoIn { from { transform:translateY(-20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
         @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
-        @keyframes orbDrift1 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(30vw,20vh) scale(1.2)} 66%{transform:translate(15vw,50vh) scale(0.9)} }
-        @keyframes orbDrift2 { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(-25vw,-15vh) scale(1.1)} 66%{transform:translate(-10vw,-40vh) scale(0.85)} }
-        .uh-orb1 { animation:orbDrift1 14s ease-in-out infinite; }
-        .uh-orb2 { animation:orbDrift2 18s ease-in-out infinite; }
+        @keyframes orbDrift1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(10px,-10px)} }
+        @keyframes orbDrift2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-10px,10px)} }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+        .uh-orb1 { animation:orbDrift1 6s ease-in-out infinite; }
+        .uh-orb2 { animation:orbDrift2 8s ease-in-out infinite; }
+        .lsign-btn::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent); background-size:200% 100%; animation:shimmer 2.5s ease-in-out infinite; pointer-events:none; border-radius:inherit; }
         .lcard { animation: cardUp 0.5s cubic-bezier(0.34,1.1,0.64,1) both; }
         .llogo { animation: logoIn 0.4s ease both; }
         .lf-wrap { position:relative; width:100%; }
@@ -3265,7 +3283,7 @@ function LoginPage({ onAuth, onClientAuth }) {
           color:#0D1117; font-size:16px; font-weight:800; font-family:inherit;
           cursor:pointer; transition:opacity .2s,transform .12s;
           box-shadow:0 6px 24px rgba(187,242,70,0.35);
-          letter-spacing:0.01em;
+          letter-spacing:0.01em; position:relative; overflow:hidden;
         }
         .lsign-btn:active { transform:scale(0.97); }
         .lsign-btn:disabled { opacity:0.4; }
