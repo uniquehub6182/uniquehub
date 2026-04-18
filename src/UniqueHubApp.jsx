@@ -2387,7 +2387,28 @@ function OnboardingSlides({ onDone }) {
 
 function LoginPage({ onAuth, onClientAuth }) {
   const [portal, setPortal] = useState("team"); /* "team" | "client" */
+  const isDesktopLogin = useIsDesktop();
   const [mode, setMode] = useState("login");
+  const auroraRef = React.useRef(null);
+  React.useEffect(() => {
+    const c = auroraRef.current; if (!c) return;
+    const ctx = c.getContext("2d"); let id, t = 0;
+    const resize = () => { c.width = c.offsetWidth; c.height = c.offsetHeight; };
+    resize(); window.addEventListener("resize", resize);
+    const draw = () => {
+      t += 0.006; ctx.fillStyle = "#09090B"; ctx.fillRect(0, 0, c.width, c.height);
+      [{x:.2+Math.sin(t*.8)*.3, y:.25+Math.cos(t*.6)*.3, r:.5, o:.22},
+       {x:.8+Math.cos(t*.6)*.25, y:.7+Math.sin(t*.9)*.25, r:.45, o:.16},
+       {x:.5+Math.sin(t*.4)*.35, y:.5+Math.cos(t*.5)*.35, r:.55, o:.10}].forEach(b => {
+        const g = ctx.createRadialGradient(b.x*c.width, b.y*c.height, 0, b.x*c.width, b.y*c.height, b.r*Math.max(c.width,c.height));
+        g.addColorStop(0, `rgba(187,242,70,${b.o})`); g.addColorStop(0.5, `rgba(187,242,70,${b.o*0.25})`); g.addColorStop(1, "transparent");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, c.width, c.height);
+      });
+      id = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", resize); };
+  }, []);
   /* Agency signup states */
   const [agSignup, setAgSignup] = useState(false);
   const [agName, setAgName] = useState("");
@@ -3209,27 +3230,7 @@ function LoginPage({ onAuth, onClientAuth }) {
   /* ── LOGIN MODE — split design: dark header + white card ── */
   const emailFloating = emailFocused || email.length > 0;
   const passFloating  = passFocused  || pw.length > 0;
-  const isDesktopLogin = typeof window !== "undefined" && window.innerWidth > 900;
-  const auroraRef = React.useRef(null);
-  React.useEffect(() => {
-    const c = auroraRef.current; if (!c) return;
-    const ctx = c.getContext("2d"); let id, t = 0;
-    const resize = () => { c.width = c.offsetWidth; c.height = c.offsetHeight; };
-    resize(); window.addEventListener("resize", resize);
-    const draw = () => {
-      t += 0.006; ctx.fillStyle = "#09090B"; ctx.fillRect(0, 0, c.width, c.height);
-      [{x:.2+Math.sin(t*.8)*.3, y:.25+Math.cos(t*.6)*.3, r:.5, o:.22},
-       {x:.8+Math.cos(t*.6)*.25, y:.7+Math.sin(t*.9)*.25, r:.45, o:.16},
-       {x:.5+Math.sin(t*.4)*.35, y:.5+Math.cos(t*.5)*.35, r:.55, o:.10}].forEach(b => {
-        const g = ctx.createRadialGradient(b.x*c.width, b.y*c.height, 0, b.x*c.width, b.y*c.height, b.r*Math.max(c.width,c.height));
-        g.addColorStop(0, `rgba(187,242,70,${b.o})`); g.addColorStop(0.5, `rgba(187,242,70,${b.o*0.25})`); g.addColorStop(1, "transparent");
-        ctx.fillStyle = g; ctx.fillRect(0, 0, c.width, c.height);
-      });
-      id = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => { cancelAnimationFrame(id); window.removeEventListener("resize", resize); };
-  }, []);
+
 
   return (
     <div style={{ position:"fixed", inset:0, display:"flex", background:"#09090B", overflow:"hidden" }}>
