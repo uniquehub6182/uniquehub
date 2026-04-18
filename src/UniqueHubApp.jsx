@@ -31626,20 +31626,24 @@ export default function App() {
   /* ── MFA Challenge Screen ── */
   if (mfaRequired && (user || clientUser)) return (
     <div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#09090B",fontFamily:"'Inter',-apple-system,sans-serif"}}>
-      <div style={{width:"100%",maxWidth:380,padding:"0 24px",textAlign:"center",position:"relative",zIndex:1}}>
-        <img src={LOGO_B64} alt="UniqueHub" style={{height:40,objectFit:"contain",marginBottom:40}} />
-        <div style={{width:56,height:56,borderRadius:16,background:"rgba(187,242,70,0.1)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+      <style>{"input.mfa-code::-webkit-outer-spin-button,input.mfa-code::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}input.mfa-code{-moz-appearance:textfield}"}</style>
+      <div style={{width:"100%",maxWidth:400,padding:"0 24px",textAlign:"center",position:"relative",zIndex:1}}>
+        {/* Logo */}
+        <img src={LOGO_B64} alt="UniqueHub" style={{height:40,objectFit:"contain",marginBottom:48}} />
+        {/* Title with inline icon */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:8}}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+          <h2 style={{fontSize:22,fontWeight:800,color:"#fff",margin:0,letterSpacing:"-0.3px"}}>Verificação em 2 etapas</h2>
         </div>
-        <h2 style={{fontSize:22,fontWeight:800,color:"#fff",marginBottom:8,letterSpacing:"-0.3px"}}>Verificação em 2 etapas</h2>
-        <p style={{fontSize:13,color:"rgba(255,255,255,0.4)",lineHeight:1.6,marginBottom:28}}>Digite o código de 6 dígitos do seu app autenticador</p>
-        <input type="number" inputMode="numeric" autoComplete="one-time-code" autoFocus value={mfaCode} onChange={e=>{setMfaCode(e.target.value.slice(0,6));setMfaError("");}} onKeyDown={e=>e.key==="Enter"&&mfaCode.length===6&&handleMfaVerify()} placeholder="000000" style={{width:"100%",padding:"16px",borderRadius:14,border:"2px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",fontSize:28,fontWeight:800,textAlign:"center",letterSpacing:14,fontFamily:"monospace",outline:"none",marginBottom:10,boxSizing:"border-box",color:"#fff",transition:"all .25s"}} onFocus={e=>{e.target.style.borderColor="#BBF246";e.target.style.boxShadow="0 0 0 4px rgba(187,242,70,0.12)"}} onBlur={e=>{e.target.style.borderColor="rgba(255,255,255,0.1)";e.target.style.boxShadow="none"}} />
-        {mfaError && <p style={{fontSize:12,color:"#EF4444",marginBottom:8,padding:"10px 14px",borderRadius:12,background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)"}}>{mfaError}</p>}
-        <button onClick={handleMfaVerify} disabled={mfaLoading||mfaCode.length!==6} style={{width:"100%",padding:"16px",borderRadius:14,background:mfaCode.length===6?"linear-gradient(135deg,#BBF246,#9AE010)":"rgba(255,255,255,0.06)",border:"none",cursor:mfaCode.length===6?"pointer":"default",fontFamily:"inherit",fontSize:15,fontWeight:800,color:mfaCode.length===6?"#0D0D0D":"rgba(255,255,255,0.3)",marginTop:8,opacity:mfaLoading?0.6:1,boxShadow:mfaCode.length===6?"0 6px 24px rgba(187,242,70,0.3)":"none",transition:"all .25s"}}>
+        <p style={{fontSize:14,color:"rgba(255,255,255,0.35)",lineHeight:1.6,marginBottom:32}}>Digite o código de 6 dígitos do seu app autenticador</p>
+        {/* Code input - text type to avoid spinner */}
+        <input className="mfa-code" type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" autoFocus maxLength={6} value={mfaCode} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,6);setMfaCode(v);setMfaError("");}} onKeyDown={e=>e.key==="Enter"&&mfaCode.length===6&&handleMfaVerify()} placeholder="000000" style={{width:"100%",padding:"18px",borderRadius:16,border:"2px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",fontSize:32,fontWeight:800,textAlign:"center",letterSpacing:16,fontFamily:"'Inter',monospace",outline:"none",marginBottom:12,boxSizing:"border-box",color:"#fff",transition:"all .25s",caretColor:"#BBF246"}} onFocus={e=>{e.target.style.borderColor="#BBF246";e.target.style.boxShadow="0 0 0 4px rgba(187,242,70,0.12)"}} onBlur={e=>{e.target.style.borderColor="rgba(255,255,255,0.1)";e.target.style.boxShadow="none"}} />
+        {mfaError && <p style={{fontSize:13,color:"#EF4444",marginBottom:10,padding:"10px 14px",borderRadius:12,background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.15)"}}>{mfaError}</p>}
+        <button onClick={handleMfaVerify} disabled={mfaLoading||mfaCode.length!==6} style={{width:"100%",padding:"16px",borderRadius:14,background:mfaCode.length===6?"linear-gradient(135deg,#BBF246,#9AE010)":"rgba(255,255,255,0.06)",border:"none",cursor:mfaCode.length===6?"pointer":"default",fontFamily:"inherit",fontSize:15,fontWeight:800,color:mfaCode.length===6?"#0D0D0D":"rgba(255,255,255,0.25)",marginTop:4,opacity:mfaLoading?0.6:1,boxShadow:mfaCode.length===6?"0 6px 24px rgba(187,242,70,0.3)":"none",transition:"all .25s"}}>
           {mfaLoading?"Verificando...":"Verificar e entrar"}
         </button>
-        <button onClick={async()=>{if(supabase)await supabase.auth.signOut();setUser(null);setClientUser(null);setMfaRequired(false);setMfaCode("");}} style={{marginTop:20,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.3)"}}>
-          Sair e usar outra conta
+        <button onClick={async()=>{if(supabase)await supabase.auth.signOut();setUser(null);setClientUser(null);setMfaRequired(false);setMfaCode("");}} style={{marginTop:24,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:600,color:"rgba(255,255,255,0.3)",transition:"color .2s"}} onMouseEnter={e=>e.target.style.color="rgba(255,255,255,0.6)"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.3)"}>
+          ← Sair e usar outra conta
         </button>
       </div>
     </div>
