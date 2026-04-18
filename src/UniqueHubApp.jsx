@@ -3217,10 +3217,10 @@ function LoginPage({ onAuth, onClientAuth }) {
     const resize = () => { c.width = c.offsetWidth; c.height = c.offsetHeight; };
     resize(); window.addEventListener("resize", resize);
     const draw = () => {
-      t += 0.0025; ctx.fillStyle = "#09090B"; ctx.fillRect(0, 0, c.width, c.height);
-      [{x:.25+Math.sin(t*.7)*.2, y:.3+Math.cos(t*.5)*.25, r:.45, o:.18},
-       {x:.75+Math.cos(t*.5)*.15, y:.65+Math.sin(t*.8)*.2, r:.4, o:.14},
-       {x:.5+Math.sin(t*.3)*.3, y:.45+Math.cos(t*.4)*.3, r:.5, o:.08}].forEach(b => {
+      t += 0.006; ctx.fillStyle = "#09090B"; ctx.fillRect(0, 0, c.width, c.height);
+      [{x:.2+Math.sin(t*.8)*.3, y:.25+Math.cos(t*.6)*.3, r:.5, o:.22},
+       {x:.8+Math.cos(t*.6)*.25, y:.7+Math.sin(t*.9)*.25, r:.45, o:.16},
+       {x:.5+Math.sin(t*.4)*.35, y:.5+Math.cos(t*.5)*.35, r:.55, o:.10}].forEach(b => {
         const g = ctx.createRadialGradient(b.x*c.width, b.y*c.height, 0, b.x*c.width, b.y*c.height, b.r*Math.max(c.width,c.height));
         g.addColorStop(0, `rgba(187,242,70,${b.o})`); g.addColorStop(0.5, `rgba(187,242,70,${b.o*0.25})`); g.addColorStop(1, "transparent");
         ctx.fillStyle = g; ctx.fillRect(0, 0, c.width, c.height);
