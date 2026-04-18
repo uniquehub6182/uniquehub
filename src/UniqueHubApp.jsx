@@ -31666,7 +31666,7 @@ html,body{font-family:'Figtree',sans-serif;background:${B.bodyBg};margin:0;paddi
 input,textarea,select{font-size:16px !important}
 .app{position:fixed;top:0;left:0;right:0;height:100%;height:100dvh;height:-webkit-fill-available;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
 .screen{position:fixed;top:0;left:0;right:0;height:100%;height:100dvh;height:-webkit-fill-available;display:flex;flex-direction:column;overflow:hidden;background:${B.transparent ? "transparent" : B.bg}}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scroll-behavior:smooth;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));background:${B.transparent ? "transparent" : B.bg}}
+.content{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));background:${B.transparent ? "transparent" : B.bg}}
 .pg{padding:16px 16px 120px;padding-top:${TOP}}
 .uh-glass .card{backdrop-filter:blur(24px) saturate(180%) !important;-webkit-backdrop-filter:blur(24px) saturate(180%) !important;border:1px solid rgba(255,255,255,0.5) !important;box-shadow:0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8) !important}
 .uh-glass.uh-dark .card{border:1px solid rgba(255,255,255,0.1) !important;box-shadow:0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06) !important}
