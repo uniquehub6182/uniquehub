@@ -11814,7 +11814,7 @@ REGRAS TÉCNICAS:
       </div>}
 
       {/* ── SCROLLABLE CONTENT area ── */}
-      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:contained?"auto":"auto", overflowX:contained?"auto":"hidden", padding:contained?"0":isContentDesktop?"0 16px 0":"14px 16px 0", display:contained?"flex":"block", flexDirection:"column", minHeight:0 }}>
+      <div ref={contentScrollRef} onScroll={e => setHeaderCollapsed(e.currentTarget.scrollTop > 60)} style={{ flex:1, overflowY:contained?"auto":(isContentDesktop?"auto":"visible"), overflowX:contained?"auto":"hidden", padding:contained?"0":isContentDesktop?"0 16px 0":"14px 16px 0", display:contained?"flex":"block", flexDirection:"column", minHeight:0 }}>
 
       {/* Client selector (mobile only) */}
       {!isContentDesktop && !contained && <div style={{ marginBottom:10 }}>
