@@ -31614,11 +31614,11 @@ export default function App() {
   );
 
   if (authLoading) return (
-    <div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#09090B",fontFamily:"'Inter',-apple-system,sans-serif"}}>
+    <div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#F7F7F8",fontFamily:"'Inter',-apple-system,sans-serif"}}>
       <div style={{textAlign:"center"}}>
         <img src={LOGO_B64} alt="UniqueHub" style={{height:44,objectFit:"contain",marginBottom:32,opacity:0.9}} />
-        <div style={{width:36,height:36,border:"3px solid rgba(187,242,70,0.15)",borderTopColor:"#BBF246",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 14px"}}/>
-        <p style={{color:"rgba(255,255,255,0.3)",fontSize:13,fontWeight:500}}>Carregando...</p>
+        <div style={{width:36,height:36,border:"3px solid #E5E7EB",borderTopColor:"#BBF246",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 14px"}}/>
+        <p style={{color:"#9CA3AF",fontSize:13,fontWeight:500}}>Carregando...</p>
         <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
       </div>
     </div>
