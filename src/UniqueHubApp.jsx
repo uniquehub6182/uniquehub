@@ -21538,6 +21538,9 @@ function IdeasPage({ onBack, user, clients: propClients, forceMobile, isClientVi
                       <div style={{ display:"flex", gap:8, alignItems:"center" }}>
                         <span style={{ fontSize:10, color:B.muted }}>{idea_.author}</span>
                         {idea_.comments?.length>0 && <span style={{ fontSize:10, color:B.muted }}>💬 {idea_.comments.length}</span>}
+                        {!isClientView && <button onClick={e=>{e.stopPropagation();if(confirm("Apagar esta ideia?")){supaDeleteIdea(idea_.supaId||idea_.id).then(ok=>{if(ok){setIdeas(p=>p.filter(x=>x.id!==idea_.id));if(selIdea===idea_.id)setSelIdea(null);showToast("Ideia apagada ✓");}else{showToast("Erro ao apagar");}});}}} style={{ display:"flex", alignItems:"center", justifyContent:"center", width:26, height:26, borderRadius:7, border:`1px solid ${B.border}`, background:"transparent", cursor:"pointer", transition:"all .2s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor="#EF4444";e.currentTarget.style.background="#FEF2F2";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=B.border;e.currentTarget.style.background="transparent";}}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>}
                       </div>
                     </div>
                   </div>
