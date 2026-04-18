@@ -31757,7 +31757,7 @@ html.uh-desktop .phone-viewport>div{position:relative!important;inset:auto!impor
 .txtbtn{background:none;border:none;color:${dark?"#8B9099":"#8B8F92"};cursor:pointer;font-family:inherit;font-size:13px;font-weight:500}
       `}</style>
       {!user && !clientUser && !onboardDone && <OnboardingSlides onDone={finishOnboard} />}
-      {!user && !clientUser && onboardDone && <LoginPage onAuth={async (u) => { await loadOrg(u.id); setUserAndRef(u); loadCloudPrefsForUser(u.id); await checkMfaRequired();
+      {!user && !clientUser && onboardDone && <LoginPage onAuth={async (u) => { await loadOrg(u.id); setUserAndRef(u); loadCloudPrefsForUser(u.id); await checkMfaRequired(); window.location.hash = "#/home";
     const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
     const dismissed = (() => { try { return localStorage.getItem("uh_pwa_dismissed"); } catch { return null; } })();
