@@ -31625,50 +31625,22 @@ export default function App() {
 
   /* ── MFA Challenge Screen ── */
   if (mfaRequired && (user || clientUser)) return (
-    <div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#09090B",fontFamily:"'Inter',-apple-system,sans-serif",overflow:"hidden"}}>
-      {/* Aurora bg */}
-      <div style={{position:"absolute",inset:0,pointerEvents:"none"}}>
-        <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(187,242,70,0.12) 0%,transparent 70%)",filter:"blur(80px)",top:"-15%",left:"-10%",animation:"orbDrift1 14s ease-in-out infinite"}} />
-        <div style={{position:"absolute",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle,rgba(187,242,70,0.08) 0%,transparent 70%)",filter:"blur(100px)",bottom:"-10%",right:"-5%",animation:"orbDrift2 18s ease-in-out infinite"}} />
-      </div>
-      <style>{"@keyframes orbDrift1{0%,100%{transform:translate(0,0)}50%{transform:translate(20vw,15vh)}}@keyframes orbDrift2{0%,100%{transform:translate(0,0)}50%{transform:translate(-15vw,-10vh)}}@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}"}</style>
-      <div style={{maxWidth:400,width:"100%",padding:"0 20px",position:"relative",zIndex:1,animation:"cardIn .5s cubic-bezier(.34,1.1,.64,1) both"}}>
-        <div style={{background:"#fff",borderRadius:28,padding:"44px 36px 36px",boxShadow:"0 20px 80px rgba(0,0,0,0.4)",textAlign:"center"}}>
-          {/* Logo */}
-          <img src={LOGO_B64} alt="UniqueHub" style={{height:36,objectFit:"contain",marginBottom:28}} />
-          {/* Shield icon */}
-          <div style={{width:64,height:64,borderRadius:18,background:"linear-gradient(135deg,rgba(187,242,70,0.15),rgba(187,242,70,0.05))",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",border:"1px solid rgba(187,242,70,0.1)"}}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-          </div>
-          <h2 style={{fontSize:22,fontWeight:800,color:"#111",marginBottom:6,letterSpacing:"-0.3px"}}>Verificação em 2 etapas</h2>
-          <p style={{fontSize:13,color:"#9CA3AF",lineHeight:1.6,marginBottom:24}}>Digite o código de 6 dígitos do seu app autenticador</p>
-          <input
-            type="number" inputMode="numeric" autoComplete="one-time-code" autoFocus
-            value={mfaCode}
-            onChange={e => { setMfaCode(e.target.value.slice(0,6)); setMfaError(""); }}
-            onKeyDown={e => e.key === "Enter" && mfaCode.length === 6 && handleMfaVerify()}
-            placeholder="000000"
-            style={{width:"100%",padding:"16px",borderRadius:16,border:"2px solid #E5E7EB",background:"#F9FAFB",fontSize:28,fontWeight:800,textAlign:"center",letterSpacing:14,fontFamily:"monospace",outline:"none",marginBottom:8,boxSizing:"border-box",transition:"all .25s",color:"#111"}}
-            onFocus={e=>{e.target.style.borderColor="#BBF246";e.target.style.background="#fff";e.target.style.boxShadow="0 0 0 4px rgba(187,242,70,0.15)"}}
-            onBlur={e=>{e.target.style.borderColor="#E5E7EB";e.target.style.background="#F9FAFB";e.target.style.boxShadow="none"}}
-          />
-          {mfaError && <p style={{fontSize:12,color:"#EF4444",marginBottom:8,padding:"10px 14px",borderRadius:12,background:"#FEF2F2",border:"1px solid #FECACA"}}>{mfaError}</p>}
-          <button
-            onClick={handleMfaVerify}
-            disabled={mfaLoading || mfaCode.length !== 6}
-            style={{width:"100%",padding:"16px",borderRadius:14,background:mfaCode.length===6?"linear-gradient(135deg,#BBF246,#9AE010)":"#E5E7EB",border:"none",cursor:mfaCode.length===6?"pointer":"default",fontFamily:"inherit",fontSize:15,fontWeight:800,color:mfaCode.length===6?"#0D0D0D":"#9CA3AF",marginTop:10,opacity:mfaLoading?0.6:1,position:"relative",overflow:"hidden",boxShadow:mfaCode.length===6?"0 6px 24px rgba(187,242,70,0.3)":"none",transition:"all .25s"}}
-          >
-            <span style={{position:"relative",zIndex:1}}>{mfaLoading ? "Verificando..." : "Verificar e entrar"}</span>
-            {mfaCode.length===6 && <span style={{position:"absolute",inset:0,background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent)",backgroundSize:"200% 100%",animation:"shimmer 2.5s ease-in-out infinite"}} />}
-          </button>
-          <button
-            onClick={async () => { if(supabase) await supabase.auth.signOut(); setUser(null); setClientUser(null); setMfaRequired(false); setMfaCode(""); }}
-            style={{marginTop:18,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"#9CA3AF",transition:"color .2s"}}
-            onMouseEnter={e=>e.target.style.color="#BBF246"} onMouseLeave={e=>e.target.style.color="#9CA3AF"}
-          >
-            Sair e usar outra conta
-          </button>
+    <div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"#09090B",fontFamily:"'Inter',-apple-system,sans-serif"}}>
+      <div style={{width:"100%",maxWidth:380,padding:"0 24px",textAlign:"center",position:"relative",zIndex:1}}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{height:40,objectFit:"contain",marginBottom:40}} />
+        <div style={{width:56,height:56,borderRadius:16,background:"rgba(187,242,70,0.1)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
         </div>
+        <h2 style={{fontSize:22,fontWeight:800,color:"#fff",marginBottom:8,letterSpacing:"-0.3px"}}>Verificação em 2 etapas</h2>
+        <p style={{fontSize:13,color:"rgba(255,255,255,0.4)",lineHeight:1.6,marginBottom:28}}>Digite o código de 6 dígitos do seu app autenticador</p>
+        <input type="number" inputMode="numeric" autoComplete="one-time-code" autoFocus value={mfaCode} onChange={e=>{setMfaCode(e.target.value.slice(0,6));setMfaError("");}} onKeyDown={e=>e.key==="Enter"&&mfaCode.length===6&&handleMfaVerify()} placeholder="000000" style={{width:"100%",padding:"16px",borderRadius:14,border:"2px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",fontSize:28,fontWeight:800,textAlign:"center",letterSpacing:14,fontFamily:"monospace",outline:"none",marginBottom:10,boxSizing:"border-box",color:"#fff",transition:"all .25s"}} onFocus={e=>{e.target.style.borderColor="#BBF246";e.target.style.boxShadow="0 0 0 4px rgba(187,242,70,0.12)"}} onBlur={e=>{e.target.style.borderColor="rgba(255,255,255,0.1)";e.target.style.boxShadow="none"}} />
+        {mfaError && <p style={{fontSize:12,color:"#EF4444",marginBottom:8,padding:"10px 14px",borderRadius:12,background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)"}}>{mfaError}</p>}
+        <button onClick={handleMfaVerify} disabled={mfaLoading||mfaCode.length!==6} style={{width:"100%",padding:"16px",borderRadius:14,background:mfaCode.length===6?"linear-gradient(135deg,#BBF246,#9AE010)":"rgba(255,255,255,0.06)",border:"none",cursor:mfaCode.length===6?"pointer":"default",fontFamily:"inherit",fontSize:15,fontWeight:800,color:mfaCode.length===6?"#0D0D0D":"rgba(255,255,255,0.3)",marginTop:8,opacity:mfaLoading?0.6:1,boxShadow:mfaCode.length===6?"0 6px 24px rgba(187,242,70,0.3)":"none",transition:"all .25s"}}>
+          {mfaLoading?"Verificando...":"Verificar e entrar"}
+        </button>
+        <button onClick={async()=>{if(supabase)await supabase.auth.signOut();setUser(null);setClientUser(null);setMfaRequired(false);setMfaCode("");}} style={{marginTop:20,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.3)"}}>
+          Sair e usar outra conta
+        </button>
       </div>
     </div>
   );
