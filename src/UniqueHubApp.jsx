@@ -539,15 +539,24 @@ const libUploadFile = async (file, parentId = null) => {
     const path = "library/" + _currentOrgId + "/" + Date.now() + "_" + safeName;
     let url = "";
     const R2_THRESHOLD = 10 * 1024 * 1024;
-    /* Route large files / videos to Cloudflare R2 via Edge Function proxy (no CORS) */
+    /* Route large files / videos to R2 via presigned URL (browser uploads directly, no Edge Function timeout) */
     if (processed.size > R2_THRESHOLD || isVideo) {
       try {
         const ct = processed.type || file.type || "application/octet-stream";
-        console.log("[LibDrive] R2 direct uploading", (processed.size/1048576).toFixed(1)+"MB...");
-        const r2Res = await fetch(SUPA_URL + "/functions/v1/r2-upload", { method:"POST", headers:{ "Authorization":"Bearer "+SUPA_KEY, "x-file-name":safeName, "x-content-type":ct }, body:processed });
+        console.log("[LibDrive] R2 presigned uploading", (processed.size/1048576).toFixed(1)+"MB...");
+        /* Step 1: Get presigned URL from Edge Function (tiny JSON request, fast) */
+        const r2Res = await fetch(SUPA_URL + "/functions/v1/r2-upload", { method:"POST", headers:{ "Authorization":"Bearer "+SUPA_KEY, "Content-Type":"application/json" }, body:JSON.stringify({ fileName:safeName, contentType:ct }) });
         const r2Data = await r2Res.json();
-        if (r2Data.url) { url = r2Data.url; console.log("[LibDrive] R2 OK:", url); }
-        else { console.warn("[LibDrive] R2 failed:", r2Data.error); }
+        if (r2Data.signedUrl && r2Data.publicUrl) {
+          /* Step 2: Browser uploads directly to R2 (no timeout, no size limit) */
+          console.log("[LibDrive] R2 direct PUT to presigned URL...");
+          const putRes = await fetch(r2Data.signedUrl, { method:"PUT", headers:{ "Content-Type":ct }, body:processed });
+          if (putRes.ok) { url = r2Data.publicUrl; console.log("[LibDrive] R2 presigned OK:", url); }
+          else { console.warn("[LibDrive] R2 PUT failed:", putRes.status); }
+        } else if (r2Data.url) {
+          /* Fallback: Mode 3 direct upload worked */
+          url = r2Data.url; console.log("[LibDrive] R2 direct OK:", url);
+        } else { console.warn("[LibDrive] R2 failed:", r2Data.error); }
       } catch (r2Err) { console.warn("[LibDrive] R2 error:", r2Err); }
     }
     /* Supabase Storage fallback (small files or R2 failure) */
