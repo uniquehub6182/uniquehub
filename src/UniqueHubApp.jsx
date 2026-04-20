@@ -539,25 +539,29 @@ const libUploadFile = async (file, parentId = null) => {
     const path = "library/" + _currentOrgId + "/" + Date.now() + "_" + safeName;
     let url = "";
     const R2_THRESHOLD = 10 * 1024 * 1024;
-    /* Route large files / videos to R2 via presigned URL (browser uploads directly, no Edge Function timeout) */
+    /* Route large files / videos to R2 via presigned URL + XHR (progress tracking, mobile-safe) */
     if (processed.size > R2_THRESHOLD || isVideo) {
+      let wakeLock = null;
       try {
+        /* Request Wake Lock to prevent screen from sleeping during upload (mobile) */
+        if (navigator.wakeLock) { try { wakeLock = await navigator.wakeLock.request("screen"); console.log("[LibDrive] Wake Lock acquired"); } catch {} }
         const ct = processed.type || file.type || "application/octet-stream";
-        console.log("[LibDrive] R2 presigned uploading", (processed.size/1048576).toFixed(1)+"MB...");
+        const sizeMB = (processed.size/1048576).toFixed(1);
+        console.log("[LibDrive] R2 presigned uploading", sizeMB+"MB...");
         /* Step 1: Get presigned URL from Edge Function (tiny JSON request, fast) */
         const r2Res = await fetch(SUPA_URL + "/functions/v1/r2-upload", { method:"POST", headers:{ "Authorization":"Bearer "+SUPA_KEY, "Content-Type":"application/json" }, body:JSON.stringify({ fileName:safeName, contentType:ct }) });
         const r2Data = await r2Res.json();
         if (r2Data.signedUrl && r2Data.publicUrl) {
-          /* Step 2: Browser uploads directly to R2 (no timeout, no size limit) */
-          console.log("[LibDrive] R2 direct PUT to presigned URL...");
-          const putRes = await fetch(r2Data.signedUrl, { method:"PUT", headers:{ "Content-Type":ct }, body:processed });
-          if (putRes.ok) { url = r2Data.publicUrl; console.log("[LibDrive] R2 presigned OK:", url); }
-          else { console.warn("[LibDrive] R2 PUT failed:", putRes.status); }
+          /* Step 2: XHR upload with progress tracking (mobile-safe, doesn't get killed easily) */
+          console.log("[LibDrive] R2 XHR PUT", sizeMB+"MB...");
+          const ok = await xhrUpload(r2Data.signedUrl, processed, ct);
+          if (ok) { url = r2Data.publicUrl; console.log("[LibDrive] R2 presigned OK:", url); }
+          else { console.warn("[LibDrive] R2 XHR PUT failed"); }
         } else if (r2Data.url) {
-          /* Fallback: Mode 3 direct upload worked */
           url = r2Data.url; console.log("[LibDrive] R2 direct OK:", url);
         } else { console.warn("[LibDrive] R2 failed:", r2Data.error); }
       } catch (r2Err) { console.warn("[LibDrive] R2 error:", r2Err); }
+      finally { if (wakeLock) { try { wakeLock.release(); console.log("[LibDrive] Wake Lock released"); } catch {} } }
     }
     /* Supabase Storage fallback (small files or R2 failure) */
     if (!url) {
@@ -600,25 +604,29 @@ const libMigrateClientFiles = async (clients) => {
 };
 
 /* ── Global Background Upload System ── */
-const _uploadState = { active:false, progress:"", done:0, total:0, ok:0, errors:0, listeners:new Set() };
+const _uploadState = { active:false, progress:"", done:0, total:0, ok:0, errors:0, pct:0, currentFile:"", listeners:new Set() };
 const _notifyUpload = () => _uploadState.listeners.forEach(fn => { try { fn({..._uploadState}); } catch {} });
 const libStartBgUpload = (files, parentId, onComplete) => {
   if (_uploadState.active) return false;
-  _uploadState.active = true; _uploadState.done = 0; _uploadState.total = files.length; _uploadState.ok = 0; _uploadState.errors = 0; _uploadState.progress = "Iniciando...";
+  _uploadState.active = true; _uploadState.done = 0; _uploadState.total = files.length; _uploadState.ok = 0; _uploadState.errors = 0; _uploadState.pct = 0; _uploadState.currentFile = "";
   _notifyUpload();
-  const CONCURRENCY = 3;
+  /* Listen for per-file XHR progress */
+  const onXhrProgress = (e) => { _uploadState.pct = e.detail?.pct || 0; _uploadState.progress = _uploadState.done + "/" + _uploadState.total + " — " + _uploadState.pct + "%"; _notifyUpload(); };
+  window.addEventListener("uh-upload-progress", onXhrProgress);
+  const CONCURRENCY = 1; /* Sequential for mobile stability — avoids parallel connection drops */
   (async () => {
     const arr = Array.from(files);
     const uploadOne = async (f) => {
+      _uploadState.currentFile = f.name; _uploadState.pct = 0; _uploadState.progress = (_uploadState.done+1) + "/" + _uploadState.total + " — " + f.name.slice(0,25); _notifyUpload();
       try { const result = await libUploadFile(f, parentId); if (result && !result.error) _uploadState.ok++; else _uploadState.errors++; } catch { _uploadState.errors++; }
-      _uploadState.done++; _uploadState.progress = _uploadState.done + "/" + _uploadState.total + " concluido(s)"; _notifyUpload();
+      _uploadState.done++; _uploadState.pct = 0; _uploadState.progress = _uploadState.done + "/" + _uploadState.total + " concluído(s)"; _notifyUpload();
     };
     for (let i = 0; i < arr.length; i += CONCURRENCY) {
       const batch = arr.slice(i, i + CONCURRENCY);
-      _uploadState.progress = _uploadState.done + "/" + _uploadState.total + " — enviando..."; _notifyUpload();
       await Promise.all(batch.map(uploadOne));
     }
-    _uploadState.active = false; _uploadState.progress = ""; _notifyUpload();
+    window.removeEventListener("uh-upload-progress", onXhrProgress);
+    _uploadState.active = false; _uploadState.progress = ""; _uploadState.pct = 0; _uploadState.currentFile = ""; _notifyUpload();
     if (onComplete) onComplete(_uploadState.ok, _uploadState.errors);
   })();
   return true;
@@ -28071,9 +28079,9 @@ function GlobalUploadBar() {
       <div style={{ background:B.bgCard, borderRadius:14, padding:"12px 16px", border:"1.5px solid "+B.accent+"30", boxShadow:"0 8px 32px rgba(0,0,0,0.25)", display:"flex", alignItems:"center", gap:12 }}>
         <div style={{ width:28, height:28, borderRadius:14, border:"2.5px solid "+B.accent+"30", borderTopColor:B.accent, animation:"spin 1s linear infinite", flexShrink:0 }} />
         <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ fontSize:12, fontWeight:700, color:B.text }}>Enviando arquivos...</p>
+          <p style={{ fontSize:12, fontWeight:700, color:B.text }}>{st.currentFile ? st.currentFile.slice(0,30) : "Enviando arquivos..."}</p>
           <p style={{ fontSize:10, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{st.progress}</p>
-          <div style={{ marginTop:4, height:3, borderRadius:2, background:B.border, overflow:"hidden" }}><div style={{ height:"100%", borderRadius:2, background:B.accent, transition:"width .3s", width:(st.total?Math.round(st.done/st.total*100):0)+"%" }} /></div>
+          <div style={{ marginTop:4, height:3, borderRadius:2, background:B.border, overflow:"hidden" }}><div style={{ height:"100%", borderRadius:2, background:B.accent, transition:"width .3s", width:(st.total ? Math.round(((st.done + (st.pct||0)/100) / st.total) * 100) : 0)+"%" }} /></div>
         </div>
         {st.errors > 0 && <span style={{ fontSize:10, fontWeight:700, color:B.red||"#EF4444", flexShrink:0 }}>{st.errors} erro{st.errors>1?"s":""}</span>}
       </div>
