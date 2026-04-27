@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "🔨 Building UniqueHub..."
-env NODE_ENV=development npx vite build
+npx vite build
 
 echo "📄 Adding Cloudflare Pages config..."
 cat > dist/_redirects << 'EOF'
