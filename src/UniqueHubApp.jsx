@@ -9690,25 +9690,35 @@ REGRAS TÉCNICAS:
         /* Just check DB for status changes — do NOT call publish-scheduled */
         const scheduledIds = demandsRef.current.filter(d => d.stage === "scheduled" && d.supaId).map(d => d.supaId);
         if (!scheduledIds.length) { autoPublishRef.current = false; return; }
-        const { data: publishedPosts } = await supabase.from("scheduled_posts").select("demand_id, status").in("demand_id", scheduledIds);
+        const { data: publishedPosts } = await supabase.from("scheduled_posts")
+          .select("demand_id, status, platform, error").in("demand_id", scheduledIds);
+        const TERMINAL = new Set(["published","failed","skipped_duplicate","cancelled"]);
         const doneIds = new Set();
+        const partialIds = new Set();
+        const allFailedIds = new Set();
         for (const did of scheduledIds) {
           const siblings = (publishedPosts||[]).filter(p => p.demand_id === did);
-          if (siblings.length > 0 && siblings.every(p => p.status === "published")) doneIds.add(did);
+          if (!siblings.length) continue;
+          const allTerminal = siblings.every(p => TERMINAL.has(p.status));
+          if (!allTerminal) continue;
+          const pubs = siblings.filter(p => p.status === "published");
+          const fails = siblings.filter(p => p.status === "failed");
+          if (fails.length === 0 && pubs.length > 0) doneIds.add(did);
+          else if (pubs.length > 0 && fails.length > 0) partialIds.add(did);
+          else if (fails.length === siblings.length) allFailedIds.add(did);
         }
         if (doneIds.size > 0) {
           setDemands(prev => prev.map(d => doneIds.has(d.supaId) ? { ...d, stage: "published" } : d));
           showToast(`✅ ${doneIds.size} post${doneIds.size>1?"s":""} publicado${doneIds.size>1?"s":""} automaticamente!`);
-          for (const did of doneIds) { await supabase.from("demands").update({ stage: "published" }).eq("id", did); }
+          /* Edge function ja atualiza demands no banco; aqui so sincroniza UI */
         }
-        /* Check for failures too */
-        for (const did of scheduledIds) {
-          if (doneIds.has(did)) continue;
-          const siblings = (publishedPosts||[]).filter(p => p.demand_id === did);
-          const failures = siblings.filter(p => p.status === "failed");
-          if (failures.length > 0 && failures.length === siblings.length) {
-            showToast(`⚠️ Falha na publicação — verifique a demanda`);
-          }
+        if (partialIds.size > 0) {
+          setDemands(prev => prev.map(d => partialIds.has(d.supaId) ? { ...d, stage: "ajuste" } : d));
+          showToast(`⚠️ ${partialIds.size} post${partialIds.size>1?"s":""} com publicação parcial — verifique`);
+        }
+        if (allFailedIds.size > 0) {
+          setDemands(prev => prev.map(d => allFailedIds.has(d.supaId) ? { ...d, stage: "ajuste" } : d));
+          showToast(`❌ ${allFailedIds.size} publicação${allFailedIds.size>1?"ões":""} falharam — verifique`);
         }
       } catch(e) { console.error("Publish poll error:", e); }
       autoPublishRef.current = false;
@@ -9755,30 +9765,44 @@ REGRAS TÉCNICAS:
     }
     if (idx < stages.length - 1) {
       const next = stages[idx + 1];
-      setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
-      setSel(prev => syncMilestones({ ...prev, stage: next }, next));
-      if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
-      showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);
-      supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
-      /* ── When moving to "scheduled", create entries in scheduled_posts table for the cron to handle ── */
+      /* ── PRE-VALIDATION: para mover para "scheduled" precisa ter rede social conectada ── */
       if (next === "scheduled" && d.scheduling?.date) {
         const cId = d.client_id || CDATA.find(c => c.name === d.client)?.supaId;
-        if (!cId) { showToast("Cliente não vinculado — agende manualmente"); return; }
+        if (!cId) { showToast("⚠️ Cliente não vinculado — agende manualmente"); return; }
+        const clientObj = CDATA.find(c => (c.supaId||c.id) === cId);
+        const hasFB = clientObj?.socials?.facebook?.oauth;
+        const hasIG = clientObj?.socials?.instagram?.oauth;
+        if (!hasFB && !hasIG) { showToast("⚠️ Cliente sem rede social conectada — conecte antes de agendar"); return; }
         const imgFiles = d.steps?.design?.files || d.steps?.production?.files || [];
         const media = separateMedia(imgFiles);
         const isReels = (d.format==="Reels"||d.format==="Vídeo"||d.type==="video");
         let imgUrls = isReels && media.videoUrl ? [media.videoUrl] : media.allUrls;
         let coverUrl = isReels ? media.coverUrl : null;
-        if (imgUrls.length === 0) { showToast("Sem mídia para publicar — adicione imagens/vídeo primeiro"); return; }
-        /* ── Proxy ALL Supabase URLs to R2 CDN before scheduling (Instagram requires R2/public CDN URLs) ── */
+        if (imgUrls.length === 0) { showToast("⚠️ Sem mídia para publicar — adicione imagens/vídeo primeiro"); return; }
+
+        /* ── IDEMPOTENCY CHECK: já existe scheduled_posts ativo para essa demand? ── */
+        if (supabase && d.supaId) {
+          const { data: existing } = await supabase.from("scheduled_posts")
+            .select("id,platform,status").eq("demand_id", d.supaId)
+            .in("status", ["pending","publishing","processing","published"]);
+          if (existing?.length > 0) {
+            showToast("⚠️ Já existe agendamento ativo para essa demanda — verifique antes de duplicar");
+            return;
+          }
+        }
+
+        /* ── Tudo OK: agora sim move o stage e cria os scheduled_posts ── */
+        setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
+        setSel(prev => syncMilestones({ ...prev, stage: next }, next));
+        if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
+        showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);
+        supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
+
+        /* ── Proxy ALL Supabase URLs to R2 CDN before scheduling ── */
         showToast("⏳ Preparando mídia para agendamento...");
         imgUrls = await proxyUrlsToR2(imgUrls);
         if (coverUrl) coverUrl = await proxyUrlToR2(coverUrl);
         const fullCaption = (d.steps?.caption?.text||"") + (d.steps?.caption?.hashtags ? "\n\n"+d.steps.caption.hashtags : "");
-        const clientObj = CDATA.find(c => (c.supaId||c.id) === cId);
-        const hasFB = clientObj?.socials?.facebook?.oauth;
-        const hasIG = clientObj?.socials?.instagram?.oauth;
-        if (!hasFB && !hasIG) { showToast("Cliente sem rede social conectada"); return; }
         const mediaType = isReels?"REELS":(d.format==="Carrossel"?"CAROUSEL":(d.format==="Stories"?"STORIES":"FEED"));
         const schedDate = d.scheduling.date;
         const schedTime = d.scheduling.time || "12:00";
@@ -9786,14 +9810,29 @@ REGRAS TÉCNICAS:
         const isPast = new Date(scheduledAt) <= new Date();
         try {
           const posts = [];
-          if (hasIG) posts.push({ client_id: cId, platform: "instagram", media_type: mediaType, image_urls: coverUrl ? [...imgUrls, coverUrl] : imgUrls, caption: fullCaption, scheduled_at: isPast ? new Date(Date.now() + 60000).toISOString() : scheduledAt, status: "pending", demand_id: d.id, created_by: user?.id || null });
-          if (hasFB) posts.push({ client_id: cId, platform: "facebook", media_type: mediaType, image_urls: imgUrls, caption: fullCaption, scheduled_at: isPast ? new Date(Date.now() + 60000).toISOString() : scheduledAt, status: "pending", demand_id: d.id, created_by: user?.id || null });
+          if (hasIG) posts.push({ client_id: cId, platform: "instagram", media_type: mediaType, image_urls: coverUrl ? [...imgUrls, coverUrl] : imgUrls, caption: fullCaption, scheduled_at: isPast ? new Date(Date.now() + 60000).toISOString() : scheduledAt, status: "pending", demand_id: d.supaId || d.id, created_by: user?.id || null });
+          if (hasFB) posts.push({ client_id: cId, platform: "facebook", media_type: mediaType, image_urls: imgUrls, caption: fullCaption, scheduled_at: isPast ? new Date(Date.now() + 60000).toISOString() : scheduledAt, status: "pending", demand_id: d.supaId || d.id, created_by: user?.id || null });
           if (supabase && posts.length) {
             const { error } = await supabase.from("scheduled_posts").insert(posts);
-            if (error) { showToast("Erro ao agendar: " + error.message); return; }
+            if (error) {
+              const msg = error.message || "";
+              if (msg.includes("scheduled_posts_demand_platform_active_uniq") || msg.includes("duplicate")) {
+                showToast("⚠️ Já existe agendamento ativo (proteção do banco)");
+              } else {
+                showToast("Erro ao agendar: " + msg);
+              }
+              return;
+            }
           }
           showToast(isPast ? `📤 Publicação em ~1 min (horário já passou)` : `✅ Agendado para ${schedDate} às ${schedTime}`);
         } catch(e) { showToast("Erro: "+e.message); }
+      } else {
+        /* ── Outros stages: só avança normal ── */
+        setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
+        setSel(prev => syncMilestones({ ...prev, stage: next }, next));
+        if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
+        showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);
+        supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
       }
     }
   };
@@ -11136,16 +11175,28 @@ REGRAS TÉCNICAS:
                     /* ── SCHEDULED: save to scheduled_posts table ── */
                     showToast(`Agendando ${type}...`);
                     try {
+                      /* IDEMPOTENCY CHECK */
+                      const demandRefId = sel.supaId || sel.id;
+                      const { data: existingB1 } = await supabase.from("scheduled_posts")
+                        .select("id").eq("demand_id", demandRefId).eq("platform", platform)
+                        .in("status", ["pending","publishing","processing","published"]).limit(1);
+                      if (existingB1?.length) { showToast(`⚠️ Já agendado em ${platform}`); setPubLoading(false); return; }
                       const schedDate = new Date(`${sel.scheduling.date}T${sel.scheduling.time}:00`);
                       const r2Urls = await proxyUrlsToR2(imgUrls);
                       const { error: insErr } = await supabase.from("scheduled_posts").insert({
                         client_id: clientId, platform, media_type: type,
                         image_urls: r2Urls, caption: fullCaption,
                         scheduled_at: schedDate.toISOString(),
-                        demand_id: sel.supaId || sel.id,
+                        demand_id: demandRefId,
                         created_by: user?.id
                       });
-                      if (insErr) { showToast(`Erro: ${insErr.message}`); return; }
+                      if (insErr) {
+                        const msg = insErr.message || "";
+                        if (msg.includes("scheduled_posts_demand_platform_active_uniq") || msg.includes("duplicate")) {
+                          showToast(`⚠️ Já agendado em ${platform} (proteção do banco)`);
+                        } else { showToast(`Erro: ${msg}`); }
+                        setPubLoading(false); return;
+                      }
                       /* Combined step update — single Supabase write to avoid race */
                       const combinedSteps = {
                         ...(sel.steps||{}),
@@ -11342,12 +11393,23 @@ REGRAS TÉCNICAS:
                         console.log("[Programar] Scheduling for:", platforms2.join(", "), "type:", type, "urls:", schedImgUrls.length, "cover:", mediaInfo.coverUrl ? "yes" : "no");
                         try {
                           const r2Urls = await proxyUrlsToR2(schedImgUrls);
-                          for (const plat of platforms2) {
+                          /* IDEMPOTENCY CHECK */
+                          const demandRefIdB2 = sel.supaId || sel.id;
+                          const { data: existingB2 } = await supabase.from("scheduled_posts")
+                            .select("platform").eq("demand_id", demandRefIdB2)
+                            .in("status", ["pending","publishing","processing","published"]);
+                          const blockedPlats = new Set((existingB2||[]).map(r => r.platform));
+                          const platsToInsert = platforms2.filter(p => !blockedPlats.has(p));
+                          if (platsToInsert.length === 0) { showToast(`⚠️ Já agendado em ${platforms2.join(" e ")}`); setPubLoading(false); return; }
+                          if (platsToInsert.length < platforms2.length) {
+                            showToast(`⚠️ Já agendado em ${[...blockedPlats].join(", ")} — agendando só ${platsToInsert.join(", ")}`);
+                          }
+                          for (const plat of platsToInsert) {
                             const { error: insErr } = await supabase.from("scheduled_posts").insert({
                               client_id: clientId2, platform: plat, media_type: type,
                               image_urls: r2Urls, caption: fullCaption2,
                               scheduled_at: schedDate2.toISOString(),
-                              demand_id: sel.supaId || sel.id, created_by: user?.id
+                              demand_id: demandRefIdB2, created_by: user?.id
                             });
                             if (insErr) console.error(`[Programar] Error inserting ${plat}:`, insErr.message);
                             else console.log(`[Programar] ✅ ${plat} scheduled OK`);
@@ -11548,15 +11610,27 @@ REGRAS TÉCNICAS:
                 if (schedTs) {
                   showToast(`Agendando ${type}...`);
                   try {
+                    /* IDEMPOTENCY CHECK */
+                    const demandRefIdB3 = sel.supaId || sel.id;
+                    const { data: existingB3 } = await supabase.from("scheduled_posts")
+                      .select("id").eq("demand_id", demandRefIdB3).eq("platform", platform)
+                      .in("status", ["pending","publishing","processing","published"]).limit(1);
+                    if (existingB3?.length) { showToast(`⚠️ Já agendado em ${platform}`); setPubLoading(false); return; }
                     const schedDate = new Date(`${sel.scheduling.date}T${sel.scheduling.time}:00`);
                     const r2Urls = await proxyUrlsToR2(imgUrls);
                     const { error: insErr } = await supabase.from("scheduled_posts").insert({
                       client_id: clientId, platform, media_type: type,
                       image_urls: r2Urls, caption: fullCaption,
                       scheduled_at: schedDate.toISOString(),
-                      demand_id: sel.supaId || sel.id, created_by: user?.id
+                      demand_id: demandRefIdB3, created_by: user?.id
                     });
-                    if (insErr) { showToast(`Erro: ${insErr.message}`); return; }
+                    if (insErr) {
+                      const msg = insErr.message || "";
+                      if (msg.includes("scheduled_posts_demand_platform_active_uniq") || msg.includes("duplicate")) {
+                        showToast(`⚠️ Já agendado em ${platform} (proteção do banco)`);
+                      } else { showToast(`Erro: ${msg}`); }
+                      setPubLoading(false); return;
+                    }
                     /* Combined step update — single write */
                     const combinedSteps = {
                       ...(sel.steps||{}),
@@ -27885,10 +27959,14 @@ function ClientOnboarding({ onComplete, onBack }) {
 
   const STEPS = {
     1: { field:"_code", validate: (v) => v.trim().length >= 4 ? null : "O código precisa ter pelo menos 4 caracteres.", next: async (val) => {
-      /* Validate access code against clients table */
+      /* Validate access code via SECURITY DEFINER RPC.
+         Direct SELECT on `clients` is blocked for anon by RLS — the user has no
+         auth.uid() yet at this stage, so any org-scoped policy returns 0 rows.
+         The RPC bypasses RLS safely (returns only id/name/org_id by exact code match). */
       if (!supabase) { await addBot("Erro de conexão. Tente novamente.", 500); return "retry"; }
-      const { data: clientMatchArr } = await supabase.from("clients").select("id,name,access_code").eq("access_code", val.trim().toUpperCase()).limit(1);
-      const clientMatch = clientMatchArr?.[0] || null;
+      const { data: rpcArr, error: rpcErr } = await supabase.rpc("lookup_client_by_access_code", { p_code: val.trim().toUpperCase() });
+      if (rpcErr) { console.error("[Onboarding] lookup_client_by_access_code error:", rpcErr); await addBot("Erro ao validar código. Tente novamente.", 600); return "retry"; }
+      const clientMatch = (Array.isArray(rpcArr) && rpcArr.length > 0) ? rpcArr[0] : null;
       if (!clientMatch) { await addBot("Código inválido. Verifique com sua agência e tente novamente.", 600); return "retry"; }
       setValidatedClient(clientMatch);
       setData(prev => ({ ...prev, company: clientMatch.name }));
@@ -27944,6 +28022,11 @@ function ClientOnboarding({ onComplete, onBack }) {
         options: { data: { name: data.name, company: data.company, phone: data.phone, role: "cliente" } }
       });
       if (authErr) throw new Error(authErr.message === "User already registered" ? "Este e-mail já está cadastrado. Volte e faça login!" : authErr.message === "Database error saving new user" ? "Este e-mail já possui uma conta. Tente fazer login!" : authErr.message);
+      /* SECURITY: Supabase may silently reuse existing user when email is duplicate (anti-enumeration).
+         Detect this by checking identities array — a NEW user has identities, a duplicate signup returns empty array. */
+      if (authData?.user && (!authData.user.identities || authData.user.identities.length === 0)) {
+        throw new Error("Este e-mail já está cadastrado. Volte e faça login com sua senha!");
+      }
       /* Save client profile extras + sync with existing client record */
       if (authData?.user?.id) {
         try { await supaSetSetting(`client_extras_${authData.user.id}`, JSON.stringify({ company: data.company, phone: data.phone, linked_client_id: validatedClient?.id || null })); } catch(e) { console.warn("Extras save:", e); }
@@ -28592,13 +28675,21 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
               if (networks.some(n => n.includes("instagram"))) platforms.push("instagram");
               if (networks.some(n => n.includes("facebook"))) platforms.push("facebook");
               const r2Urls = await proxyUrlsToR2(imgUrls);
-              for (const plat of platforms) {
-                await supabase.from("scheduled_posts").insert({
+              /* IDEMPOTENCY CHECK */
+              const { data: existingB4 } = await supabase.from("scheduled_posts")
+                .select("platform").eq("demand_id", demand.id)
+                .in("status", ["pending","publishing","processing","published"]);
+              const blockedPlatsB4 = new Set((existingB4||[]).map(r => r.platform));
+              const platsToInsertB4 = platforms.filter(p => !blockedPlatsB4.has(p));
+              if (platsToInsertB4.length === 0) { showToast(`⚠️ Já agendado em ${platforms.join(" e ")}`); return; }
+              for (const plat of platsToInsertB4) {
+                const { error: insErrB4 } = await supabase.from("scheduled_posts").insert({
                   client_id: clientId, platform: plat, media_type: mediaType,
                   image_urls: r2Urls, caption: fullCaption,
                   scheduled_at: schedDateISO,
                   demand_id: demand.id, created_by: demand.created_by || null
                 });
+                if (insErrB4) console.error(`[ApprovalSched] ${plat}:`, insErrB4.message);
               }
               showToast(autoRescheduled ? `✅ Aprovado! Reagendado para ${useSchedTime} (horário original já passou)` : `✅ Aprovado! Agendado para ${schedLabel}`);
             } catch(e) {
