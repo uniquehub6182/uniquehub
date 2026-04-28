@@ -9791,14 +9791,11 @@ REGRAS TÉCNICAS:
           }
         }
 
-        /* ── Tudo OK: agora sim move o stage e cria os scheduled_posts ── */
-        setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
-        setSel(prev => syncMilestones({ ...prev, stage: next }, next));
-        if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
-        showToast(`✅ Avançou para: ${STAGE_CFG[next].l}`);
-        supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
+        /* ── BUG FIX: criar scheduled_posts ANTES de avançar stage ──
+           Caso contrário, se o INSERT falhar (RLS, constraint, rede), o card
+           vai pra "Programado" sem post correspondente e fica EXPIRADO. */
 
-        /* ── Proxy ALL Supabase URLs to R2 CDN before scheduling ── */
+        /* Proxy ALL Supabase URLs to R2 CDN before scheduling */
         showToast("⏳ Preparando mídia para agendamento...");
         imgUrls = await proxyUrlsToR2(imgUrls);
         if (coverUrl) coverUrl = await proxyUrlToR2(coverUrl);
@@ -9817,15 +9814,21 @@ REGRAS TÉCNICAS:
             if (error) {
               const msg = error.message || "";
               if (msg.includes("scheduled_posts_demand_platform_active_uniq") || msg.includes("duplicate")) {
-                showToast("⚠️ Já existe agendamento ativo (proteção do banco)");
+                showToast("⚠️ Já existe agendamento ativo (proteção do banco) — card NÃO foi avançado");
               } else {
-                showToast("Erro ao agendar: " + msg);
+                showToast("Erro ao agendar: " + msg + " — card NÃO foi avançado");
               }
-              return;
+              return; /* AGORA é seguro retornar — stage ainda não avançou */
             }
           }
+
+          /* ── INSERT bem-sucedido: AGORA sim avança o stage ── */
+          setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
+          setSel(prev => syncMilestones({ ...prev, stage: next }, next));
+          if (d.supaId) supaUpdateDemand(d.supaId, { stage: next });
           showToast(isPast ? `📤 Publicação em ~1 min (horário já passou)` : `✅ Agendado para ${schedDate} às ${schedTime}`);
-        } catch(e) { showToast("Erro: "+e.message); }
+          supaCreateNotificationForAll("demand_updated", `Demanda avançou: ${STAGE_CFG[next].l}`, `${d.title || d.type} — ${d.clientName || ""}`, "🔄", null, user?.id);
+        } catch(e) { showToast("Erro: "+e.message+" — card NÃO foi avançado"); }
       } else {
         /* ── Outros stages: só avança normal ── */
         setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
