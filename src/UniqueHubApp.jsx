@@ -19,6 +19,69 @@ class DemandDetailBoundary extends React.Component {
     return this.props.children;
   }
 }
+/* ── SmartImage: renderiza JPEG/PNG normal; HEIC/HEIF converte on-the-fly via libheif-js ── */
+const _heicConvCache = new Map(); // url -> blob URL convertido
+function SmartImage({ src, alt, style, className, onError, loading }) {
+  const [resolvedSrc, setResolvedSrc] = React.useState(() => {
+    if (!src) return null;
+    if (_heicConvCache.has(src)) return _heicConvCache.get(src);
+    const isHeic = /\.(heic|heif)(\?|$)/i.test(src);
+    return isHeic ? null : src;
+  });
+  const [errored, setErrored] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!src) { setResolvedSrc(null); return; }
+    if (_heicConvCache.has(src)) { setResolvedSrc(_heicConvCache.get(src)); return; }
+    const isHeic = /\.(heic|heif)(\?|$)/i.test(src);
+    if (!isHeic) { setResolvedSrc(src); return; }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch(src);
+        if (!resp.ok) throw new Error("fetch failed " + resp.status);
+        const buf = await resp.arrayBuffer();
+
+        if (!window._heifDecoder) {
+          const mod = await import(/* @vite-ignore */ "https://esm.sh/libheif-js@1.18.2/wasm-bundle");
+          const libheif = mod.default;
+          window._heifDecoder = new libheif.HeifDecoder();
+        }
+        const images = window._heifDecoder.decode(buf);
+        if (!images || images.length === 0) throw new Error("no images decoded");
+        const img0 = images[0];
+        const w = img0.get_width(); const h = img0.get_height();
+        const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        const imageData = ctx.createImageData(w, h);
+        await new Promise((res, rej) => {
+          img0.display(imageData, (displayData) => { if (!displayData) { rej(new Error("display failed")); return; } ctx.putImageData(displayData, 0, 0); res(); });
+        });
+        const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.9));
+        if (!blob) throw new Error("toBlob failed");
+        const url = URL.createObjectURL(blob);
+        _heicConvCache.set(src, url);
+        if (!cancelled) setResolvedSrc(url);
+      } catch (e) {
+        console.warn("[SmartImage] HEIC convert failed for", src, e?.message || e);
+        if (!cancelled) { setErrored(true); setResolvedSrc(src); /* fallback to original (may not render) */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [src]);
+
+  if (!resolvedSrc) {
+    /* placeholder enquanto converte */
+    return (
+      <div style={{ ...style, display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F1F4", color: "#9CA0A8", fontSize: 10, fontWeight: 600 }} className={className}>
+        {errored ? "HEIC" : "..."}
+      </div>
+    );
+  }
+  return <img src={resolvedSrc} alt={alt || ""} style={style} className={className} loading={loading} onError={onError} />;
+}
+
 /* ── Sub-page Error Boundary (prevents black screen on crash) ── */
 class SubPageBoundary extends React.Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
@@ -1898,7 +1961,7 @@ const _ReelsCarousel = React.memo(({ allSlides, coverCount, B }) => {
         const isVid = /\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/");
         return <div key={i} style={{ width:"100%", flexShrink:0, scrollSnapAlign:"start", background:"#000", minHeight:300 }}>
           {isVid ? <video src={f.url} controls playsInline style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />
-                 : <img src={f.url} alt="" style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />}
+                 : <SmartImage src={f.url} alt="" style={{ width:"100%", maxHeight:"70vh", objectFit:"contain" }} />}
         </div>;
       })}
     </div>
@@ -3925,7 +3988,7 @@ function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setD
               <div key={d.id||i} onClick={()=>goTab("content", d.id)} style={{flexShrink:0,width:140,borderRadius:16,overflow:"hidden",cursor:"pointer",background:C.card,border:`1px solid ${C.brd}`}}>
                 <div style={{position:"relative",height:140}}>
                   {imgFile
-                    ? <img src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} loading="lazy"/>
+                    ? <SmartImage src={imgFile.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}} loading="lazy"/>
                     : <div style={{width:"100%",height:"100%",background:`linear-gradient(135deg,${bg}ee,${bg}88)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
                         <span style={{fontSize:32,fontWeight:900,color:"rgba(255,255,255,0.2)",letterSpacing:-1}}>{initials}</span>
                       </div>
@@ -6373,7 +6436,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
             <p style={{ fontSize:14, fontWeight:700 }}>Detalhes do arquivo</p>
           </div>
           {/* Preview */}
-          {hasUrl && isImage && <div style={{ borderRadius:16, overflow:"hidden", marginBottom:12, background:B.bgCard }}><img src={f.url} alt={f.name} style={{ width:"100%", maxHeight:250, objectFit:"contain" }} onError={e=>{e.target.onerror=null;e.target.style.display="none";}} /></div>}
+          {hasUrl && isImage && <div style={{ borderRadius:16, overflow:"hidden", marginBottom:12, background:B.bgCard }}><SmartImage src={f.url} alt={f.name} style={{ width:"100%", maxHeight:250, objectFit:"contain" }} onError={e=>{e.target.onerror=null;e.target.style.display="none";}} /></div>}
           {hasUrl && isVideo && <video src={f.url} controls style={{ width:"100%", maxHeight:250, borderRadius:16, marginBottom:12 }} />}
           {!isImage && !isVideo && <Card style={{ textAlign:"center", padding:24, marginBottom:12 }}>
             <div style={{ width:56, height:56, borderRadius:16, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 8px", transform:"scale(1.5)" }}>{fi.ic}</div>
@@ -6430,7 +6493,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               {catFiles.map(f => { const fi=fileIcon(f.name); const fExt2=f.originalExt||(f.storagePath?.split(".").pop()?.toLowerCase())||(/\.(jpg|jpeg|png|gif|webp|heic|heif|svg)(\?|$)/i.test(f.url||"")?(f.url||"").match(/\.(jpg|jpeg|png|gif|webp|heic|heif|svg)/i)?.[1]?.toLowerCase():""); const isImg2=["jpg","jpeg","png","gif","webp","heic","heif","svg","bmp"].includes(fExt2)||(f.mimeType||"").startsWith("image/"); const fmtSz2=(s)=>(!s||s==="0.0MB"?"—":s); return (
                 <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    {isImg2 && f.url ? <img src={f.url} alt="" style={{ width:38, height:38, borderRadius:10, objectFit:"cover", flexShrink:0 }} onError={e=>{e.target.onerror=null;e.target.style.display="none";e.target.nextSibling&&(e.target.nextSibling.style.display="flex");}} /> : null}
+                    {isImg2 && f.url ? <SmartImage src={f.url} alt="" style={{ width:38, height:38, borderRadius:10, objectFit:"cover", flexShrink:0 }} onError={e=>{e.target.onerror=null;e.target.style.display="none";e.target.nextSibling&&(e.target.nextSibling.style.display="flex");}} /> : null}
                     <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:isImg2&&f.url?"none":"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
                     <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{fmtSz2(f.size)} · {f.date}</p></div>
                     {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{ background:`${B.accent}10`, border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:6, borderRadius:8, flexShrink:0 }}>{IC.download}</a>}
@@ -6445,7 +6508,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
           <Card style={{ textAlign:"center", padding:24 }}><p style={{ fontSize:20 }}>{LIB_CATS.find(c=>c.key===libCat)?.icon}</p><p style={{ fontSize:13, fontWeight:600, marginTop:6 }}>Nenhum arquivo nesta categoria</p><p style={{ fontSize:11, color:B.muted, marginTop:4 }}>{LIB_CATS.find(c=>c.key===libCat)?.desc}</p></Card>
         ) : filteredFiles.map(f => { const fi=fileIcon(f.name); return (
           <Card key={f.id} onClick={()=>setViewClientFile(f)} style={{ marginTop:4, cursor:"pointer" }}>
-            {f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"") && <img src={f.url} alt="" style={{ width:"100%", height:120, objectFit:"cover", borderRadius:8, marginBottom:8 }} onError={e=>{e.target.style.display="none"}}/>}
+            {f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"") && <SmartImage src={f.url} alt="" style={{ width:"100%", height:120, objectFit:"cover", borderRadius:8, marginBottom:8 }} onError={e=>{e.target.style.display="none"}}/>}
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>
               <div style={{ flex:1, minWidth:0 }}><p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.name}</p><p style={{ fontSize:10, color:B.muted }}>{f.size} · {f.date}</p></div>
@@ -8726,7 +8789,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
       {hasReal ? (
         <div style={{ position:"relative", aspectRatio:aspect, background:`linear-gradient(135deg, ${cA} 0%, ${cB} 100%)` }}>
           {imgFiles.length > 0 ? (
-            <img src={imgFiles[Math.min(cur, imgFiles.length-1)]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
+            <SmartImage src={imgFiles[Math.min(cur, imgFiles.length-1)]?.url} alt="" style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} />
           ) : vidFiles.length > 0 ? (<>
             <video ref={vidRef} src={vidFiles[0]?.url+"#t=0.1"} style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover" }} preload="metadata" playsInline loop onClick={togglePlay} />
             <div onClick={togglePlay} style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1, cursor:"pointer", background: playing ? "transparent" : "rgba(0,0,0,0.25)", transition:"background .3s" }}>
@@ -10191,7 +10254,7 @@ REGRAS TÉCNICAS:
           {showMediaPreview && (dCover || dVid) && (
             <div style={{ display:"flex", gap:8, marginTop:8 }}>
               {dCover?.url && <div style={{ width:60, height:106, borderRadius:8, overflow:"hidden", border:`1.5px solid ${B.accent}30`, background:"#000", flexShrink:0 }}>
-                <img src={dCover.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                <SmartImage src={dCover.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
               </div>}
               {dVid?.url && <div style={{ width:60, height:106, borderRadius:8, overflow:"hidden", border:`1.5px solid ${B.blue||"#3B82F6"}30`, background:"#000", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
                 {dVid.isCloudLink ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -10572,7 +10635,7 @@ REGRAS TÉCNICAS:
                     {(sel.steps?.design?.references||[]).map((ref, ri) => (
                       <div key={ri} style={{ display:"flex", alignItems:"center", gap:10, padding:8, borderRadius:10, background:"#fff", border:`1px solid ${B.border}` }}>
                         <div onClick={()=>setSel(prev=>({...prev,_refPreview:ref.url}))} style={{ width:56, height:56, borderRadius:8, overflow:"hidden", flexShrink:0, cursor:"pointer", border:`1px solid ${B.border}` }}>
-                          <img src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          <SmartImage src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                         </div>
                         <div style={{ flex:1, minWidth:0 }}>
                           <p style={{ fontSize:11, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{ref.name||`Referência ${ri+1}`}</p>
@@ -10608,6 +10671,69 @@ REGRAS TÉCNICAS:
                   </label>
                 )}
               </div>
+              {/* ── Reference Links (only for video/Reels/Shorts) ── */}
+              {(sel.format === "Reels" || sel.format === "Shorts" || sel.format === "Vídeo") && (
+                <div style={{ marginBottom:12, padding:12, borderRadius:12, background:`${B.purple||"#8B5CF6"}06`, border:`1px solid ${B.purple||"#8B5CF6"}15` }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                    <p style={{ fontSize:11, fontWeight:700, color:B.purple||"#8B5CF6", display:"flex", alignItems:"center", gap:6 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.purple||"#8B5CF6"} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                      Links de inspiração / referência
+                    </p>
+                  </div>
+                  <p style={{ fontSize:10, color:B.muted, marginBottom:8, lineHeight:1.4 }}>Cole aqui links de Reels, TikToks, posts ou vídeos que servem de inspiração.</p>
+                  {(sel.steps?.design?.referenceLinks||[]).length > 0 && (
+                    <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:8 }}>
+                      {(sel.steps?.design?.referenceLinks||[]).map((lk, li) => {
+                        const url = typeof lk === "string" ? lk : (lk?.url||"");
+                        let host = ""; try { host = new URL(url).hostname.replace(/^www\./, ""); } catch {}
+                        return (
+                          <div key={li} style={{ display:"flex", alignItems:"center", gap:8, padding:8, borderRadius:10, background:"#fff", border:`1px solid ${B.border}` }}>
+                            <div style={{ width:32, height:32, borderRadius:8, background:`${B.purple||"#8B5CF6"}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.purple||"#8B5CF6"} strokeWidth="2" strokeLinecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                            </div>
+                            <a href={url} target="_blank" rel="noopener noreferrer" style={{ flex:1, minWidth:0, textDecoration:"none", color:"inherit" }}>
+                              <p style={{ fontSize:11, fontWeight:600, color:B.purple||"#8B5CF6", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{host || url}</p>
+                              <p style={{ fontSize:9, color:B.muted, marginTop:2, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{url}</p>
+                            </a>
+                            <button onClick={()=>{ navigator.clipboard.writeText(url); showToast("Link copiado ✓"); }} style={{ width:28, height:28, borderRadius:8, background:`${B.purple||"#8B5CF6"}10`, border:`1px solid ${B.purple||"#8B5CF6"}20`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={B.purple||"#8B5CF6"} strokeWidth="2.5" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            </button>
+                            <button onClick={()=>{ const links = (sel.steps?.design?.referenceLinks||[]).filter((_,i)=>i!==li); updateStep("design", { referenceLinks: links }); showToast("Link removido"); }} style={{ width:28, height:28, borderRadius:8, background:"#EF444410", border:`1px solid #EF444420`, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div style={{ display:"flex", gap:6 }}>
+                    <input type="url" value={sel._newRefLink||""} onChange={e=>setSel(prev=>({...prev,_newRefLink:e.target.value}))} onKeyDown={e=>{
+                      if (e.key === "Enter") {
+                        const v = (sel._newRefLink||"").trim();
+                        if (!v) return;
+                        let normalized = v;
+                        if (!/^https?:\/\//i.test(v)) normalized = "https://" + v;
+                        try { new URL(normalized); } catch { showToast("Link inválido"); return; }
+                        const links = [...(sel.steps?.design?.referenceLinks||[]), normalized];
+                        updateStep("design", { referenceLinks: links });
+                        setSel(prev=>({...prev,_newRefLink:""}));
+                        showToast("Link adicionado ✓");
+                      }
+                    }} placeholder="Cole o link e pressione Enter (ex: instagram.com/reel/...)" style={{ flex:1, padding:"10px 12px", borderRadius:10, border:`1px solid ${B.border}`, background:"#fff", fontSize:12, fontFamily:"inherit", outline:"none" }} />
+                    <button onClick={()=>{
+                      const v = (sel._newRefLink||"").trim();
+                      if (!v) { showToast("Cole um link primeiro"); return; }
+                      let normalized = v;
+                      if (!/^https?:\/\//i.test(v)) normalized = "https://" + v;
+                      try { new URL(normalized); } catch { showToast("Link inválido"); return; }
+                      const links = [...(sel.steps?.design?.referenceLinks||[]), normalized];
+                      updateStep("design", { referenceLinks: links });
+                      setSel(prev=>({...prev,_newRefLink:""}));
+                      showToast("Link adicionado ✓");
+                    }} style={{ padding:"10px 16px", borderRadius:10, background:B.purple||"#8B5CF6", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:11, fontWeight:700, color:"#fff", flexShrink:0 }}>Adicionar</button>
+                  </div>
+                </div>
+              )}
               {/* ── Lightbox for reference preview ── */}
               {sel._refPreview && <div onClick={()=>setSel(prev=>({...prev,_refPreview:null}))} style={{ position:"fixed", inset:0, zIndex:99999, background:"rgba(0,0,0,0.85)", display:"flex", alignItems:"center", justifyContent:"center", cursor:"zoom-out", backdropFilter:"blur(4px)" }}>
                 <img src={sel._refPreview} alt="" style={{ maxWidth:"90vw", maxHeight:"85vh", borderRadius:12, boxShadow:"0 20px 60px rgba(0,0,0,0.5)", objectFit:"contain" }} />
@@ -10641,7 +10767,7 @@ REGRAS TÉCNICAS:
                   return (
                     <div style={{ marginBottom:8 }}>
                       <div style={{ position:"relative", borderRadius:12, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)" }}>
-                        <img src={cur?.url} alt="" loading="lazy" style={{ width:"100%", maxHeight:220, objectFit:"contain", display:"block", borderRadius:12, background:"#f5f5f5" }} />
+                        <SmartImage src={cur?.url} alt="" loading="lazy" style={{ width:"100%", maxHeight:220, objectFit:"contain", display:"block", borderRadius:12, background:"#f5f5f5" }} />
                         {imgFiles.length > 1 && ci > 0 && <button onClick={() => sc(ci-1)} style={{ position:"absolute", left:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
                         {imgFiles.length > 1 && ci < imgFiles.length-1 && <button onClick={() => sc(ci+1)} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
                         {imgFiles.length > 1 && <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", background:"rgba(0,0,0,0.5)", borderRadius:8, padding:"2px 8px", fontSize:10, fontWeight:600, color:"#fff" }}>{ci+1} / {imgFiles.length}</div>}
@@ -10651,7 +10777,7 @@ REGRAS TÉCNICAS:
                       {imgFiles.length > 1 && <div style={{ display:"flex", gap:5, marginTop:6, overflowX:"auto" }}>
                         {imgFiles.map((f, ti) => (
                           <div key={ti} onClick={() => sc(ti)} style={{ width:44, height:44, borderRadius:6, overflow:"hidden", border: ti === ci ? "2px solid #BBF246" : "2px solid transparent", cursor:"pointer", flexShrink:0, opacity: ti === ci ? 1 : 0.5, transition:"all .15s" }}>
-                            <img src={f.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                            <SmartImage src={f.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                           </div>
                         ))}
                       </div>}
@@ -10695,7 +10821,7 @@ REGRAS TÉCNICAS:
                         <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", marginBottom:6, letterSpacing:0.5, textAlign:"center" }}>Capa do Reels</p>
                         {coverFile?.url ? (
                           <div style={{ position:"relative", borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:`2px solid ${B.accent}40`, background:"#000" }}>
-                            <img src={coverFile.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                            <SmartImage src={coverFile.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                             <button onClick={async () => { if (coverFile.path) await supaDeleteFile(coverFile.path); updateStep("design",{files:allF.filter(f=>!f.isCover)}); }} style={{ position:"absolute", top:6, right:6, width:24, height:24, borderRadius:8, background:"rgba(239,68,68,0.9)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
                           </div>
                         ) : (
@@ -10891,7 +11017,7 @@ REGRAS TÉCNICAS:
                 <div style={{ display:"grid", gridTemplateColumns: isContentDesktop ? "repeat(auto-fill, minmax(100px, 1fr))" : "repeat(3,1fr)", gap:6, marginBottom:8 }}>
                   {sel.steps?.design?.files?.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"")).map((f,i) => (
                     <a key={i} href={f.url} target="_blank" rel="noopener" style={{ display:"block", borderRadius:10, overflow:"hidden", aspectRatio:"1/1", border:`1px solid ${B.border}` }}>
-                      <img src={f.url} alt={f.name} loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                      <SmartImage src={f.url} alt={f.name} loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                     </a>
                   ))}
                 </div>
@@ -10921,7 +11047,7 @@ REGRAS TÉCNICAS:
                     {(sel.steps?.design?.references||[]).map((ref, ri) => (
                       <div key={ri} style={{ display:"flex", alignItems:"center", gap:10, padding:8, borderRadius:10, background:"#fff", border:`1px solid ${B.border}` }}>
                         <div onClick={()=>setSel(prev=>({...prev,_refPreview:ref.url}))} style={{ width:48, height:48, borderRadius:8, overflow:"hidden", flexShrink:0, cursor:"pointer", border:`1px solid ${B.border}` }}>
-                          <img src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                          <SmartImage src={ref.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
                         </div>
                         <p style={{ flex:1, fontSize:11, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", minWidth:0 }}>{ref.name||`Referência ${ri+1}`}</p>
                         <a href={ref.url} download={ref.name||"referencia.jpg"} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{ padding:"5px 10px", borderRadius:8, background:`${B.blue||"#3B82F6"}10`, border:`1px solid ${B.blue||"#3B82F6"}20`, cursor:"pointer", fontFamily:"inherit", fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", display:"flex", alignItems:"center", gap:4, flexShrink:0, textDecoration:"none" }}>
@@ -11054,7 +11180,7 @@ REGRAS TÉCNICAS:
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
                       {coverFile?.url && <div>
                         <p style={{ fontSize:9, fontWeight:700, color:B.accent, textTransform:"uppercase", marginBottom:4, textAlign:"center" }}>Capa</p>
-                        <div style={{ borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:`2px solid ${B.accent}40`, background:"#000" }}><img src={coverFile.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>
+                        <div style={{ borderRadius:14, overflow:"hidden", aspectRatio:"9/16", border:`2px solid ${B.accent}40`, background:"#000" }}><SmartImage src={coverFile.url} alt="Capa" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>
                       </div>}
                       {vidFiles[0]?.url && <div>
                         <p style={{ fontSize:9, fontWeight:700, color:B.blue||"#3B82F6", textTransform:"uppercase", marginBottom:4, textAlign:"center" }}>Vídeo</p>
@@ -11067,13 +11193,13 @@ REGRAS TÉCNICAS:
                   {/* Carousel */}
                   {imgFiles.length > 0 && <div style={{ marginBottom:12 }}>
                     <div style={{ position:"relative", borderRadius:12, overflow:"hidden", border:"1px solid rgba(0,0,0,0.06)" }}>
-                      <img src={cur?.url} alt="" style={{ width:"100%", display:"block", borderRadius:12 }} />
+                      <SmartImage src={cur?.url} alt="" style={{ width:"100%", display:"block", borderRadius:12 }} />
                       {imgFiles.length > 1 && ci > 0 && <button onClick={() => sc(ci-1)} style={{ position:"absolute", left:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>}
                       {imgFiles.length > 1 && ci < imgFiles.length-1 && <button onClick={() => sc(ci+1)} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", width:32, height:32, borderRadius:16, background:"rgba(255,255,255,0.85)", border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.15)" }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1A1D23" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
                       {imgFiles.length > 1 && <div style={{ position:"absolute", bottom:8, left:"50%", transform:"translateX(-50%)", background:"rgba(0,0,0,0.5)", borderRadius:8, padding:"2px 8px", fontSize:10, fontWeight:600, color:"#fff" }}>{ci+1} / {imgFiles.length}</div>}
                     </div>
                     {imgFiles.length > 1 && <div style={{ display:"flex", gap:5, marginTop:6, overflowX:"auto" }}>
-                      {imgFiles.map((f, ti) => (<div key={ti} onClick={() => sc(ti)} style={{ width:44, height:44, borderRadius:6, overflow:"hidden", border: ti === ci ? "2px solid #BBF246" : "2px solid transparent", cursor:"pointer", flexShrink:0, opacity: ti === ci ? 1 : 0.5 }}><img src={f.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>))}
+                      {imgFiles.map((f, ti) => (<div key={ti} onClick={() => sc(ti)} style={{ width:44, height:44, borderRadius:6, overflow:"hidden", border: ti === ci ? "2px solid #BBF246" : "2px solid transparent", cursor:"pointer", flexShrink:0, opacity: ti === ci ? 1 : 0.5 }}><SmartImage src={f.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /></div>))}
                     </div>}
                   </div>}
                   {/* Caption + Hashtags */}
@@ -12265,7 +12391,7 @@ REGRAS TÉCNICAS:
                 <div style={{display:"flex",gap:2,margin:"10px 0 8px"}}>{stgs.map((s,i)=><div key={s} style={{flex:1,height:4,borderRadius:2,background:i<=sIdx?(STAGE_CFG[s]?.c||B.accent):`${B.muted}15`}}/>)}</div>
                 {d.stage==="idea"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>IDEIA</p><textarea value={d.steps?.idea?.text||""} onChange={e=>updStep("idea",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Descreva a ideia..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
                 {d.stage==="briefing"&&<div style={{marginBottom:8}}>{d.steps?.idea?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.idea.c}08`,border:`1px solid ${STAGE_CFG.idea.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.idea.c}}>{"💡"} Ideia:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.idea.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>BRIEFING</p><textarea value={d.steps?.briefing?.text||""} onChange={e=>updStep("briefing",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Instruções para o designer..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
-                {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>CRIATIVO{(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?" — Enviar vídeo":" — Enviar arte"}</p>{(d.steps?.design?.files||[]).map((f,fi)=>{const isImg=f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"");const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink||"#EC4899"}06`,border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink||"#EC4899")}15`,marginBottom:4}}>{isImg?<img src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}} alt=""/>:isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"📷"} {(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"Enviar vídeo":"Enviar arquivo"}<input type="file" accept={(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"video/*":"image/*,video/*,.pdf,.heic,.heif"} style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed=await compressImage(file);showToast("Enviando...");const safeName=compressed.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+safeName;const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:u.publicUrl,path}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro");}}/></label></div>}
+                {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>CRIATIVO{(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?" — Enviar vídeo":" — Enviar arte"}</p>{(d.steps?.design?.files||[]).map((f,fi)=>{const isImg=f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"");const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink||"#EC4899"}06`,border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink||"#EC4899")}15`,marginBottom:4}}>{isImg?<SmartImage src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}} alt=""/>:isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"📷"} {(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"Enviar vídeo":"Enviar arquivo"}<input type="file" accept={(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"video/*":"image/*,video/*,.pdf,.heic,.heif"} style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed=await compressImage(file);showToast("Enviando...");const safeName=compressed.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+safeName;const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:u.publicUrl,path}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro");}}/></label></div>}
                                 {d.stage==="caption"&&d.format!=="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><textarea value={d.steps?.caption?.text||""} onChange={e=>updStep("caption",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/><input value={d.steps?.caption?.hashtags||""} onChange={e=>updStep("caption",{...d.steps?.caption,hashtags:e.target.value})} placeholder="#hashtags" className="tinput" style={{fontSize:10,marginTop:4}}/></div>}
                 {d.stage==="caption"&&d.format==="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><div style={{padding:"16px 12px",borderRadius:10,background:(B.orange||"#F59E0B")+"06",border:"1.5px dashed "+(B.orange||"#F59E0B")+"30",textAlign:"center"}}><p style={{fontSize:11,fontWeight:700,color:B.orange||"#F59E0B"}}>🔒 Stories não suporta legenda</p><p style={{fontSize:9,color:B.muted,marginTop:4}}>Texto vai direto na arte. Avance para revisão.</p></div></div>}
                 {d.stage==="review"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>REVISÃO</p><p style={{fontSize:10,color:B.text}}>Verifique legenda, arte e informações.</p></div>}
@@ -19251,6 +19377,66 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
     return <canvas ref={canvasRef} style={{ ...style, display: ready ? "block" : "none", width:"100%", height:"100%", objectFit:"cover", position:"absolute", inset:0, zIndex:2 }} />;
   };
 
+  /* HEIC Thumbnail — converts HEIC/HEIF on-the-fly via libheif-js (browsers don't render HEIC natively) */
+  const HeicThumb = ({ url, name, style, alt = "" }) => {
+    const [src, setSrc] = useState(null);
+    const [err, setErr] = useState(false);
+    useEffect(() => {
+      if (!url) { setSrc(null); return; }
+      const isHeic = /\.(heic|heif)$/i.test(name||"") || /\.(heic|heif)(\?|$)/i.test(url);
+      if (!isHeic) { setSrc(url); return; }
+      /* Cache per session: blob URLs survive within tab lifetime */
+      window._heicCache = window._heicCache || new Map();
+      if (window._heicCache.has(url)) { setSrc(window._heicCache.get(url)); return; }
+      let cancelled = false;
+      setSrc(null); setErr(false);
+      (async () => {
+        try {
+          if (!window._heifDecoder) {
+            const mod = await import(/* @vite-ignore */ "https://esm.sh/libheif-js@1.18.2/wasm-bundle");
+            window._heifDecoder = new mod.default.HeifDecoder();
+          }
+          if (cancelled) return;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("fetch failed");
+          const buf = await res.arrayBuffer();
+          if (cancelled) return;
+          const data = new Uint8Array(buf);
+          const images = window._heifDecoder.decode(data);
+          if (!images?.length) throw new Error("no images decoded");
+          const image = images[0];
+          const w = image.get_width(), h = image.get_height();
+          /* Downscale for thumbnail performance: max 800px on longest edge */
+          const maxSide = 800;
+          const scale = Math.min(1, maxSide / Math.max(w, h));
+          const tw = Math.round(w * scale), th = Math.round(h * scale);
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          const imgData = ctx.createImageData(w, h);
+          await new Promise((resolve, reject) => {
+            image.display(imgData, (dd) => { if (!dd) { reject(new Error("display failed")); return; } ctx.putImageData(dd, 0, 0); resolve(); });
+          });
+          let finalCanvas = canvas;
+          if (scale < 1) {
+            finalCanvas = document.createElement("canvas");
+            finalCanvas.width = tw; finalCanvas.height = th;
+            finalCanvas.getContext("2d").drawImage(canvas, 0, 0, tw, th);
+          }
+          const blob = await new Promise(r => finalCanvas.toBlob(r, "image/jpeg", 0.82));
+          if (cancelled || !blob) return;
+          const blobUrl = URL.createObjectURL(blob);
+          window._heicCache.set(url, blobUrl);
+          setSrc(blobUrl);
+        } catch (e) { console.warn("[HeicThumb]", name, e?.message); if (!cancelled) setErr(true); }
+      })();
+      return () => { cancelled = true; };
+    }, [url, name]);
+    if (err) return <div style={{ ...style, display:"flex", alignItems:"center", justifyContent:"center", background:"#FEE2E2", color:"#DC2626", fontSize:9, fontWeight:700, letterSpacing:0.5 }}>HEIC</div>;
+    if (!src) return <div style={{ ...style, display:"flex", alignItems:"center", justifyContent:"center", background:"#F9FAFB" }}><div style={{ width:14, height:14, border:"2px solid #E5E7EB", borderTopColor:"#9CA3AF", borderRadius:"50%", animation:"spin .7s linear infinite" }} /></div>;
+    return <img src={src} alt={alt} loading="lazy" style={style} />;
+  };
+
   /* Single item renderer for grid */
   const GridItem = ({ item }) => {
     const fi = fileIcon(item);
@@ -19262,7 +19448,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
       <div draggable onDragStart={e=>{e.dataTransfer.setData("application/uh-lib-item",JSON.stringify({id:item.id,name:item.name,is_folder:item.is_folder}));e.dataTransfer.effectAllowed="move";}} onDragOver={e=>{if(item.is_folder){e.preventDefault();e.stopPropagation();setDragOverFolder(item.id);}}} onDragLeave={()=>setDragOverFolder(null)} onDrop={e=>{if(item.is_folder)handleItemDrop(e,item.id);}} onClick={()=>{if(item.is_folder)navigateToFolder(item);else setViewFile(item);}} onContextMenu={e=>{e.preventDefault();setContextMenu({x:e.clientX,y:e.clientY,item});}} style={{ borderRadius:14, border:isSel?`2px solid ${B.accent}`:dragOverFolder===item.id?`2px solid ${B.green}`:`1.5px solid ${B.border}`, overflow:"hidden", cursor:"pointer", background:dragOverFolder===item.id?`${B.green}06`:B.bgCard, transition:"all .15s", boxShadow:isSel?`0 0 0 3px ${B.accent}20`:"none" }} onMouseEnter={e=>{if(!isSel&&dragOverFolder!==item.id){e.currentTarget.style.borderColor=B.accent;e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,0.08)";}}} onMouseLeave={e=>{if(!isSel&&dragOverFolder!==item.id){e.currentTarget.style.borderColor=B.border;e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none";}}}>
         <div style={{ width:"100%", height:item.is_folder?80:110, background:item.is_folder?`${B.accent}08`:`${fi.c}06`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", overflow:"hidden" }}>
           {item.is_folder && <svg width="40" height="40" viewBox="0 0 24 24" fill={`${B.accent}20`} stroke={B.accent} strokeWidth="1.5" strokeLinecap="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>}
-          {!item.is_folder && isImage && item.url && <img src={item.url} alt={item.name} loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} onError={e=>{e.target.style.display="none";e.target.nextSibling&&(e.target.nextSibling.style.display="flex");}} />}
+          {!item.is_folder && isImage && item.url && <HeicThumb url={item.url} name={item.name} alt={item.name} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
           {!item.is_folder && isImage && item.url && <div style={{ display:"none", color:fi.c, opacity:0.6, transform:"scale(1.5)", position:"absolute", inset:0, alignItems:"center", justifyContent:"center" }}>{fi.ic}</div>}
           {!item.is_folder && isVideo && item.url && <><div style={{ position:"absolute", inset:0, background:"linear-gradient(135deg, #1a1a2e, #16213e)", display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" strokeLinecap="round"><polygon points="5 3 19 12 5 21" fill="rgba(255,255,255,0.3)"/></svg></div></>}
           {!item.is_folder && ext==="pdf" && item.url && <><PdfThumb url={item.url} style={{}} /><div className="pdf-fallback-icon" style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:4 }}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style={{ fontSize:10, fontWeight:800, color:B.red||"#EF4444" }}>PDF</span></div></>}
@@ -19319,7 +19505,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
           <p style={{ fontSize:13, fontWeight:700, flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{viewFile.name}</p>
         </div>
         <div style={{ flex:1, overflowY:"auto" }}>
-          {viewFile.url && image && <div style={{ background:B.dark, padding:8 }}><img src={viewFile.url} alt={viewFile.name} style={{ width:"100%", maxHeight:200, objectFit:"contain", display:"block", margin:"0 auto", borderRadius:8 }}/></div>}
+          {viewFile.url && image && <div style={{ background:B.dark, padding:8 }}><HeicThumb url={viewFile.url} name={viewFile.name} alt={viewFile.name} style={{ width:"100%", maxHeight:200, objectFit:"contain", display:"block", margin:"0 auto", borderRadius:8 }}/></div>}
           {viewFile.url && video && <div style={{ background:B.dark }}><video src={viewFile.url} controls style={{ width:"100%", maxHeight:200, display:"block" }}/></div>}
           {viewFile.url && ext==="pdf" && <div style={{ background:B.dark, height:280 }}><iframe src={viewFile.url+"#toolbar=0&view=FitH"} title={viewFile.name} style={{ width:"100%", height:"100%", border:"none" }} /></div>}
           {!(viewFile.url && (image||video||ext==="pdf")) && <div style={{ padding:"30px 16px", textAlign:"center", background:`${fi.c}04` }}><div style={{ color:fi.c, margin:"0 auto", display:"flex", justifyContent:"center", transform:"scale(2)", marginBottom:16 }}>{fi.ic}</div><p style={{ fontSize:12, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()||"FILE"}</p></div>}
@@ -19391,7 +19577,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
                 const isSel = viewFile?.id === item.id;
                 return (
                   <div key={item.id} draggable onDragStart={e=>{e.dataTransfer.setData("application/uh-lib-item",JSON.stringify({id:item.id,name:item.name,is_folder:item.is_folder}));e.dataTransfer.effectAllowed="move";}} onDragOver={e=>{if(item.is_folder){e.preventDefault();e.stopPropagation();setDragOverFolder(item.id);}}} onDragLeave={()=>setDragOverFolder(null)} onDrop={e=>{if(item.is_folder)handleItemDrop(e,item.id);}} onClick={()=>{if(item.is_folder)navigateToFolder(item);else setViewFile(item);}} onContextMenu={e=>{e.preventDefault();setContextMenu({x:e.clientX,y:e.clientY,item});}} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 10px", borderRadius:10, cursor:"pointer", background:isSel?`${B.accent}06`:dragOverFolder===item.id?`${B.green}06`:"transparent", border:isSel?`1.5px solid ${B.accent}20`:dragOverFolder===item.id?`1.5px solid ${B.green}`:"1.5px solid transparent", marginBottom:2 }} onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background=`${B.accent}04`;}} onMouseLeave={e=>{if(!isSel&&dragOverFolder!==item.id)e.currentTarget.style.background="transparent";}}>
-                    {item.is_folder ? <div style={{ width:40, height:40, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill={`${B.accent}20`} stroke={B.accent} strokeWidth="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div> : isImg(item)&&item.url ? <div style={{ width:40, height:40, borderRadius:8, overflow:"hidden", flexShrink:0 }}><img src={item.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /></div> : getExt(item.name)==="pdf"&&item.url ? <div style={{ width:40, height:40, borderRadius:8, overflow:"hidden", flexShrink:0, position:"relative", background:`${B.red||"#EF4444"}08` }}><PdfThumb url={item.url} style={{}} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div> : <div style={{ width:40, height:40, borderRadius:8, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>}
+                    {item.is_folder ? <div style={{ width:40, height:40, borderRadius:8, background:`${B.accent}10`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill={`${B.accent}20`} stroke={B.accent} strokeWidth="1.5"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></div> : isImg(item)&&item.url ? <div style={{ width:40, height:40, borderRadius:8, overflow:"hidden", flexShrink:0 }}><HeicThumb url={item.url} name={item.name} alt={item.name} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /></div> : getExt(item.name)==="pdf"&&item.url ? <div style={{ width:40, height:40, borderRadius:8, overflow:"hidden", flexShrink:0, position:"relative", background:`${B.red||"#EF4444"}08` }}><PdfThumb url={item.url} style={{}} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div> : <div style={{ width:40, height:40, borderRadius:8, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>}
                     <div style={{ flex:1, minWidth:0 }}>
                       <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</p>
                       <p style={{ fontSize:10, color:B.muted }}>{item.is_folder?"Pasta":fmtSize(item.size_bytes)}</p>
@@ -19420,7 +19606,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
       <div className="pg">{ToastEl}<RenameModal />
         <Head title={viewFile.name} onBack={()=>setViewFile(null)} />
         <Card>
-          {viewFile.url && image && <img src={viewFile.url} alt={viewFile.name} style={{ width:"100%", maxHeight:250, objectFit:"contain", borderRadius:10, display:"block", marginBottom:12 }} />}
+          {viewFile.url && image && <HeicThumb url={viewFile.url} name={viewFile.name} alt={viewFile.name} style={{ width:"100%", maxHeight:250, objectFit:"contain", borderRadius:10, display:"block", marginBottom:12 }} />}
           {viewFile.url && video && <video src={viewFile.url} controls style={{ width:"100%", maxHeight:250, borderRadius:10, display:"block", marginBottom:12 }} />}
           {viewFile.url && ext==="pdf" && <div style={{ borderRadius:10, overflow:"hidden", marginBottom:12, background:B.dark }}><iframe src={viewFile.url+"#toolbar=0&view=FitH"} title={viewFile.name} style={{ width:"100%", height:350, border:"none" }} /></div>}
           {!(viewFile.url && (image||video||ext==="pdf")) && <div style={{ textAlign:"center", padding:24, background:`${fi.c}06`, borderRadius:12, marginBottom:12 }}><div style={{ color:fi.c, display:"flex", justifyContent:"center", transform:"scale(2.5)", marginBottom:20 }}>{fi.ic}</div><p style={{ fontSize:14, fontWeight:700, color:fi.c }}>{ext?.toUpperCase()||"FILE"}</p></div>}
@@ -19496,7 +19682,7 @@ function LibraryPage({ onBack, clients: propClients, onUpdateClients, isClientVi
         return (
           <Card key={item.id} onClick={()=>setViewFile(item)} style={{ marginTop:4, cursor:"pointer" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-              {isImg(item)&&item.url ? <div style={{ width:38, height:38, borderRadius:10, overflow:"hidden", flexShrink:0 }}><img src={item.url} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /></div> : getExt(item.name)==="pdf"&&item.url ? <div style={{ width:38, height:38, borderRadius:10, overflow:"hidden", flexShrink:0, position:"relative", background:`${B.red||"#EF4444"}08` }}><PdfThumb url={item.url} style={{}} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div> : <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>}
+              {isImg(item)&&item.url ? <div style={{ width:38, height:38, borderRadius:10, overflow:"hidden", flexShrink:0 }}><HeicThumb url={item.url} name={item.name} alt={item.name} style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} /></div> : getExt(item.name)==="pdf"&&item.url ? <div style={{ width:38, height:38, borderRadius:10, overflow:"hidden", flexShrink:0, position:"relative", background:`${B.red||"#EF4444"}08` }}><PdfThumb url={item.url} style={{}} /><div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:1 }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={B.red||"#EF4444"} strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div> : <div style={{ width:38, height:38, borderRadius:10, background:`${fi.c}10`, display:"flex", alignItems:"center", justifyContent:"center", color:fi.c, flexShrink:0 }}>{fi.ic}</div>}
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ fontSize:12, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name}</p>
                 <p style={{ fontSize:10, color:B.muted, marginTop:2 }}>{fmtSize(item.size_bytes)} · {fmtDate(item.created_at)}</p>
