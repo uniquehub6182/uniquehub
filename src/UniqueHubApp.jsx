@@ -20,59 +20,115 @@ class DemandDetailBoundary extends React.Component {
   }
 }
 /* ── SmartImage: renderiza JPEG/PNG normal; HEIC/HEIF converte on-the-fly via libheif-js ── */
-const _heicConvCache = new Map(); // url -> blob URL convertido
+/* ── SmartImage v2: HEIC/HEIF rápido com cache persistente + dedupe + downscale ── */
+const _heicMemCache = new Map(); /* sourceUrl -> blob:URL (sessão atual) */
+const _heicInflight = new Map(); /* sourceUrl -> Promise (evita decodes paralelos do mesmo arquivo) */
+
+/* IndexedDB pra cache persistente entre reloads */
+let _heicDbPromise = null;
+function _openHeicDb() {
+  if (_heicDbPromise) return _heicDbPromise;
+  _heicDbPromise = new Promise((resolve) => {
+    try {
+      const req = indexedDB.open("uh-heic-cache", 1);
+      req.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains("imgs")) db.createObjectStore("imgs"); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+  });
+  return _heicDbPromise;
+}
+async function _heicCacheGet(key) {
+  const db = await _openHeicDb(); if (!db) return null;
+  return new Promise((res) => {
+    try { const tx = db.transaction("imgs","readonly").objectStore("imgs").get(key); tx.onsuccess = () => res(tx.result || null); tx.onerror = () => res(null); } catch { res(null); }
+  });
+}
+async function _heicCachePut(key, blob) {
+  const db = await _openHeicDb(); if (!db) return;
+  try { db.transaction("imgs","readwrite").objectStore("imgs").put(blob, key); } catch {}
+}
+
+/* Downscale grande pra preview (HEIC iPhone é 4032x3024 — overkill pra thumbnail) */
+const HEIC_PREVIEW_MAX_DIM = 1200; /* limite p/ qualidade adequada de preview */
+async function _convertHeic(sourceUrl) {
+  /* Cache em memória */
+  if (_heicMemCache.has(sourceUrl)) return _heicMemCache.get(sourceUrl);
+  /* Dedupe in-flight */
+  if (_heicInflight.has(sourceUrl)) return _heicInflight.get(sourceUrl);
+
+  const promise = (async () => {
+    /* 1. Cache persistente (IndexedDB) */
+    const cached = await _heicCacheGet(sourceUrl);
+    if (cached) {
+      const url = URL.createObjectURL(cached);
+      _heicMemCache.set(sourceUrl, url);
+      return url;
+    }
+    /* 2. Decode + downscale */
+    const resp = await fetch(sourceUrl);
+    if (!resp.ok) throw new Error("fetch " + resp.status);
+    const buf = await resp.arrayBuffer();
+    if (!window._heifDecoder) {
+      const mod = await import(/* @vite-ignore */ "https://esm.sh/libheif-js@1.18.2/wasm-bundle");
+      window._heifDecoder = new mod.default.HeifDecoder();
+    }
+    const images = window._heifDecoder.decode(buf);
+    if (!images?.length) throw new Error("no images");
+    const img0 = images[0];
+    const fullW = img0.get_width(); const fullH = img0.get_height();
+    /* Decode em resolução cheia (libheif requer), depois downscale via 2-step canvas pra preview */
+    const fullCanvas = document.createElement("canvas"); fullCanvas.width = fullW; fullCanvas.height = fullH;
+    const fullCtx = fullCanvas.getContext("2d");
+    const imageData = fullCtx.createImageData(fullW, fullH);
+    await new Promise((res, rej) => {
+      img0.display(imageData, (d) => { if (!d) { rej(new Error("display failed")); return; } fullCtx.putImageData(d, 0, 0); res(); });
+    });
+    /* Downscale se grande */
+    let outCanvas = fullCanvas;
+    if (Math.max(fullW, fullH) > HEIC_PREVIEW_MAX_DIM) {
+      const ratio = HEIC_PREVIEW_MAX_DIM / Math.max(fullW, fullH);
+      const newW = Math.round(fullW * ratio); const newH = Math.round(fullH * ratio);
+      outCanvas = document.createElement("canvas"); outCanvas.width = newW; outCanvas.height = newH;
+      outCanvas.getContext("2d").drawImage(fullCanvas, 0, 0, newW, newH);
+    }
+    const blob = await new Promise(r => outCanvas.toBlob(r, "image/jpeg", 0.82));
+    if (!blob) throw new Error("toBlob failed");
+    /* 3. Persiste e retorna */
+    _heicCachePut(sourceUrl, blob); /* fire-and-forget */
+    const url = URL.createObjectURL(blob);
+    _heicMemCache.set(sourceUrl, url);
+    return url;
+  })();
+
+  _heicInflight.set(sourceUrl, promise);
+  try { return await promise; }
+  finally { _heicInflight.delete(sourceUrl); }
+}
+
 function SmartImage({ src, alt, style, className, onError, loading }) {
+  const isHeic = !!src && /\.(heic|heif)(\?|$)/i.test(src);
   const [resolvedSrc, setResolvedSrc] = React.useState(() => {
     if (!src) return null;
-    if (_heicConvCache.has(src)) return _heicConvCache.get(src);
-    const isHeic = /\.(heic|heif)(\?|$)/i.test(src);
-    return isHeic ? null : src;
+    if (!isHeic) return src;
+    return _heicMemCache.get(src) || null;
   });
   const [errored, setErrored] = React.useState(false);
 
   React.useEffect(() => {
     if (!src) { setResolvedSrc(null); return; }
-    if (_heicConvCache.has(src)) { setResolvedSrc(_heicConvCache.get(src)); return; }
-    const isHeic = /\.(heic|heif)(\?|$)/i.test(src);
     if (!isHeic) { setResolvedSrc(src); return; }
-
+    /* Já convertido? Usa imediatamente */
+    const cached = _heicMemCache.get(src);
+    if (cached) { setResolvedSrc(cached); return; }
     let cancelled = false;
-    (async () => {
-      try {
-        const resp = await fetch(src);
-        if (!resp.ok) throw new Error("fetch failed " + resp.status);
-        const buf = await resp.arrayBuffer();
-
-        if (!window._heifDecoder) {
-          const mod = await import(/* @vite-ignore */ "https://esm.sh/libheif-js@1.18.2/wasm-bundle");
-          const libheif = mod.default;
-          window._heifDecoder = new libheif.HeifDecoder();
-        }
-        const images = window._heifDecoder.decode(buf);
-        if (!images || images.length === 0) throw new Error("no images decoded");
-        const img0 = images[0];
-        const w = img0.get_width(); const h = img0.get_height();
-        const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        const imageData = ctx.createImageData(w, h);
-        await new Promise((res, rej) => {
-          img0.display(imageData, (displayData) => { if (!displayData) { rej(new Error("display failed")); return; } ctx.putImageData(displayData, 0, 0); res(); });
-        });
-        const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.9));
-        if (!blob) throw new Error("toBlob failed");
-        const url = URL.createObjectURL(blob);
-        _heicConvCache.set(src, url);
-        if (!cancelled) setResolvedSrc(url);
-      } catch (e) {
-        console.warn("[SmartImage] HEIC convert failed for", src, e?.message || e);
-        if (!cancelled) { setErrored(true); setResolvedSrc(src); /* fallback to original (may not render) */ }
-      }
-    })();
+    _convertHeic(src)
+      .then(url => { if (!cancelled) setResolvedSrc(url); })
+      .catch(e => { console.warn("[SmartImage] HEIC fail:", src, e?.message); if (!cancelled) { setErrored(true); setResolvedSrc(src); } });
     return () => { cancelled = true; };
-  }, [src]);
+  }, [src, isHeic]);
 
   if (!resolvedSrc) {
-    /* placeholder enquanto converte */
     return (
       <div style={{ ...style, display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F1F4", color: "#9CA0A8", fontSize: 10, fontWeight: 600 }} className={className}>
         {errored ? "HEIC" : "..."}
@@ -80,6 +136,16 @@ function SmartImage({ src, alt, style, className, onError, loading }) {
     );
   }
   return <img src={resolvedSrc} alt={alt || ""} style={style} className={className} loading={loading} onError={onError} />;
+}
+
+/* Pre-aquece conversão de HEICs em batch (quando demand abre, dispara antes do user clicar) */
+function prewarmHeicUrls(urls) {
+  if (!urls?.length) return;
+  for (const u of urls) {
+    if (!u || !/\.(heic|heif)(\?|$)/i.test(u)) continue;
+    if (_heicMemCache.has(u) || _heicInflight.has(u)) continue;
+    _convertHeic(u).catch(() => {}); /* fire-and-forget */
+  }
 }
 
 /* ── Sub-page Error Boundary (prevents black screen on crash) ── */
