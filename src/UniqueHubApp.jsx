@@ -10775,8 +10775,8 @@ REGRAS TÉCNICAS:
                   </label>
                 )}
               </div>
-              {/* ── Reference Links (only for video/Reels/Shorts) ── */}
-              {(sel.format === "Reels" || sel.format === "Shorts" || sel.format === "Vídeo") && (
+              {/* ── Reference Links (todos os formatos — imagens, video, reels, etc) ── */}
+              {(
                 <div style={{ marginBottom:12, padding:12, borderRadius:12, background:`${B.purple||"#8B5CF6"}06`, border:`1px solid ${B.purple||"#8B5CF6"}15` }}>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
                     <p style={{ fontSize:11, fontWeight:700, color:B.purple||"#8B5CF6", display:"flex", alignItems:"center", gap:6 }}>
@@ -10784,7 +10784,7 @@ REGRAS TÉCNICAS:
                       Links de inspiração / referência
                     </p>
                   </div>
-                  <p style={{ fontSize:10, color:B.muted, marginBottom:8, lineHeight:1.4 }}>Cole aqui links de Reels, TikToks, posts ou vídeos que servem de inspiração.</p>
+                  <p style={{ fontSize:10, color:B.muted, marginBottom:8, lineHeight:1.4 }}>Cole aqui links de posts, Reels, TikToks, vídeos ou qualquer referência de inspiração.</p>
                   {(sel.steps?.design?.referenceLinks||[]).length > 0 && (
                     <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:8 }}>
                       {(sel.steps?.design?.referenceLinks||[]).map((lk, li) => {
