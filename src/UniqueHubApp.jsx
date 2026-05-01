@@ -9926,7 +9926,7 @@ REGRAS TÉCNICAS:
         const hasFB = clientObj?.socials?.facebook?.oauth;
         const hasIG = clientObj?.socials?.instagram?.oauth;
         if (!hasFB && !hasIG) { showToast("⚠️ Cliente sem rede social conectada — conecte antes de agendar"); return; }
-        const imgFiles = d.steps?.design?.files || d.steps?.production?.files || [];
+        const imgFiles = [...(d.steps?.design?.files||[]), ...(d.steps?.design?.references||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.production?.references||[])];
         const media = separateMedia(imgFiles);
         const isReels = (d.format==="Reels"||d.format==="Vídeo"||d.type==="video");
         let imgUrls = isReels && media.videoUrl ? [media.videoUrl] : media.allUrls;
@@ -9972,13 +9972,27 @@ REGRAS TÉCNICAS:
               if (msg.includes("scheduled_posts_demand_platform_active_uniq") || msg.includes("duplicate")) {
                 showToast("⚠️ Já existe agendamento ativo (proteção do banco)");
               } else {
-                showToast("Erro ao agendar: " + msg);
+                /* Reverte stage pra não deixar órfão */
+                const prevStage = d.stage;
+                console.error("[Kanban Sched] INSERT failed, reverting stage:", msg);
+                setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: prevStage }, prevStage) : x));
+                setSel(prev => prev && prev.id === d.id ? syncMilestones({ ...prev, stage: prevStage }, prevStage) : prev);
+                if (d.supaId) supaUpdateDemand(d.supaId, { stage: prevStage });
+                showToast(`❌ Erro ao agendar: ${msg}. Stage revertido — tente de novo.`);
               }
               return;
             }
           }
           showToast(isPast ? `📤 Publicação em ~1 min (horário já passou)` : `✅ Agendado para ${schedDate} às ${schedTime}`);
-        } catch(e) { showToast("Erro: "+e.message); }
+        } catch(e) {
+          /* Erro inesperado — reverte stage */
+          const prevStage = d.stage;
+          console.error("[Kanban Sched] Exception, reverting stage:", e);
+          setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: prevStage }, prevStage) : x));
+          setSel(prev => prev && prev.id === d.id ? syncMilestones({ ...prev, stage: prevStage }, prevStage) : prev);
+          if (d.supaId) supaUpdateDemand(d.supaId, { stage: prevStage });
+          showToast("❌ Erro: "+e.message+". Stage revertido.");
+        }
       } else {
         /* ── Outros stages: só avança normal ── */
         setDemands(prev => prev.map(x => x.id === d.id ? syncMilestones({ ...x, stage: next }, next) : x));
@@ -10533,7 +10547,7 @@ REGRAS TÉCNICAS:
             <Card style={{ marginBottom:10, padding:0, overflow:"hidden" }}>
               <p className="sl" style={{ padding:"12px 14px 8px" }}>Preview do post</p>
               <div style={{ margin:"0 14px", borderRadius:12, overflow:"hidden" }}>
-                <PostPreview format={sel.format} client={sel.client} slides={selSlides} uploadedFiles={[...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])]}>
+                <PostPreview format={sel.format} client={sel.client} slides={selSlides} uploadedFiles={[...(sel.steps?.design?.files||[]), ...(sel.steps?.design?.references||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.production?.references||[]), ...(sel.steps?.editing?.files||[])]}>
                   <div style={{ position:"absolute", top:10, left:10 }}>
                     <span style={{ fontSize:10, fontWeight:700, padding:"4px 10px", borderRadius:8, background:"rgba(0,0,0,0.55)", color:"#fff" }}>{sel.format}{isSelCarousel?` · ${selSlides} slides`:""}</span>
                   </div>
@@ -11256,7 +11270,7 @@ REGRAS TÉCNICAS:
             {sel.stage === "review" ? <>
               {/* ── Desktop: Full post preview ── */}
               {isContentDesktop && (() => {
-                const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+                const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.design?.references||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.production?.references||[]), ...(sel.steps?.editing?.files||[])];
                 const imgFiles = artFiles.filter(f => f.url && !f.isCover && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
                 const vidFiles = artFiles.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/")));
                 const coverFile = artFiles.find(f => f.isCover);
@@ -11308,7 +11322,7 @@ REGRAS TÉCNICAS:
               })()}
               {/* Mobile: original small thumbnails */}
               {!isContentDesktop && (() => {
-                const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+                const artFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.design?.references||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.production?.references||[]), ...(sel.steps?.editing?.files||[])];
                 const imgFiles = artFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||""));
                 const vidFiles = artFiles.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/")));
                 return (imgFiles.length > 0 || vidFiles.length > 0) && <div style={{ marginBottom:10 }}>
@@ -11354,7 +11368,7 @@ REGRAS TÉCNICAS:
             {sel.stage === "client" ? <>
               {(() => {
                 const clientMode = sel.steps?.client?.mode;
-                const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+                const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.design?.references||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.production?.references||[]), ...(sel.steps?.editing?.files||[])];
                 const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif|svg|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
                 const mediaInfo = separateMedia(allFiles);
                 const clientObj = CDATA.find(c => c.name === sel.client);
@@ -11799,7 +11813,7 @@ REGRAS TÉCNICAS:
             </div>}
             {/* Publish buttons — show when there are uploaded images and connected social */}
             {(() => {
-              const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.editing?.files||[])];
+              const allFiles = [...(sel.steps?.design?.files||[]), ...(sel.steps?.design?.references||[]), ...(sel.steps?.production?.files||[]), ...(sel.steps?.production?.references||[]), ...(sel.steps?.editing?.files||[])];
               const imgFiles = allFiles.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif|svg|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
               const mediaInfo = separateMedia(allFiles);
               const clientObj = CDATA.find(c => c.name === sel.client);
@@ -28880,7 +28894,7 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
       /* ── Auto-publish via Meta API when client approves ── */
       if (status === "approved") {
        try {
-        const files = [...(demand.files||[]), ...(demand.steps?.design?.files||[]), ...(demand.steps?.production?.files||[]), ...(demand.steps?.editing?.files||[])];
+        const files = [...(demand.files||[]), ...(demand.steps?.design?.files||[]), ...(demand.steps?.design?.references||[]), ...(demand.steps?.production?.files||[]), ...(demand.steps?.production?.references||[]), ...(demand.steps?.editing?.files||[])];
         const mediaInfo = separateMedia(files);
         const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif|mp4|mov|webm|avi)$/i.test(f.name||f.url||""));
         if (imgFiles.length > 0) {
@@ -28921,6 +28935,8 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
               const blockedPlatsB4 = new Set((existingB4||[]).map(r => r.platform));
               const platsToInsertB4 = platforms.filter(p => !blockedPlatsB4.has(p));
               if (platsToInsertB4.length === 0) { showToast(`⚠️ Já agendado em ${platforms.join(" e ")}`); return; }
+              const insertErrors = [];
+              const insertedPlats = [];
               for (const plat of platsToInsertB4) {
                 const { error: insErrB4 } = await supabase.from("scheduled_posts").insert({
                   client_id: clientId, platform: plat, media_type: mediaType,
@@ -28928,9 +28944,22 @@ html.uh-client-sub-active,html.uh-client-sub-active body,html.uh-client-sub-acti
                   scheduled_at: schedDateISO,
                   demand_id: demand.id, created_by: demand.created_by || null
                 });
-                if (insErrB4) console.error(`[ApprovalSched] ${plat}:`, insErrB4.message);
+                if (insErrB4) { console.error(`[ApprovalSched] ${plat}:`, insErrB4.message); insertErrors.push(`${plat}: ${insErrB4.message}`); }
+                else insertedPlats.push(plat);
               }
-              showToast(autoRescheduled ? `✅ Aprovado! Reagendado para ${useSchedTime} (horário original já passou)` : `✅ Aprovado! Agendado para ${schedLabel}`);
+              /* Se TODOS falharam, reverte stage pra cliente reaprovar (não fica órfão) */
+              if (insertedPlats.length === 0 && insertErrors.length > 0) {
+                console.error("[ApprovalSched] All inserts failed, reverting stage:", insertErrors);
+                await supabase.from("demands").update({ stage: demand.stage }).eq("id", demand.id);
+                setDemands(prev => prev.map(d => d.id === demand.id ? { ...d, stage: demand.stage } : d));
+                showToast(`❌ Erro ao agendar: ${insertErrors[0]}. Tente novamente.`);
+                return;
+              }
+              if (insertErrors.length > 0) {
+                showToast(`⚠️ Agendado em ${insertedPlats.join(", ")}. Falha em: ${insertErrors[0]}`);
+              } else {
+                showToast(autoRescheduled ? `✅ Aprovado! Reagendado para ${useSchedTime} (horário original já passou)` : `✅ Aprovado! Agendado para ${schedLabel}`);
+              }
             } catch(e) {
               console.error("[Schedule] Error:", e);
               showToast(`Aprovado! Erro ao agendar: ${e.message}`);
@@ -29323,7 +29352,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
     const demandId = sub.replace("demand_","");
     const d = demands.find(x => x.id === demandId);
     if (!d) { setSub(null); return null; }
-    const files = [...(d.files||[]), ...(d.steps?.design?.files||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.editing?.files||[])];
+    const files = [...(d.files||[]), ...(d.steps?.design?.files||[]), ...(d.steps?.design?.references||[]), ...(d.steps?.production?.files||[]), ...(d.steps?.production?.references||[]), ...(d.steps?.editing?.files||[])];
     const imgFiles = files.filter(f => f.url && /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||f.url||""));
     const vidFiles = files.filter(f => f.url && (/\.(mp4|mov|webm|avi)$/i.test(f.name||f.url||"") || f.type?.startsWith("video/")));
     const caption = d.steps?.caption?.text || "";
