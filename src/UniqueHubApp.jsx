@@ -130,19 +130,29 @@ async function _convertHeic(sourceUrl) {
   finally { _heicInflight.delete(sourceUrl); }
 }
 
+/* Cache de fallback R2 pra URLs Supabase que falharam */
+const _supaFallbackCache = new Map(); /* supaUrl -> r2Url ou null se falhou */
+
 function SmartImage({ src, alt, style, className, onError, loading }) {
   const isHeic = !!src && /\.(heic|heif)(\?|$)/i.test(src);
   const [resolvedSrc, setResolvedSrc] = React.useState(() => {
     if (!src) return null;
-    if (!isHeic) return src;
+    if (!isHeic) return _supaFallbackCache.get(src) || src;
     return _heicMemCache.get(src) || null;
   });
   const [errored, setErrored] = React.useState(false);
+  const [imgFailed, setImgFailed] = React.useState(false);
 
   React.useEffect(() => {
-    if (!src) { setResolvedSrc(null); return; }
-    if (!isHeic) { setResolvedSrc(src); return; }
-    /* Já convertido? Usa imediatamente */
+    if (!src) { setResolvedSrc(null); setImgFailed(false); return; }
+    setImgFailed(false);
+    if (!isHeic) {
+      /* Se ja temos fallback R2 cacheado, usa direto */
+      const cachedFb = _supaFallbackCache.get(src);
+      setResolvedSrc(cachedFb || src);
+      return;
+    }
+    /* HEIC path */
     const cached = _heicMemCache.get(src);
     if (cached) { setResolvedSrc(cached); return; }
     let cancelled = false;
@@ -152,6 +162,31 @@ function SmartImage({ src, alt, style, className, onError, loading }) {
     return () => { cancelled = true; };
   }, [src, isHeic]);
 
+  /* Handler: img Supabase falhou em carregar — tenta proxy R2 e re-renderiza */
+  const handleImgError = React.useCallback(async (e) => {
+    if (onError) onError(e);
+    if (imgFailed) return; /* evita loop infinito */
+    if (!src || isHeic) return;
+    const isSupabase = src.includes("supabase.co/storage");
+    if (!isSupabase) return; /* só faz fallback pra URLs Supabase */
+    const cached = _supaFallbackCache.get(src);
+    if (cached === null) return; /* já tentamos e falhou */
+    if (cached) { setResolvedSrc(cached); return; }
+    setImgFailed(true);
+    try {
+      const fname = src.split("/").pop() || "file";
+      const ext = (fname.split(".").pop()||"").toLowerCase();
+      const ct = ext === "jpg"||ext==="jpeg" ? "image/jpeg" : ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+      const r2Url = await _proxyR2Quick(src, fname, ct);
+      if (r2Url && r2Url !== src) {
+        _supaFallbackCache.set(src, r2Url);
+        setResolvedSrc(r2Url);
+      } else {
+        _supaFallbackCache.set(src, null);
+      }
+    } catch { _supaFallbackCache.set(src, null); }
+  }, [src, isHeic, imgFailed, onError]);
+
   if (!resolvedSrc) {
     return (
       <div style={{ ...style, display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F1F4", color: "#9CA0A8", fontSize: 10, fontWeight: 600 }} className={className}>
@@ -159,7 +194,7 @@ function SmartImage({ src, alt, style, className, onError, loading }) {
       </div>
     );
   }
-  return <img src={resolvedSrc} alt={alt || ""} style={style} className={className} loading={loading} onError={onError} />;
+  return <img src={resolvedSrc} alt={alt || ""} style={style} className={className} loading={loading} onError={handleImgError} />;
 }
 
 /* Pre-aquece conversão de HEICs em batch (quando demand abre, dispara antes do user clicar) */
@@ -480,6 +515,23 @@ const supaBulkDeleteDemands = async (clientId) => {
   } catch(e) { console.error(e); return 0; }
 };
 
+/* ── Helper: proxy Supabase Storage URL pra R2 (CDN Cloudflare).
+   Evita "tela preta" em ISPs/dispositivos onde Supabase Storage falha.
+   Recebe URL Supabase, retorna URL R2 (ou URL original se proxy falhar). */
+const _proxyR2Quick = async (supaUrl, fileName, contentType) => {
+  if (!supaUrl) return supaUrl;
+  if (supaUrl.includes("r2.dev") || supaUrl.includes("r2.cloudflarestorage")) return supaUrl;
+  try {
+    const r = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: fileName || "file", contentType: contentType || "application/octet-stream", sourceUrl: supaUrl }),
+    });
+    const d = await r.json();
+    return d?.publicUrl || supaUrl;
+  } catch { return supaUrl; }
+};
+
 /* ── Supabase Storage: compress + upload files for demands ── */
 const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
   return new Promise(async (resolve) => {
@@ -646,7 +698,23 @@ const supaUploadFile = async (file, demandId) => {
     const { data, error } = await supabase.storage.from("demand-files").upload(path, compressed, { upsert: true, cacheControl: "3600", contentType: compressed.type || file.type || "application/octet-stream" });
     if (error) { console.error("Upload error:", error.message); return { error: error.message }; }
     const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
-    return { name: file.name, path, url: pub?.publicUrl || "", size: compressed.size, type: compressed.type || file.type, storage: "supabase" };
+    const supaUrl = pub?.publicUrl || "";
+    /* Post-upload: proxy pra R2 (CDN Cloudflare) — evita "tela preta" em alguns ISPs/dispositivos */
+    let finalUrl = supaUrl;
+    let finalStorage = "supabase";
+    try {
+      if (supaUrl) {
+        const r2Resp = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: safeName, contentType: compressed.type || file.type || "application/octet-stream", sourceUrl: supaUrl }),
+        });
+        const r2Data = await r2Resp.json();
+        if (r2Data?.publicUrl) { finalUrl = r2Data.publicUrl; finalStorage = "r2-proxied"; console.log("[Upload→R2] proxied:", safeName); }
+        else console.warn("[Upload→R2] proxy fail, keeping Supabase:", r2Data?.error);
+      }
+    } catch (proxyErr) { console.warn("[Upload→R2] proxy exception, keeping Supabase:", proxyErr.message); }
+    return { name: file.name, path, url: finalUrl, size: compressed.size, type: compressed.type || file.type, storage: finalStorage, supabasePath: path };
   } catch (e) { console.error("Upload catch:", e); return { error: e.message }; }
 };
 const supaUploadClientFile = async (file, clientId) => {
@@ -660,7 +728,21 @@ const supaUploadClientFile = async (file, clientId) => {
     const { data, error } = await supabase.storage.from("demand-files").upload(path, file, { upsert: true, cacheControl: "3600" });
     if (error) { console.error("Client upload error:", error.message); return { error: error.message }; }
     const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
-    return { name: file.name, path, url: pub?.publicUrl || "", size: file.size, type: file.type };
+    const supaUrl = pub?.publicUrl || "";
+    /* Post-upload: proxy pra R2 — evita tela preta em ISPs ruins */
+    let finalUrl = supaUrl;
+    try {
+      if (supaUrl) {
+        const r2Resp = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: safeName, contentType: file.type || "application/octet-stream", sourceUrl: supaUrl }),
+        });
+        const r2Data = await r2Resp.json();
+        if (r2Data?.publicUrl) finalUrl = r2Data.publicUrl;
+      }
+    } catch {}
+    return { name: file.name, path, url: finalUrl, size: file.size, type: file.type, supabasePath: path };
   } catch (e) { console.error("Client upload catch:", e); return { error: e.message }; }
 };
 /* ── Library Drive CRUD (library_files table) ── */
@@ -1374,12 +1456,24 @@ const uploadToStorage = async (file, folder = "quick-publish") => {
       } catch(r2Err) { console.warn("R2 error (quick), falling back:", r2Err); }
     }
 
-    /* Supabase fallback */
+    /* Supabase fallback + post-upload R2 proxy */
     const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2,4)}_${safeName}`;
     const { error } = await supabase.storage.from("demand-files").upload(path, processed, { upsert:true, cacheControl:"3600", contentType:processed.type||"application/octet-stream" });
     if (error) { console.error("Upload error:", error); return null; }
     const { data: pub } = supabase.storage.from("demand-files").getPublicUrl(path);
-    return pub?.publicUrl || null;
+    const supaUrl = pub?.publicUrl || null;
+    if (!supaUrl) return null;
+    /* Proxy pra R2 logo apos upload */
+    try {
+      const r2Resp = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: safeName, contentType: processed.type || "application/octet-stream", sourceUrl: supaUrl }),
+      });
+      const r2Data = await r2Resp.json();
+      if (r2Data?.publicUrl) return r2Data.publicUrl;
+    } catch {}
+    return supaUrl;
   } catch(e) { console.error("uploadToStorage:", e); return null; }
 };
 
@@ -12495,7 +12589,7 @@ REGRAS TÉCNICAS:
                 <div style={{display:"flex",gap:2,margin:"10px 0 8px"}}>{stgs.map((s,i)=><div key={s} style={{flex:1,height:4,borderRadius:2,background:i<=sIdx?(STAGE_CFG[s]?.c||B.accent):`${B.muted}15`}}/>)}</div>
                 {d.stage==="idea"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>IDEIA</p><textarea value={d.steps?.idea?.text||""} onChange={e=>updStep("idea",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Descreva a ideia..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
                 {d.stage==="briefing"&&<div style={{marginBottom:8}}>{d.steps?.idea?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.idea.c}08`,border:`1px solid ${STAGE_CFG.idea.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.idea.c}}>{"💡"} Ideia:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.idea.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>BRIEFING</p><textarea value={d.steps?.briefing?.text||""} onChange={e=>updStep("briefing",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Instruções para o designer..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
-                {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>CRIATIVO{(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?" — Enviar vídeo":" — Enviar arte"}</p>{(d.steps?.design?.files||[]).map((f,fi)=>{const isImg=f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"");const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink||"#EC4899"}06`,border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink||"#EC4899")}15`,marginBottom:4}}>{isImg?<SmartImage src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}} alt=""/>:isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"📷"} {(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"Enviar vídeo":"Enviar arquivo"}<input type="file" accept={(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"video/*":"image/*,video/*,.pdf,.heic,.heif"} style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed=await compressImage(file);showToast("Enviando...");const safeName=compressed.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+safeName;const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:u.publicUrl,path}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro");}}/></label></div>}
+                {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>CRIATIVO{(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?" — Enviar vídeo":" — Enviar arte"}</p>{(d.steps?.design?.files||[]).map((f,fi)=>{const isImg=f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"");const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink||"#EC4899"}06`,border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink||"#EC4899")}15`,marginBottom:4}}>{isImg?<SmartImage src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}} alt=""/>:isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"📷"} {(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"Enviar vídeo":"Enviar arquivo"}<input type="file" accept={(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"video/*":"image/*,video/*,.pdf,.heic,.heif"} style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed=await compressImage(file);showToast("Enviando...");const safeName=compressed.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+safeName;const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const finalUrl=await _proxyR2Quick(u.publicUrl,safeName,compressed.type);const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:finalUrl,path}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro");}}/></label></div>}
                                 {d.stage==="caption"&&d.format!=="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><textarea value={d.steps?.caption?.text||""} onChange={e=>updStep("caption",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/><input value={d.steps?.caption?.hashtags||""} onChange={e=>updStep("caption",{...d.steps?.caption,hashtags:e.target.value})} placeholder="#hashtags" className="tinput" style={{fontSize:10,marginTop:4}}/></div>}
                 {d.stage==="caption"&&d.format==="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><div style={{padding:"16px 12px",borderRadius:10,background:(B.orange||"#F59E0B")+"06",border:"1.5px dashed "+(B.orange||"#F59E0B")+"30",textAlign:"center"}}><p style={{fontSize:11,fontWeight:700,color:B.orange||"#F59E0B"}}>🔒 Stories não suporta legenda</p><p style={{fontSize:9,color:B.muted,marginTop:4}}>Texto vai direto na arte. Avance para revisão.</p></div></div>}
                 {d.stage==="review"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>REVISÃO</p><p style={{fontSize:10,color:B.text}}>Verifique legenda, arte e informações.</p></div>}
@@ -12700,7 +12794,7 @@ REGRAS TÉCNICAS:
                       const textFields=["idea","briefing","copy","caption","script","review"];
                       const fileFields=["design"];
                       const inlineUpdate=(data)=>{const ns={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),...data}};setDemands(p=>p.map(x=>x.id===d.id?{...x,steps:ns}:x));if(d.supaId)supaUpdateDemand(d.supaId,{steps:ns});};
-                      const handleFiles=async(e)=>{const files=Array.from(e.target.files||[]);if(!files.length)return;const uploaded=[];for(const f of files){const path=`demands/${d.supaId||d.id}/${stageKey}/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);uploaded.push({name:f.name,url:u.publicUrl,path});}}if(uploaded.length)inlineUpdate({files:[...stepFiles,...uploaded],by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});};
+                      const handleFiles=async(e)=>{const files=Array.from(e.target.files||[]);if(!files.length)return;const uploaded=[];for(const f of files){const path=`demands/${d.supaId||d.id}/${stageKey}/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const finalUrl=await _proxyR2Quick(u.publicUrl,f.name,f.type);uploaded.push({name:f.name,url:finalUrl,path});}}if(uploaded.length)inlineUpdate({files:[...stepFiles,...uploaded],by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});};
                       return(
                         <div key={stageKey} style={{marginBottom:6,borderRadius:12,border:`1px solid ${active?cfg.c:done?`${cfg.c}30`:B.border}`,background:active?`${cfg.c}06`:"transparent",padding:"8px 10px",opacity:future?0.4:1}}>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -27324,7 +27418,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
       const{error}=await supabase.storage.from("demand-files").upload(fname,processed,{upsert:true,cacheControl:"3600",contentType:processed.type||file.type||"application/octet-stream"});
       if(error)throw error;
       const{data:pub}=supabase.storage.from("demand-files").getPublicUrl(fname);
-      const url=pub.publicUrl;
+      const url=await _proxyR2Quick(pub.publicUrl,fname.split("/").pop(),processed.type||file.type);
       const ftype=isImg?"image":isVid?"video":"file";
       const{data}=await supabase.from("match4biz_messages").insert({match_id:chatMatch.id,sender_client_id:myClientId,sender_name:myProfile?.client_name||user?.name,text:file.name||"Arquivo",file_url:url,file_type:ftype}).select().single();
       if(data)setMessages(p=>[...p,data]);
@@ -27371,7 +27465,7 @@ function ClientMatch4Biz({ onBack, user, clients, demands }) {
       const{error}=await supabase.storage.from("demand-files").upload(fname,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type||"image/jpeg"});
       if(error)throw error;
       const{data:pub}=supabase.storage.from("demand-files").getPublicUrl(fname);
-      const url=pub.publicUrl;
+      const url=await _proxyR2Quick(pub.publicUrl,fname.split("/").pop(),compressed.type||"image/jpeg");
       const np=[...cur,url];
       await supabase.from("match4biz_profiles").update({photos:np}).eq("client_id",myClientId);
       setMyProfile(p=>({...p,photos:np}));
