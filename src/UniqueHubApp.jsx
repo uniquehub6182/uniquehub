@@ -3973,10 +3973,44 @@ function SubscriptionLock({ orgId, user, status, onCheckout, onLogout }) {
   const cfg = stateConfig[state] || { kicker: "ACESSO BLOQUEADO", title: "Sua conta está sem acesso", sub: "Entre em contato com o suporte ou escolha um plano abaixo." };
 
   const PLANS = [
-    { k:"essencial",    name:"Essencial",    monthly:197, yearly:1891, sub:"Pra freelas e SMs", clients:"5 clientes", users:"2 usuários" },
-    { k:"profissional", name:"Profissional", monthly:397, yearly:3811, sub:"Pra agências pequenas", clients:"10 clientes", users:"5 usuários" },
-    { k:"agencia",      name:"Agência",      monthly:597, yearly:5731, sub:"Pra crescer sem medo", clients:"20 clientes", users:"15 usuários", popular:true },
-    { k:"escala",       name:"Escala",       monthly:997, yearly:9571, sub:"Pra times grandes", clients:"40 clientes", users:"ilimitado" },
+    { k:"essencial",    name:"Essencial",    monthly:197, yearly:1891, sub:"Pra freelas e SMs", clients:"5 clientes", users:"2 usuários", extra:"R$ 39/cliente extra",
+      features:[
+        {l:"Pipeline de demandas (7 etapas)",v:true},
+        {l:"App do cliente (aprovação, chat, dashboard)",v:true},
+        {l:"Agendamento Instagram + Facebook",v:true},
+        {l:"Calendário editorial",v:true},
+        {l:"Biblioteca de assets + Feed Planner",v:true},
+        {l:"Chat interno da equipe",v:true},
+        {l:"Relatórios de performance",v:"básico"},
+      ] },
+    { k:"profissional", name:"Profissional", monthly:397, yearly:3811, sub:"Pra agências pequenas", clients:"10 clientes", users:"5 usuários", extra:"R$ 35/cliente extra",
+      features:[
+        {l:"Tudo do Essencial",v:true},
+        {l:"Assistente IA (GPT-4o + Gemini + Claude)",v:true},
+        {l:"Geração de conteúdo e legendas com IA",v:true},
+        {l:"Comentários IA + News auto-gen",v:true},
+        {l:"Growth Score (gamificação do cliente)",v:true},
+        {l:"Check-in + XP da equipe",v:true},
+        {l:"Financeiro (receita, planos, faturas)",v:true},
+        {l:"Relatórios completos",v:true},
+      ] },
+    { k:"agencia",      name:"Agência",      monthly:597, yearly:5731, sub:"Pra crescer sem medo", clients:"20 clientes", users:"15 usuários", extra:"R$ 29/cliente extra", popular:true,
+      features:[
+        {l:"Tudo do Profissional",v:true},
+        {l:"Inteligência de mercado + concorrentes",v:true},
+        {l:"Apresentações automáticas (slides IA)",v:true},
+        {l:"Match4Biz (networking entre clientes)",v:true},
+        {l:"CRM de leads + Meta Lead Ads",v:true},
+        {l:"Academy (cursos e treinamentos)",v:true},
+        {l:"Permissões por cargo",v:true},
+      ] },
+    { k:"escala",       name:"Escala",       monthly:997, yearly:9571, sub:"Pra times grandes", clients:"40 clientes", users:"ilimitado", extra:"R$ 19/cliente extra",
+      features:[
+        {l:"Tudo do Agência",v:true},
+        {l:"WhatsApp automático (resumos e alertas)",v:true},
+        {l:"Suporte prioritário + onboarding",v:true},
+        {l:"Usuários ilimitados",v:true},
+      ] },
   ];
 
   const handlePick = async (planKey) => {
@@ -4052,16 +4086,37 @@ function SubscriptionLock({ orgId, user, status, onCheckout, onLogout }) {
                       <span style={{ fontSize:34, fontWeight:900, color: p.popular ? "#BBF246" : "#1A1D23", letterSpacing:"-1.4px", lineHeight:1 }}>{price.toLocaleString("pt-BR")}</span>
                       <span style={{ fontSize:12, color: p.popular ? "rgba(255,255,255,0.5)" : "#9CA3AF", fontWeight:600 }}>/{period === "yearly" ? "ano" : "mês"}</span>
                     </div>
-                    <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:18, paddingBottom:18, borderBottom: p.popular ? "1px solid rgba(255,255,255,0.08)" : "1px solid #F0F1F5" }}>
-                      <span style={{ fontSize:12, color: p.popular ? "rgba(255,255,255,0.85)" : "#1A1D23", display:"inline-flex", alignItems:"center", gap:8, fontWeight:600 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    {/* Limites */}
+                    <div style={{ display:"flex", flexDirection:"column", gap:7, marginBottom:14, paddingBottom:14, borderBottom: p.popular ? "1px solid rgba(255,255,255,0.08)" : "1px solid #F0F1F5" }}>
+                      <span style={{ fontSize:12, color: p.popular ? "#fff" : "#1A1D23", display:"inline-flex", alignItems:"center", gap:8, fontWeight:700 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round" style={{flexShrink:0}}><polyline points="20 6 9 17 4 12"/></svg>
                         {p.clients}
                       </span>
-                      <span style={{ fontSize:12, color: p.popular ? "rgba(255,255,255,0.85)" : "#1A1D23", display:"inline-flex", alignItems:"center", gap:8, fontWeight:600 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span style={{ fontSize:12, color: p.popular ? "#fff" : "#1A1D23", display:"inline-flex", alignItems:"center", gap:8, fontWeight:700 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round" style={{flexShrink:0}}><polyline points="20 6 9 17 4 12"/></svg>
                         {p.users}
                       </span>
+                      <span style={{ fontSize:11, color: p.popular ? "rgba(255,255,255,0.55)" : "#9CA3AF", display:"inline-flex", alignItems:"center", gap:8, fontWeight:600, marginTop:1 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={p.popular ? "rgba(255,255,255,0.4)" : "#9CA3AF"} strokeWidth="2.2" strokeLinecap="round" style={{flexShrink:0}}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        {p.extra}
+                      </span>
                     </div>
+
+                    {/* Features list */}
+                    <div style={{ display:"flex", flexDirection:"column", gap:9, marginBottom:18, minHeight: _isDsk ? 220 : "auto" }}>
+                      {p.features.map((f,fi) => (
+                        <span key={fi} style={{ fontSize:11.5, color: p.popular ? "rgba(255,255,255,0.92)" : "#374151", display:"flex", alignItems:"flex-start", gap:8, lineHeight:1.4 }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={f.v === true ? "#BBF246" : (p.popular ? "rgba(255,255,255,0.4)" : "#9CA3AF")} strokeWidth="3" strokeLinecap="round" style={{flexShrink:0, marginTop:2}}>
+                            {f.v === true ? <polyline points="20 6 9 17 4 12"/> : <line x1="5" y1="12" x2="19" y2="12"/>}
+                          </svg>
+                          <span style={{flex:1}}>
+                            {f.l}
+                            {f.v !== true && f.v !== false && <span style={{fontSize:10, fontWeight:700, color: p.popular ? "rgba(255,255,255,0.5)" : "#9CA3AF", marginLeft:4}}>({f.v})</span>}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+
                     <div style={{ width:"100%", padding:"12px", borderRadius:12, background: p.popular ? "linear-gradient(135deg, #BBF246, #9AE010)" : "#F8F9FC", color: p.popular ? "#0D1117" : "#1A1D23", fontSize:13, fontWeight:800, textAlign:"center", border: p.popular ? "none" : "1.5px solid #E8EAF0", boxShadow: p.popular ? "0 6px 20px rgba(187,242,70,0.4)" : "none" }}>
                       {isLoading ? "Abrindo..." : "Escolher plano"}
                     </div>
