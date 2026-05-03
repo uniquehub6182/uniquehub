@@ -15910,7 +15910,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"gamifyedit", l:"Gamificação do Cliente", desc:"Missões, zonas e pódio" }]:[]),
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"servicosedit", l:"Catálogo de Serviços", desc:"Serviços extras oferecidos" }]:[]),
     ...(!isClientView && user?.supaRole==="admin"?[{ k:"payments", l:"Pagamentos", desc:"Pacotes, créditos, cursos pagos" }]:[]),
-    { k:"aparencia", l:"Aparência", desc:"Tema, cores, cards e densidade" },
+    /* APARENCIA: oculto do menu pra simplificar pre-launch. Codigo da tela mantido (linha 16205) caso precise restaurar */
+    /* { k:"aparencia", l:"Aparência", desc:"Tema, cores, cards e densidade" }, */
     { k:"notifs", l:"Notificações", desc:"Sons, alertas por categoria" },
     { k:"navmenu", l:"Personalizar Menu", desc:"Itens da barra de navegação" },
     { k:"sec", l:"Segurança", desc:"Senha, 2FA, sessões" },
@@ -18006,7 +18007,8 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
         ...(user?.supaRole === "admin" ? [{ k: "approvals", l: "Aprovações", ic: IC.shield, desc: "Aprovar novos cadastros", badge: "pending" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "permissions", l: "Permissões", ic: IC.lock, desc: "Controle de acesso por cargo" }] : []),
         ...(user?.supaRole === "admin" ? [{ k: "aiconfig", l: "Assistente IA", ic: IC.ai(B.accent), desc: "Chaves de API e provedor" }] : []),
-        { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema, fontes, cards, densidade e mais" },
+        /* APARENCIA: oculto do menu pra simplificar pre-launch */
+        /* { k: "aparencia", l: "Aparência", ic: IC.palette, desc: "Tema, fontes, cards, densidade e mais" }, */
         { k: "notifs", l: "Notificações", ic: IC.bell, desc: "Chat, tarefas, e-mail, sons" },
         { k: "navmenu", l: "Personalizar Menu", ic: IC.more(B.accent), desc: "Escolha os itens do menu", act: () => onNavEdit && onNavEdit() },
         { k: "sec", l: "Segurança", ic: IC.lock, desc: "Senha, 2FA, sessões" },
