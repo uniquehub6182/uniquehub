@@ -32133,6 +32133,9 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
           /* Toggle Home V2: ?home=v2 na URL ou localStorage.uh_home_v2="1" */
           const useV2 = (() => {
             try {
+              /* Em branch preview do Cloudflare Pages: SEMPRE V2 */
+              const host = window.location.hostname || "";
+              if (host.includes("home-redesign-v2") || host.includes("home-redesign")) return true;
               const url = new URLSearchParams(window.location.search);
               if (url.get("home") === "v2") { localStorage.setItem("uh_home_v2", "1"); return true; }
               if (url.get("home") === "v1" || url.get("home") === "off") { localStorage.removeItem("uh_home_v2"); return false; }
