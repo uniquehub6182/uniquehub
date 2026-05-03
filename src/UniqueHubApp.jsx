@@ -3919,6 +3919,8 @@ function PWAInstallPopup({ onDismiss }) {
 function TrialBanner({ orgId, user, onCheckout }) {
   const { status, loading } = useBillingStatus(orgId);
   if (loading || !status) return null;
+  /* Owner da plataforma (Unique Marketing): NUNCA mostra banner */
+  if (status?.plan === "owner") return null;
   /* Só mostra pra admin */
   if (user?.supaRole !== "admin" && user?.role !== "CEO" && user?.role !== "owner") return null;
   /* Só mostra se trial */
@@ -31628,7 +31630,18 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 ${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash):not(.content-wide){max-width:860px;margin-left:auto;margin-right:auto;padding:0 20px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}
 html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;margin-right:auto;padding:0 24px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}`:""}
 ` }} />
+      <BillingGate user={user} orgId={_currentOrgId} onLogout={onLogout}>
       <div className="content" ref={mainContentRef}>
+      <TrialBanner orgId={_currentOrgId} user={user} onCheckout={async () => {
+        const r = await fetch(`${SUPA_URL}/functions/v1/stripe-checkout`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ orgId: _currentOrgId, email: user?.email, name: user?.name, planKey: "agencia", period: "monthly", returnUrl: window.location.origin }),
+        });
+        const d = await r.json();
+        if (r.ok && d?.url) window.location.href = d.url;
+        else alert("Erro: " + (d?.error || "falha ao abrir checkout"));
+      }} />
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
@@ -31659,6 +31672,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} openWithUserId={chatOpenWith} onOpenWithConsumed={() => setChatOpenWith(null)} />}
       </div>
+      </BillingGate>
 
       <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map((t, idx) => {
