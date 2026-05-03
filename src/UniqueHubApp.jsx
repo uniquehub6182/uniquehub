@@ -4209,6 +4209,305 @@ function BillingGate({ user, orgId, onLogout, children }) {
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   HomePageV2 — REDESIGN EXPERIMENTAL DA HOME (não-substitui a atual)
+   Ativada por ?home=v2 na URL ou localStorage.uh_home_v2 = "1"
+   Identidade: lime #BBF246 + dark #0D1117 + glassmorphism sutil
+   ═══════════════════════════════════════════════════════════════════ */
+function HomePageV2({ user, goSub, goTab, clients, notifCount, team, demands, setDemands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud, canAccess: ca, isDesktop }) {
+  const _isDsk = isDesktop;
+  const userName = user?.name?.split(" ")[0] || "Matheus";
+  const initials = (user?.name||"M").split(" ").slice(0,2).map(p=>p[0]||"").join("").toUpperCase();
+  const orgName = agencyIdentity?.name || "Unique Marketing";
+
+  const [now, setNow] = React.useState(new Date());
+  React.useEffect(() => {
+    const iv = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(iv);
+  }, []);
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const greet = now.getHours() < 12 ? "Bom dia" : now.getHours() < 18 ? "Boa tarde" : "Boa noite";
+  const dateStr = now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+
+  /* ─── Métricas calculadas ─── */
+  const stats = React.useMemo(() => {
+    const totalDemands = demands?.length || 0;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const overdueOrToday = (demands||[]).filter(d => {
+      if (d.stage === "client" || d.stage === "review" || d.stage === "done") return false;
+      const due = d.due_date ? new Date(d.due_date) : null;
+      return due && due <= today;
+    }).length;
+    const inProgress = (demands||[]).filter(d => ["briefing","design","review","client","scheduled"].includes(d.stage)).length;
+    const scheduledThisWeek = (demands||[]).filter(d => {
+      if (d.stage !== "scheduled") return false;
+      const wk = new Date(); wk.setDate(wk.getDate() + 7);
+      const sdate = d.scheduling?.date ? new Date(d.scheduling.date) : null;
+      return sdate && sdate <= wk;
+    }).length;
+    return { totalDemands, overdueOrToday, inProgress, scheduledThisWeek, totalClients: clients?.length || 0 };
+  }, [demands, clients]);
+
+  /* ─── Demandas urgentes (top 5) ─── */
+  const urgentDemands = React.useMemo(() => {
+    const today = new Date();
+    return (demands||[])
+      .filter(d => d.stage !== "done" && d.stage !== "review")
+      .map(d => {
+        const due = d.due_date ? new Date(d.due_date) : null;
+        const days = due ? Math.ceil((due - today)/(1000*60*60*24)) : 999;
+        return { ...d, _days: days };
+      })
+      .sort((a,b) => a._days - b._days)
+      .slice(0, 5);
+  }, [demands]);
+
+  /* ─── Próximos posts agendados ─── */
+  const upcomingPosts = React.useMemo(() => {
+    return (demands||[])
+      .filter(d => d.stage === "scheduled" && d.scheduling?.date)
+      .map(d => ({ ...d, _date: new Date(d.scheduling.date) }))
+      .filter(d => d._date >= new Date())
+      .sort((a,b) => a._date - b._date)
+      .slice(0, 4);
+  }, [demands]);
+
+  /* ─── Lime gradient backgrounds ─── */
+  const limeGrad = "linear-gradient(135deg, #BBF246 0%, #9AE010 100%)";
+  const darkGrad = "linear-gradient(135deg, #0D1117 0%, #1A1D23 100%)";
+
+  return (
+    <div style={{ minHeight:"100vh", padding: _isDsk ? "32px 32px 120px" : "20px 16px 100px", background: "#F7F7F8", fontFamily:"inherit" }}>
+      <style>{`
+        @keyframes v2FadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes v2Pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+        @keyframes v2ShimmerLime{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .v2-card{animation:v2FadeUp .5s cubic-bezier(.34,1.1,.64,1) both;transition:transform .25s ease, box-shadow .25s ease}
+        .v2-card:hover{transform:translateY(-3px);box-shadow:0 12px 32px rgba(13,17,23,0.08)}
+        .v2-clickable{cursor:pointer}
+        .v2-stat-num{background:linear-gradient(135deg,#0D1117 0%,#3A4451 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .v2-shimmer{background:linear-gradient(90deg,#BBF246 0%, #C8FF6E 50%, #BBF246 100%);background-size:200% 100%;animation:v2ShimmerLime 3s linear infinite}
+        .v2-pill{transition:all .2s ease}
+        .v2-pill:hover{transform:scale(1.04)}
+        .v2-action-icon{transition:all .2s ease}
+        .v2-action-card:hover .v2-action-icon{transform:rotate(-8deg) scale(1.1)}
+      `}</style>
+
+      <div style={{ maxWidth: 1320, margin: "0 auto" }}>
+
+        {/* ════ HERO HEADER ════ */}
+        <div className="v2-card" style={{ position:"relative", background: darkGrad, borderRadius: 28, padding: _isDsk ? "28px 32px" : "22px 20px", marginBottom: _isDsk ? 20 : 16, overflow:"hidden", color:"#fff" }}>
+          {/* Lime glow ambient */}
+          <div style={{ position:"absolute", top:-100, right:-80, width:300, height:300, borderRadius:"50%", background:"radial-gradient(circle, #BBF24625 0%, transparent 60%)", filter:"blur(40px)", pointerEvents:"none" }} />
+          <div style={{ position:"absolute", bottom:-50, left:-30, width:220, height:220, borderRadius:"50%", background:"radial-gradient(circle, #BBF24612 0%, transparent 60%)", filter:"blur(40px)", pointerEvents:"none" }} />
+
+          <div style={{ position:"relative", display:"flex", alignItems:_isDsk?"center":"flex-start", justifyContent:"space-between", gap: _isDsk ? 24 : 14, flexWrap:_isDsk?"nowrap":"wrap" }}>
+            <div style={{ display:"flex", alignItems:"center", gap: _isDsk ? 18 : 14, minWidth:0, flex:1 }}>
+              <div style={{ flexShrink:0, width: _isDsk ? 64 : 52, height: _isDsk ? 64 : 52, borderRadius: _isDsk ? 18 : 16, background:`linear-gradient(135deg, #BBF246, #9AE010)`, display:"flex", alignItems:"center", justifyContent:"center", color:"#0D1117", fontSize: _isDsk?22:18, fontWeight:900, letterSpacing:"-0.5px", boxShadow:"0 8px 24px rgba(187,242,70,0.35)", overflow:"hidden" }}>
+                {user?.photo ? <img src={user.photo} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : initials}
+              </div>
+              <div style={{ minWidth:0, flex:1 }}>
+                <p style={{ fontSize: _isDsk ? 11 : 10, color:"#BBF246", fontWeight:800, margin:0, letterSpacing:"0.16em" }}>{greet.toUpperCase()}, {userName.toUpperCase()}</p>
+                <h1 style={{ fontSize: _isDsk ? 30 : 22, fontWeight:900, margin:"4px 0 4px", letterSpacing:"-0.6px", lineHeight:1.1 }}>Pronto pra arrasar hoje?</h1>
+                <p style={{ fontSize: _isDsk ? 13 : 11, color:"rgba(255,255,255,0.5)", margin:0, fontWeight:500 }}>{orgName} · {dateStr}</p>
+              </div>
+            </div>
+
+            <div style={{ display:"flex", alignItems:"center", gap: _isDsk ? 10 : 8, flexShrink:0 }}>
+              {/* Clock pill */}
+              <div style={{ padding:_isDsk?"10px 16px":"8px 12px", background:"rgba(255,255,255,0.08)", borderRadius:14, border:"1px solid rgba(255,255,255,0.1)", backdropFilter:"blur(20px)" }}>
+                <p style={{ fontSize: _isDsk ? 22 : 18, fontWeight:900, margin:0, letterSpacing:"-0.6px" }}>{hh}<span style={{ opacity:0.4 }}>:</span>{mm}</p>
+              </div>
+              {/* Notif bell */}
+              <button onClick={() => goTab && goTab("notifs")} className="v2-pill" style={{ position:"relative", padding: _isDsk?"12px":"10px", background:"rgba(255,255,255,0.08)", borderRadius:14, border:"1px solid rgba(255,255,255,0.1)", cursor:"pointer", color:"#fff" }}>
+                <svg width={_isDsk?20:18} height={_isDsk?20:18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                {notifCount > 0 && <span style={{ position:"absolute", top:-4, right:-4, minWidth:18, height:18, padding:"0 5px", borderRadius:9, background:"#BBF246", color:"#0D1117", fontSize:10, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center" }}>{notifCount}</span>}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ════ STATS GRID — KPIs ════ */}
+        <div style={{ display:"grid", gridTemplateColumns: _isDsk ? "repeat(4, 1fr)" : "repeat(2, 1fr)", gap: _isDsk ? 16 : 10, marginBottom: _isDsk ? 20 : 16 }}>
+          {[
+            { label:"Demandas em andamento", value:stats.inProgress, total:stats.totalDemands, accent:"#BBF246", icon:"layers", action:()=>goTab&&goTab("content") },
+            { label:"Atrasadas / hoje", value:stats.overdueOrToday, accent:"#F59E0B", icon:"alert", urgent:stats.overdueOrToday > 0, action:()=>goTab&&goTab("content") },
+            { label:"Posts agendados (7d)", value:stats.scheduledThisWeek, accent:"#3B82F6", icon:"calendar", action:()=>goSub&&goSub("calendar") },
+            { label:"Clientes ativos", value:stats.totalClients, accent:"#10B981", icon:"users", action:()=>goTab&&goTab("clients") },
+          ].map((s, i) => (
+            <div key={i} className="v2-card v2-clickable" onClick={s.action} style={{ background:"#fff", borderRadius: 20, padding: _isDsk ? "20px 22px" : "16px 16px", border:"1px solid #F0F1F5", animationDelay:`${i*60}ms`, position:"relative", overflow:"hidden" }}>
+              <div style={{ position:"absolute", top:-30, right:-30, width:90, height:90, borderRadius:"50%", background:`${s.accent}10`, pointerEvents:"none" }} />
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: _isDsk?14:10 }}>
+                <div style={{ width: _isDsk?40:32, height: _isDsk?40:32, borderRadius:12, background:`${s.accent}18`, color:s.accent, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width={_isDsk?20:16} height={_isDsk?20:16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    {s.icon==="layers" && <><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></>}
+                    {s.icon==="alert" && <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>}
+                    {s.icon==="calendar" && <><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>}
+                    {s.icon==="users" && <><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>}
+                  </svg>
+                </div>
+                {s.urgent && <span className="v2-pill" style={{ fontSize: 9, fontWeight: 900, padding:"3px 8px", borderRadius:6, background:"#FEE2E2", color:"#DC2626", letterSpacing:0.5 }}>URGENTE</span>}
+              </div>
+              <p className="v2-stat-num" style={{ fontSize: _isDsk?40:30, fontWeight:900, margin:"0 0 2px", letterSpacing:"-1.5px", lineHeight:1 }}>
+                {s.value}{s.total !== undefined && <span style={{ fontSize: _isDsk?16:13, color:"#9CA3AF", fontWeight:700 }}>/{s.total}</span>}
+              </p>
+              <p style={{ fontSize: _isDsk?12:10.5, color:"#6B7280", fontWeight:600, margin:0, lineHeight:1.3 }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ════ MAIN GRID 2 cols (desktop) ════ */}
+        <div style={{ display:"grid", gridTemplateColumns: _isDsk ? "1fr 1fr" : "1fr", gap: _isDsk ? 20 : 16, marginBottom: _isDsk ? 20 : 16 }}>
+
+          {/* ── Coluna 1: Demandas urgentes ── */}
+          <div className="v2-card" style={{ background:"#fff", borderRadius:24, padding:_isDsk?"24px 24px 16px":"20px 18px 14px", border:"1px solid #F0F1F5" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: _isDsk?18:14 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 9, background:limeGrad, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 12px rgba(187,242,70,0.4)" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <h3 style={{ fontSize: _isDsk?16:14, fontWeight:900, color:"#0D1117", margin:0, letterSpacing:"-0.3px" }}>Demandas urgentes</h3>
+              </div>
+              <button onClick={()=>goTab&&goTab("content")} style={{ fontSize: 11, fontWeight:700, color:"#9CA3AF", background:"transparent", border:"none", cursor:"pointer", padding:"4px 8px", display:"inline-flex", alignItems:"center", gap:3 }}>
+                Ver todas <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+            {urgentDemands.length === 0 ? (
+              <div style={{ padding: "32px 16px", textAlign:"center" }}>
+                <div style={{ width:60, height:60, borderRadius:18, background:"#F0FDF4", margin:"0 auto 12px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <p style={{ fontSize:14, fontWeight:800, color:"#0D1117", margin:"0 0 4px" }}>Tudo em dia! 🎯</p>
+                <p style={{ fontSize:12, color:"#9CA3AF", margin:0 }}>Sem demandas urgentes no momento</p>
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                {urgentDemands.map((d, i) => {
+                  const isOverdue = d._days < 0;
+                  const isToday = d._days === 0;
+                  const dotColor = isOverdue ? "#DC2626" : isToday ? "#F59E0B" : d._days <= 2 ? "#F59E0B" : "#10B981";
+                  const labelDays = isOverdue ? `${Math.abs(d._days)}d atrás` : isToday ? "Hoje" : `${d._days}d`;
+                  return (
+                    <div key={d.id||i} className="v2-clickable" onClick={()=>goTab&&goTab("content")} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", background:"#FAFAFA", borderRadius:14, border:"1px solid transparent", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor="#BBF24640";e.currentTarget.style.background="#fff"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="transparent";e.currentTarget.style.background="#FAFAFA"}}>
+                      <span style={{ width:8, height:8, borderRadius:"50%", background:dotColor, flexShrink:0, boxShadow:`0 0 0 3px ${dotColor}20` }} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:13, fontWeight:700, color:"#0D1117", margin:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{d.title || "Sem título"}</p>
+                        <p style={{ fontSize:11, color:"#9CA3AF", margin:"2px 0 0", fontWeight:500 }}>{d.client_name || "—"} · {d.format || "Post"}</p>
+                      </div>
+                      <span style={{ fontSize:11, fontWeight:800, color:dotColor, padding:"4px 9px", borderRadius:8, background:`${dotColor}15`, whiteSpace:"nowrap" }}>{labelDays}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── Coluna 2: Próximos posts ── */}
+          <div className="v2-card" style={{ background:"#fff", borderRadius:24, padding:_isDsk?"24px 24px 16px":"20px 18px 14px", border:"1px solid #F0F1F5", animationDelay:"100ms" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: _isDsk?18:14 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 9, background:"#0D1117", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+                <h3 style={{ fontSize: _isDsk?16:14, fontWeight:900, color:"#0D1117", margin:0, letterSpacing:"-0.3px" }}>Próximos posts</h3>
+              </div>
+              <button onClick={()=>goSub&&goSub("calendar")} style={{ fontSize: 11, fontWeight:700, color:"#9CA3AF", background:"transparent", border:"none", cursor:"pointer", padding:"4px 8px", display:"inline-flex", alignItems:"center", gap:3 }}>
+                Ver calendário <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+            {upcomingPosts.length === 0 ? (
+              <div style={{ padding: "32px 16px", textAlign:"center" }}>
+                <div style={{ width:60, height:60, borderRadius:18, background:"#EFF6FF", margin:"0 auto 12px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+                </div>
+                <p style={{ fontSize:14, fontWeight:800, color:"#0D1117", margin:"0 0 4px" }}>Nada agendado ainda</p>
+                <p style={{ fontSize:12, color:"#9CA3AF", margin:0 }}>Crie demandas e agende posts</p>
+              </div>
+            ) : (
+              <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                {upcomingPosts.map((d, i) => {
+                  const dt = d._date;
+                  const day = dt.getDate();
+                  const month = dt.toLocaleDateString("pt-BR", { month: "short" }).replace(".","");
+                  const time = `${String(dt.getHours()).padStart(2,"0")}:${String(dt.getMinutes()).padStart(2,"0")}`;
+                  return (
+                    <div key={d.id||i} className="v2-clickable" onClick={()=>goSub&&goSub("calendar")} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 14px", background:"#FAFAFA", borderRadius:14, border:"1px solid transparent", transition:"all .15s" }} onMouseEnter={e=>{e.currentTarget.style.borderColor="#BBF24640";e.currentTarget.style.background="#fff"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="transparent";e.currentTarget.style.background="#FAFAFA"}}>
+                      <div style={{ width:42, height:42, borderRadius:12, background:"#fff", border:"1.5px solid #E8EAF0", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                        <span style={{ fontSize:9, fontWeight:800, color:"#9CA3AF", textTransform:"uppercase", letterSpacing:0.4, lineHeight:1 }}>{month}</span>
+                        <span style={{ fontSize:16, fontWeight:900, color:"#0D1117", lineHeight:1, marginTop:2 }}>{day}</span>
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontSize:13, fontWeight:700, color:"#0D1117", margin:0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{d.title || "Sem título"}</p>
+                        <p style={{ fontSize:11, color:"#9CA3AF", margin:"2px 0 0", fontWeight:500 }}>{d.client_name || "—"} · {time}</p>
+                      </div>
+                      <span style={{ fontSize:10, fontWeight:800, color:"#0D1117", padding:"4px 9px", borderRadius:8, background:"#BBF24628", whiteSpace:"nowrap" }}>{d.format || "Post"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ════ ATALHOS RÁPIDOS — Action Grid ════ */}
+        <div className="v2-card" style={{ background:"#fff", borderRadius:24, padding:_isDsk?"24px":"20px 18px", border:"1px solid #F0F1F5", marginBottom: _isDsk?20:16, animationDelay:"180ms" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom: _isDsk?18:14 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 9, background:limeGrad, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 12px rgba(187,242,70,0.4)" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D1117" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            </div>
+            <h3 style={{ fontSize: _isDsk?16:14, fontWeight:900, color:"#0D1117", margin:0, letterSpacing:"-0.3px" }}>Comece por aqui</h3>
+          </div>
+          <div style={{ display:"grid", gridTemplateColumns: _isDsk ? "repeat(4, 1fr)" : "repeat(2, 1fr)", gap: _isDsk ? 14 : 10 }}>
+            {[
+              { label:"Nova demanda", desc:"Crie um job pro time", icon:"plus", color:"#BBF246", action:()=>goTab&&goTab("content") },
+              { label:"Calendário", desc:"Veja a agenda do mês", icon:"calendar", color:"#3B82F6", action:()=>goSub&&goSub("calendar") },
+              { label:"Inbox social", desc:"Comentários + DMs", icon:"inbox", color:"#A855F7", action:()=>goSub&&goSub("inbox") },
+              { label:"Assistente IA", desc:"Crie copy e ideias", icon:"sparkles", color:"#F59E0B", action:()=>goSub&&goSub("aiChat") },
+            ].map((a, i) => (
+              <button key={i} className="v2-action-card v2-clickable" onClick={a.action} style={{ background:"#FAFAFA", borderRadius: 16, padding: _isDsk?"18px 16px":"14px 12px", border:"1.5px solid transparent", textAlign:"left", cursor:"pointer", fontFamily:"inherit", transition:"all .2s ease", display:"flex", flexDirection:"column", gap:10 }} onMouseEnter={e=>{e.currentTarget.style.borderColor=`${a.color}40`;e.currentTarget.style.background="#fff";e.currentTarget.style.transform="translateY(-2px)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="transparent";e.currentTarget.style.background="#FAFAFA";e.currentTarget.style.transform="translateY(0)"}}>
+                <div className="v2-action-icon" style={{ width: _isDsk?40:34, height: _isDsk?40:34, borderRadius: 12, background:`${a.color}20`, color:a.color, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <svg width={_isDsk?20:18} height={_isDsk?20:18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    {a.icon==="plus" && <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>}
+                    {a.icon==="calendar" && <><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></>}
+                    {a.icon==="inbox" && <><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></>}
+                    {a.icon==="sparkles" && <path d="M12 3l1.91 5.79L20 10.5l-6.09 1.71L12 18l-1.91-5.79L4 10.5l6.09-1.71L12 3z"/>}
+                  </svg>
+                </div>
+                <div>
+                  <p style={{ fontSize: _isDsk?14:12.5, fontWeight:800, color:"#0D1117", margin:"0 0 2px", letterSpacing:"-0.2px" }}>{a.label}</p>
+                  <p style={{ fontSize: _isDsk?12:10.5, color:"#9CA3AF", margin:0, fontWeight:500, lineHeight:1.3 }}>{a.desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ════ CTA: explorar app ════ */}
+        <div className="v2-card" style={{ position:"relative", background: darkGrad, borderRadius:24, padding: _isDsk?"28px 32px":"22px 18px", overflow:"hidden", animationDelay:"240ms" }}>
+          <div style={{ position:"absolute", top:-60, right:-60, width:240, height:240, borderRadius:"50%", background:"radial-gradient(circle, #BBF24625 0%, transparent 60%)", filter:"blur(30px)", pointerEvents:"none" }} />
+          <div style={{ position:"relative", display:"flex", alignItems:"center", justifyContent:"space-between", gap:20, flexWrap:"wrap" }}>
+            <div style={{ flex:1, minWidth:240, color:"#fff" }}>
+              <p style={{ fontSize:11, color:"#BBF246", fontWeight:800, margin:"0 0 6px", letterSpacing:"0.16em" }}>EXPERIMENTAL · HOME V2</p>
+              <h3 style={{ fontSize: _isDsk?22:18, fontWeight:900, margin:"0 0 6px", letterSpacing:"-0.4px" }}>Curtindo a nova cara?</h3>
+              <p style={{ fontSize: _isDsk?13:12, color:"rgba(255,255,255,0.6)", margin:0, lineHeight:1.5 }}>Essa é uma versão de teste. Volta pra antiga removendo <code style={{ background:"rgba(255,255,255,0.1)", padding:"1px 6px", borderRadius:4, fontSize:11 }}>?home=v2</code> da URL.</p>
+            </div>
+            <button onClick={()=>{
+              try { localStorage.removeItem("uh_home_v2"); } catch {}
+              const url = new URL(window.location.href);
+              url.searchParams.delete("home");
+              window.location.href = url.toString();
+            }} style={{ padding:"12px 20px", borderRadius:12, background:"#fff", color:"#0D1117", fontSize:13, fontWeight:800, cursor:"pointer", border:"none", fontFamily:"inherit", flexShrink:0 }}>
+              Voltar pra antiga
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setDemands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud, canAccess: ca, isDesktop }) {
   const canAccessFn = ca || (() => true);
   const CDATA = (clients && clients.length > 0) ? clients : [];
@@ -31830,7 +32129,19 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         if (r.ok && d?.url) window.location.href = d.url;
         else alert("Erro: " + (d?.error || "falha ao abrir checkout"));
       }} />
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
+        {!sub && tab === "home" && (() => {
+          /* Toggle Home V2: ?home=v2 na URL ou localStorage.uh_home_v2="1" */
+          const useV2 = (() => {
+            try {
+              const url = new URLSearchParams(window.location.search);
+              if (url.get("home") === "v2") { localStorage.setItem("uh_home_v2", "1"); return true; }
+              if (url.get("home") === "v1" || url.get("home") === "off") { localStorage.removeItem("uh_home_v2"); return false; }
+              return localStorage.getItem("uh_home_v2") === "1";
+            } catch { return false; }
+          })();
+          const HC = useV2 ? HomePageV2 : HomePage;
+          return <HC user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />;
+        })()}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
 
