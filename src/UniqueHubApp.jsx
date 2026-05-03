@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import ReactDOM from "react-dom";
 import { createClient } from "@supabase/supabase-js";
 
 /* ── Error Boundary ── */
@@ -4163,6 +4164,10 @@ function SubscriptionLock({ orgId, user, status, onCheckout, onLogout }) {
       </div>
     </div>
   );
+  /* Portal: renderiza no document.body fora de qualquer stacking context,
+     garantindo cobertura total (incluindo navbar inferior fixa) */
+  if (typeof document === "undefined") return lockJSX;
+  return ReactDOM.createPortal(lockJSX, document.body);
 }
 /* Gate: envolve a app, mostra lock quando bloqueado, deixa passar caso contrário */
 function BillingGate({ user, orgId, onLogout, children }) {
