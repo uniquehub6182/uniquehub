@@ -3958,37 +3958,129 @@ function TrialBanner({ orgId, user, onCheckout }) {
 /* Tela cheia de bloqueio quando trial expirou ou subscription suspensa */
 function SubscriptionLock({ orgId, user, status, onCheckout, onLogout }) {
   const state = status?.billing_state;
-  const titles = {
-    trial_expired: "Seu trial terminou",
-    suspended: "Conta suspensa",
-    past_due: "Pagamento atrasado",
-    canceled: "Assinatura cancelada",
-  };
-  const subtitles = {
-    trial_expired: "Pra continuar usando o UniqueHub, escolha um plano e adicione um cartão.",
-    suspended: "Sua conta está temporariamente suspensa por problema no pagamento.",
-    past_due: "Identificamos uma cobrança em atraso. Atualize seu cartão pra reativar tudo.",
-    canceled: "Sua assinatura foi cancelada. Reative pra voltar a usar.",
-  };
+  const [period, setPeriod] = React.useState("monthly");
+  const [hoveredPlan, setHoveredPlan] = React.useState(null);
+  const [loadingPlan, setLoadingPlan] = React.useState(null);
   const isAdmin = user?.supaRole === "admin" || user?.role === "CEO" || user?.role === "owner";
+  const stateConfig = {
+    trial_expired: { kicker: "TRIAL FINALIZADO", title: "Seu trial dos 15 dias acabou", sub: "Que bom ter você aqui! Pra continuar usando todos os recursos da plataforma, escolha o plano que faz mais sentido pra agência." },
+    past_due:      { kicker: "PAGAMENTO PENDENTE", title: "Identificamos uma cobrança em atraso", sub: "Pra reativar o acesso completo, atualize seus dados de pagamento ou escolha um novo plano." },
+    canceled:      { kicker: "ASSINATURA CANCELADA", title: "Sua assinatura foi encerrada", sub: "Você cancelou sua assinatura. Pra voltar a usar a plataforma, escolha um plano abaixo." },
+    suspended:     { kicker: "CONTA SUSPENSA", title: "Sua conta está suspensa", sub: "Sua conta está temporariamente fora do ar por inadimplência. Reative escolhendo um plano." },
+  };
+  const cfg = stateConfig[state] || { kicker: "ACESSO BLOQUEADO", title: "Sua conta está sem acesso", sub: "Entre em contato com o suporte ou escolha um plano abaixo." };
+  const PLANS = [
+    { k:"essencial",    name:"Essencial",    monthly:197, yearly:1891, sub:"Pra freelas e SMs", clients:"5 clientes", users:"2 usuários" },
+    { k:"profissional", name:"Profissional", monthly:397, yearly:3811, sub:"Pra agências pequenas", clients:"10 clientes", users:"5 usuários" },
+    { k:"agencia",      name:"Agência",      monthly:597, yearly:5731, sub:"Pra crescer sem medo", clients:"20 clientes", users:"15 usuários", popular:true },
+    { k:"escala",       name:"Escala",       monthly:997, yearly:9571, sub:"Pra times grandes", clients:"40 clientes", users:"ilimitado" },
+  ];
+  const handlePick = async (planKey) => {
+    if (!isAdmin || loadingPlan) return;
+    setLoadingPlan(planKey);
+    try {
+      const r = await fetch(`${SUPA_URL}/functions/v1/stripe-checkout`, {
+        method:"POST",
+        headers:{ "Authorization":`Bearer ${SUPA_KEY}`, "Content-Type":"application/json" },
+        body: JSON.stringify({ orgId, email: user?.email, name: user?.name, planKey, period, returnUrl: window.location.origin }),
+      });
+      const d = await r.json();
+      if (r.ok && d?.url) window.location.href = d.url;
+      else { alert("Erro: " + (d?.error || "falha ao abrir checkout")); setLoadingPlan(null); }
+    } catch (e) { alert("Erro: " + (e?.message || "falha")); setLoadingPlan(null); }
+  };
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, background: "#F7F7F8", color: "#192126", fontFamily: "inherit" }}>
-      <div style={{ maxWidth: 480, width: "100%", textAlign: "center" }}>
-        <div style={{ width: 80, height: 80, borderRadius: 20, background: "#FEE2E215", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0A0E14 0%, #0F1419 50%, #0A0E14 100%)", color: "#fff", fontFamily: "inherit", overflow: "auto", position: "relative" }}>
+      {/* glow ambient */}
+      <div style={{ position:"fixed", top:"-20%", right:"-10%", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, #BBF24618 0%, transparent 60%)", pointerEvents:"none", filter:"blur(40px)" }} />
+      <div style={{ position:"fixed", bottom:"-30%", left:"-10%", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, #BBF24612 0%, transparent 60%)", pointerEvents:"none", filter:"blur(40px)" }} />
+      <div style={{ position:"relative", maxWidth: 1180, margin: "0 auto", padding: "48px 24px 64px" }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:10, marginBottom: 24 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #BBF246, #9AE010)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px #BBF24640" }}>
+              <span style={{ fontSize: 18, fontWeight: 900, color:"#0A0E14" }}>U</span>
+            </div>
+            <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.4 }}>UniqueHub</span>
+          </div>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#BBF246", letterSpacing: 2, margin: "0 0 12px" }}>{cfg.kicker}</p>
+          <h1 style={{ fontSize: "clamp(28px, 5vw, 44px)", fontWeight: 900, margin: "0 0 16px", letterSpacing: -1, lineHeight: 1.1 }}>{cfg.title}</h1>
+          <p style={{ fontSize: 16, color: "#9CA3AF", lineHeight: 1.5, margin: "0 auto", maxWidth: 560 }}>{cfg.sub}</p>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 12px" }}>{titles[state] || "Conta sem acesso"}</h1>
-        <p style={{ fontSize: 14, color: "#666", lineHeight: 1.5, margin: "0 0 24px" }}>{subtitles[state] || "Entre em contato com o suporte."}</p>
+        {/* Toggle Mensal/Anual */}
+        <div style={{ display:"flex", justifyContent:"center", marginBottom: 32 }}>
+          <div style={{ display:"inline-flex", padding: 4, background:"#192126", borderRadius: 14, border: "1px solid #2A3038" }}>
+            <button onClick={() => setPeriod("monthly")} style={{ padding: "10px 22px", borderRadius: 10, border: "none", background: period === "monthly" ? "#BBF246" : "transparent", color: period === "monthly" ? "#0A0E14" : "#9CA3AF", fontSize: 13, fontWeight: 800, cursor:"pointer", fontFamily:"inherit", transition:"all .2s" }}>Mensal</button>
+            <button onClick={() => setPeriod("yearly")} style={{ padding: "10px 22px", borderRadius: 10, border: "none", background: period === "yearly" ? "#BBF246" : "transparent", color: period === "yearly" ? "#0A0E14" : "#9CA3AF", fontSize: 13, fontWeight: 800, cursor:"pointer", fontFamily:"inherit", transition:"all .2s", display:"inline-flex", alignItems:"center", gap:6 }}>
+              Anual <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 6, background: period === "yearly" ? "#0A0E1420" : "#BBF24620", color: period === "yearly" ? "#0A0E14" : "#BBF246", fontWeight: 800 }}>-20%</span>
+            </button>
+          </div>
+        </div>
+        {/* Planos */}
         {isAdmin ? (
-          <button onClick={onCheckout} style={{ padding: "14px 28px", borderRadius: 12, background: "#192126", color: "#BBF246", border: "none", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", marginBottom: 12, width: "100%", maxWidth: 280 }}>
-            {state === "canceled" ? "Reativar assinatura" : "Adicionar cartão"}
-          </button>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 32 }}>
+            {PLANS.map(p => {
+              const price = period === "yearly" ? p.yearly : p.monthly;
+              const isLoading = loadingPlan === p.k;
+              const isHovered = hoveredPlan === p.k;
+              return (
+                <div key={p.k} onClick={() => handlePick(p.k)} onMouseEnter={() => setHoveredPlan(p.k)} onMouseLeave={() => setHoveredPlan(null)} style={{ position:"relative", background: p.popular ? "linear-gradient(135deg, #1A2419 0%, #0F1419 100%)" : "#0F1419", borderRadius: 20, padding: 24, cursor: isLoading ? "wait" : "pointer", border: p.popular ? "1.5px solid #BBF24650" : "1.5px solid #2A3038", transition: "all .2s ease", transform: isHovered ? "translateY(-4px)" : "translateY(0)", boxShadow: isHovered ? "0 12px 40px rgba(187,242,70,0.15)" : (p.popular ? "0 4px 24px rgba(187,242,70,0.08)" : "0 2px 8px rgba(0,0,0,0.2)"), opacity: isLoading ? 0.6 : 1 }}>
+                  {p.popular && <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", padding: "4px 12px", borderRadius: 100, background: "linear-gradient(135deg, #BBF246, #9AE010)", color: "#0A0E14", fontSize: 10, fontWeight: 900, letterSpacing: 0.5 }}>MAIS POPULAR</div>}
+                  <p style={{ fontSize: 18, fontWeight: 800, margin: "0 0 4px" }}>{p.name}</p>
+                  <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 16px" }}>{p.sub}</p>
+                  <div style={{ display:"flex", alignItems:"baseline", gap: 4, marginBottom: 16 }}>
+                    <span style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 700 }}>R$</span>
+                    <span style={{ fontSize: 36, fontWeight: 900, color: "#fff", letterSpacing: -1.5, lineHeight: 1 }}>{price.toLocaleString("pt-BR")}</span>
+                    <span style={{ fontSize: 13, color: "#6B7280", fontWeight: 600 }}>/{period === "yearly" ? "ano" : "mês"}</span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection:"column", gap: 6, marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid #1F2630" }}>
+                    <span style={{ fontSize: 12, color:"#D1D5DB", display:"inline-flex", alignItems:"center", gap:6 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      {p.clients}
+                    </span>
+                    <span style={{ fontSize: 12, color:"#D1D5DB", display:"inline-flex", alignItems:"center", gap:6 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      {p.users}
+                    </span>
+                  </div>
+                  <button disabled={isLoading} style={{ width:"100%", padding: "12px", borderRadius: 12, border:"none", background: p.popular ? "linear-gradient(135deg, #BBF246, #9AE010)" : "#fff", color: "#0A0E14", fontSize: 13, fontWeight: 800, cursor: isLoading ? "wait" : "pointer", fontFamily:"inherit", transition:"all .15s" }}>
+                    {isLoading ? "Abrindo..." : "Escolher plano"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          <p style={{ fontSize: 12, color: "#999", padding: "12px 16px", background: "#fff", borderRadius: 10, marginBottom: 12 }}>
-            Peça pro administrador da agência atualizar o pagamento.
-          </p>
+          <div style={{ maxWidth: 480, margin:"0 auto 32px", padding: 24, background: "#0F1419", borderRadius: 16, border: "1px solid #2A3038", textAlign:"center" }}>
+            <p style={{ fontSize: 14, color:"#D1D5DB", margin: 0, lineHeight: 1.6 }}>
+              Peça pro administrador da agência adicionar o cartão e escolher um plano. Você não tem permissão pra essa ação.
+            </p>
+          </div>
         )}
-        <button onClick={onLogout} style={{ padding: "10px 20px", borderRadius: 10, background: "transparent", color: "#666", border: "1px solid #ddd", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sair</button>
+        {/* Trust strip */}
+        <div style={{ display:"flex", justifyContent:"center", flexWrap:"wrap", gap: 24, marginBottom: 24, padding: "20px 0", borderTop: "1px solid #1F2630", borderBottom: "1px solid #1F2630" }}>
+          {[
+            { ic:"shield", txt:"Pagamento seguro via Stripe" },
+            { ic:"clock", txt:"Cancele quando quiser" },
+            { ic:"refresh", txt:"Sem fidelidade" },
+            { ic:"zap", txt:"Acesso imediato" },
+          ].map((b,i) => (
+            <span key={i} style={{ fontSize: 12, color:"#9CA3AF", display:"inline-flex", alignItems:"center", gap:6, fontWeight: 600 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round">
+                {b.ic === "shield" && <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>}
+                {b.ic === "clock" && <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}
+                {b.ic === "refresh" && <><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></>}
+                {b.ic === "zap" && <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}
+              </svg>
+              {b.txt}
+            </span>
+          ))}
+        </div>
+        {/* Footer actions */}
+        <div style={{ display:"flex", justifyContent:"center", gap: 16, alignItems:"center" }}>
+          <button onClick={onLogout} style={{ padding: "10px 20px", borderRadius: 10, background: "transparent", color: "#9CA3AF", border: "1px solid #2A3038", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sair da conta</button>
+          <a href="mailto:contato@uniquemkt.com.br" style={{ fontSize: 13, color: "#BBF246", fontWeight: 600, textDecoration:"none" }}>Falar com suporte</a>
+        </div>
       </div>
     </div>
   );
