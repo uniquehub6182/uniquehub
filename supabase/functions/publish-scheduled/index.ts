@@ -163,9 +163,64 @@ async function publishFacebook(sb: any, clientId: string, imageUrls: string[], c
 /* ── Helpers ── */
 async function tryMarkDemandPublished(sb: any, demandId: string) {
   if (!demandId) return;
-  const { data: siblings } = await sb.from("scheduled_posts").select("id,status").eq("demand_id", demandId);
-  if ((siblings || []).every((s: any) => s.status === "published")) {
+  const { data: siblings } = await sb.from("scheduled_posts").select("id,status,platform,error,client_id").eq("demand_id", demandId);
+  if (!siblings || !siblings.length) return;
+
+  const TERMINAL = ["published","failed","skipped_duplicate","cancelled"];
+  const allTerminal = siblings.every((s: any) => TERMINAL.includes(s.status));
+  if (!allTerminal) return; // ainda processando algum, esperar próximo ciclo
+
+  const published = siblings.filter((s: any) => s.status === "published");
+  const failed = siblings.filter((s: any) => s.status === "failed");
+
+  if (failed.length === 0) {
+    // Tudo OK: todos published (ou skipped por duplicate), avança a demand
     await sb.from("demands").update({ stage: "published" }).eq("id", demandId);
+    return;
+  }
+
+  if (published.length > 0 && failed.length > 0) {
+    // PUBLICAÇÃO PARCIAL: alguma plataforma OK, outra falhou
+    // Mover demand pra "ajuste" e gravar nota explicativa nos steps
+    const failedPlats = failed.map((f: any) => f.platform).join(", ");
+    const okPlats = published.map((f: any) => f.platform).join(", ");
+    const errSample = failed[0].error || "erro desconhecido";
+    const note = `Publicado em ${okPlats} mas falhou em ${failedPlats}. Erro: ${(errSample||"").substring(0, 200)}`;
+
+    const { data: demand } = await sb.from("demands").select("steps").eq("id", demandId).single();
+    const newSteps = {
+      ...(demand?.steps || {}),
+      partialPublish: { ok: okPlats, failed: failedPlats, error: errSample, at: new Date().toISOString(), note }
+    };
+    await sb.from("demands").update({ stage: "ajuste", steps: newSteps }).eq("id", demandId);
+
+    // Notificar a equipe
+    try {
+      const { data: cl } = await sb.from("clients").select("name").eq("id", failed[0].client_id || "").single();
+      const clientName = cl?.name || "Cliente";
+      const { data: team } = await sb.from("profiles").select("id, role").in("role", ["admin", "owner", "manager"]);
+      for (const u of (team || [])) {
+        await sb.from("notifications").insert({
+          user_id: u.id,
+          type: "publish_partial",
+          title: `⚠️ Publicação parcial — ${clientName}`,
+          body: note.substring(0, 300),
+          read: false
+        });
+      }
+    } catch (e) { console.error("notify partial failed:", e); }
+    return;
+  }
+
+  // Tudo falhou: deixar em status visível (ajuste) com nota
+  if (failed.length === siblings.length) {
+    const errSample = failed[0].error || "erro desconhecido";
+    const { data: demand } = await sb.from("demands").select("steps").eq("id", demandId).single();
+    const newSteps = {
+      ...(demand?.steps || {}),
+      publishFailed: { error: errSample, at: new Date().toISOString() }
+    };
+    await sb.from("demands").update({ stage: "ajuste", steps: newSteps }).eq("id", demandId);
   }
 }
 
@@ -183,7 +238,15 @@ async function notifyFailure(sb: any, post: any, errorMsg: string) {
 }
 
 function isTransientError(msg: string): boolean {
-  return /unexpected|temporarily|timeout|ETIMEDOUT|retry|ECONNRESET|socket|network|502|503|429/i.test(msg);
+  // Erros transientes conhecidos: rede, gateway, rate-limit
+  if (/unexpected|temporarily|timeout|ETIMEDOUT|retry|ECONNRESET|socket|network|502|503|429/i.test(msg)) return true;
+  // Bug intermitente da Meta API: "Only photo or video can be accepted as media type"
+  // observado em ~2% de FEED IG mesmo com arquivo valido. Devolve esse erro generico
+  // mesmo quando o arquivo eh JPEG/PNG/MP4 valido. Retry geralmente resolve.
+  if (/only photo or video can be accepted/i.test(msg)) return true;
+  // Erros que podem ser ressubmetidos
+  if (/media id is not available|not enough information|please try again/i.test(msg)) return true;
+  return false;
 }
 
 /* ══════════════════════════════════════════════════════════

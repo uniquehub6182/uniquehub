@@ -532,6 +532,74 @@ const _proxyR2Quick = async (supaUrl, fileName, contentType) => {
   } catch { return supaUrl; }
 };
 
+/* ── Billing helpers (Stripe) ────────────────────────────────────────── */
+
+/* Busca status de billing da org via view org_billing_status */
+const fetchBillingStatus = async (orgId) => {
+  if (!supabase || !orgId) return null;
+  try {
+    const { data, error } = await supabase
+      .from("org_billing_status").select("*").eq("org_id", orgId).maybeSingle();
+    if (error) { console.warn("[billing] fetch error:", error.message); return null; }
+    return data || null;
+  } catch { return null; }
+};
+
+/* Calcula dias restantes de trial */
+const trialDaysLeft = (trialEndsAt) => {
+  if (!trialEndsAt) return null;
+  const ms = new Date(trialEndsAt).getTime() - Date.now();
+  if (ms <= 0) return 0;
+  return Math.ceil(ms / 86400000);
+};
+
+/* Abre Stripe Checkout pra adicionar cartao / iniciar billing */
+const openStripeCheckout = async (orgId, email, name) => {
+  if (!supabase || !orgId) return { error: "missing args" };
+  try {
+    const r = await fetch(`${SUPA_URL}/functions/v1/stripe-checkout`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ orgId, email, name, returnUrl: window.location.origin }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d?.url) return { error: d?.error || `HTTP ${r.status}`, details: d };
+    window.location.href = d.url; /* redireciona pro Stripe */
+    return { url: d.url };
+  } catch (e) { return { error: e?.message || String(e) }; }
+};
+
+/* Abre Stripe Customer Portal pra gerenciar billing existente */
+const openStripePortal = async (orgId) => {
+  if (!supabase || !orgId) return { error: "missing args" };
+  try {
+    const r = await fetch(`${SUPA_URL}/functions/v1/stripe-portal`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ orgId, returnUrl: window.location.origin }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d?.url) return { error: d?.error || `HTTP ${r.status}`, details: d };
+    window.location.href = d.url;
+    return { url: d.url };
+  } catch (e) { return { error: e?.message || String(e) }; }
+};
+
+/* Hook React: fetch billing status com refresh manual */
+function useBillingStatus(orgId) {
+  const [status, setStatus] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const refresh = React.useCallback(async () => {
+    if (!orgId) return;
+    setLoading(true);
+    const s = await fetchBillingStatus(orgId);
+    setStatus(s); setLoading(false);
+  }, [orgId]);
+  React.useEffect(() => { refresh(); }, [refresh]);
+  return { status, loading, refresh };
+}
+
+
 /* ── Helper: detecta HEVC/H.265 client-side via byte sniffing nos primeiros 5MB.
    Procura pelos FourCC "hvc1", "hev1" ou "hvcC" no MP4/MOV header. Detecção
    funciona em ~95% dos casos: false positives são raros (sem custo extra além de
@@ -3136,11 +3204,12 @@ function LoginPage({ onAuth, onClientAuth }) {
     }
     setAgLoading(true); setAgError("");
     try {
-      /* 1. Create auth user */
+      /* 1. Create auth user — signup_type='agency_owner' faz o trigger criar
+            agency_members com status='ativo' direto (dono nao precisa de aprovacao) */
       const { data: authData, error: authErr } = await supabase.auth.signUp({
         email: agEmail.trim().toLowerCase(),
         password: agPw,
-        options: { data: { name: agName.trim(), company: agAgencyName.trim(), role: "admin" } }
+        options: { data: { name: agName.trim(), company: agAgencyName.trim(), role: "admin", signup_type: "agency_owner", job_title: "CEO / Proprietário" } }
       });
       if (authErr) { setAgError(authErr.message === "User already registered" ? "Este e-mail já está cadastrado. Faça login." : authErr.message); setAgLoading(false); return; }
       if (!authData?.user) { setAgError("Erro ao criar conta. Tente novamente."); setAgLoading(false); return; }
@@ -3148,9 +3217,12 @@ function LoginPage({ onAuth, onClientAuth }) {
 
       /* 2. Create organization */
       const slug = agAgencyName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") + "-" + Date.now().toString(36);
+      /* Trial de 15 dias automatico */
+      const trialEndsAt = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
       const { data: orgData, error: orgErr } = await supabase.from("organizations").insert({
-        name: agAgencyName.trim(), slug, owner_id: userId, plan: "essencial",
-        max_clients: 5, max_users: 2, brand_color: "#BBF246", app_name: "UniqueHub",
+        name: agAgencyName.trim(), slug, owner_id: userId, plan: "escala",
+        max_clients: 50, max_users: 10, brand_color: "#BBF246", app_name: "UniqueHub",
+        trial_ends_at: trialEndsAt, suspended: false,
       }).select().single();
       if (orgErr) { console.error("[AgSignup] org error:", orgErr); setAgError("Erro ao criar organização: " + orgErr.message); setAgLoading(false); return; }
 
@@ -3235,7 +3307,7 @@ function LoginPage({ onAuth, onClientAuth }) {
           <div style={{ width:32, height:32, border:"3px solid #E8EAF0", borderTopColor:"#BBF246", borderRadius:"50%", animation:"spin .8s linear infinite", margin:"20px auto 0" }} />
         </div>) : (<>
           <h1 style={{ fontSize:_isDsk?22:28, fontWeight:900, color:"#1A1D23", margin:"0 0 4px", letterSpacing:"-0.5px" }}>Comece agora</h1>
-          <p style={{ fontSize:13, color:"#9CA3AF", margin:"0 0 6px", lineHeight:1.5 }}>Plano Essencial grátis por 14 dias — sem cartão</p>
+          <p style={{ fontSize:13, color:"#9CA3AF", margin:"0 0 6px", lineHeight:1.5 }}>Plano Escala grátis por 15 dias — sem cartão</p>
           <div style={{ display:"flex", gap:6, marginBottom:_isDsk?16:24, flexWrap:"wrap" }}>
             {["5 clientes","Agendamento IG/FB","App do cliente","Calendário"].map(f => (
               <span key={f} style={{ fontSize:10, fontWeight:600, padding:"3px 8px", borderRadius:20, background:"#F0FDF4", color:"#16A34A", border:"1px solid #BBF7D0" }}>{f}</span>
@@ -3839,6 +3911,113 @@ function PWAInstallPopup({ onDismiss }) {
       </div>
     </div>
   );
+}
+
+/* ═══════════════════════ BILLING UI ═══════════════════════ */
+
+/* Banner de trial (15 dias) — aparece pra owner/admin com countdown + CTA */
+function TrialBanner({ orgId, user, onCheckout }) {
+  const { status, loading } = useBillingStatus(orgId);
+  if (loading || !status) return null;
+  /* Só mostra pra admin */
+  if (user?.supaRole !== "admin" && user?.role !== "CEO" && user?.role !== "owner") return null;
+  /* Só mostra se trial */
+  const state = status.billing_state;
+  if (state !== "trial") return null;
+  const daysLeft = trialDaysLeft(status.trial_ends_at || status.sub_trial_end);
+  if (daysLeft === null) return null;
+
+  const urgent = daysLeft <= 3;
+  const bg = urgent ? "#FEE2E2" : "#FEF3C7";
+  const border = urgent ? "#DC2626" : "#F59E0B";
+  const fg = urgent ? "#991B1B" : "#92400E";
+  const label = daysLeft === 0 ? "Trial termina hoje"
+    : daysLeft === 1 ? "Trial termina amanhã"
+    : `Trial: faltam ${daysLeft} dias`;
+
+  return (
+    <div style={{ background: bg, border: `1px solid ${border}30`, borderRadius: 12, padding: "10px 14px", marginBottom: 12, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ flex: "1 1 200px" }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: fg, margin: 0 }}>{label}</p>
+        <p style={{ fontSize: 11, color: fg, opacity: 0.85, marginTop: 2 }}>
+          {urgent ? "Adicione um cartão pra continuar usando após o trial." : "Adicione um cartão a qualquer momento — você só será cobrado após o trial."}
+        </p>
+      </div>
+      <button
+        onClick={onCheckout}
+        style={{ padding: "8px 14px", borderRadius: 10, background: fg, color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+      >Adicionar cartão</button>
+    </div>
+  );
+}
+
+/* Tela cheia de bloqueio quando trial expirou ou subscription suspensa */
+function SubscriptionLock({ orgId, user, status, onCheckout, onLogout }) {
+  const state = status?.billing_state;
+  const titles = {
+    trial_expired: "Seu trial terminou",
+    suspended: "Conta suspensa",
+    past_due: "Pagamento atrasado",
+    canceled: "Assinatura cancelada",
+  };
+  const subtitles = {
+    trial_expired: "Pra continuar usando o UniqueHub, escolha um plano e adicione um cartão.",
+    suspended: "Sua conta está temporariamente suspensa por problema no pagamento.",
+    past_due: "Identificamos uma cobrança em atraso. Atualize seu cartão pra reativar tudo.",
+    canceled: "Sua assinatura foi cancelada. Reative pra voltar a usar.",
+  };
+  const isAdmin = user?.supaRole === "admin" || user?.role === "CEO" || user?.role === "owner";
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, background: "#F7F7F8", color: "#192126", fontFamily: "inherit" }}>
+      <div style={{ maxWidth: 480, width: "100%", textAlign: "center" }}>
+        <div style={{ width: 80, height: 80, borderRadius: 20, background: "#FEE2E215", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 12px" }}>{titles[state] || "Conta sem acesso"}</h1>
+        <p style={{ fontSize: 14, color: "#666", lineHeight: 1.5, margin: "0 0 24px" }}>{subtitles[state] || "Entre em contato com o suporte."}</p>
+        {isAdmin ? (
+          <button onClick={onCheckout} style={{ padding: "14px 28px", borderRadius: 12, background: "#192126", color: "#BBF246", border: "none", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", marginBottom: 12, width: "100%", maxWidth: 280 }}>
+            {state === "canceled" ? "Reativar assinatura" : "Adicionar cartão"}
+          </button>
+        ) : (
+          <p style={{ fontSize: 12, color: "#999", padding: "12px 16px", background: "#fff", borderRadius: 10, marginBottom: 12 }}>
+            Peça pro administrador da agência atualizar o pagamento.
+          </p>
+        )}
+        <button onClick={onLogout} style={{ padding: "10px 20px", borderRadius: 10, background: "transparent", color: "#666", border: "1px solid #ddd", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sair</button>
+      </div>
+    </div>
+  );
+}
+
+/* Gate: envolve a app, mostra lock quando bloqueado, deixa passar caso contrário */
+function BillingGate({ user, orgId, onLogout, children }) {
+  const { status, loading, refresh } = useBillingStatus(orgId);
+  /* Re-checa ao voltar de redirect (Stripe success/cancel) */
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("billing")) {
+      setTimeout(() => { refresh(); window.history.replaceState({}, "", window.location.pathname); }, 1500);
+    }
+  }, [refresh]);
+
+  /* Clientes (portal cliente) e users sem org não passam por billing gate */
+  if (!orgId || user?.role === "cliente") return children;
+  /* Owner da plataforma (Unique Marketing): sem bloqueio */
+  if (status?.plan === "owner") return children;
+  /* Loading: deixa passar (evita flash) */
+  if (loading || !status) return children;
+
+  const state = status.billing_state;
+  const blocked = ["suspended","trial_expired","past_due","canceled"].includes(state);
+  if (!blocked) return children;
+
+  const handleCheckout = async () => {
+    const { error } = await openStripeCheckout(orgId, user?.email, user?.name);
+    if (error) alert("Erro ao abrir checkout: " + error);
+  };
+
+  return <SubscriptionLock orgId={orgId} user={user} status={status} onCheckout={handleCheckout} onLogout={onLogout} />;
 }
 
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
@@ -31423,6 +31602,11 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 ${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash):not(.content-wide){max-width:860px;margin-left:auto;margin-right:auto;padding:0 20px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}
 html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;margin-right:auto;padding:0 24px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}`:""}
 ` }} />
+      <TrialBanner orgId={_currentOrgId} user={user} onCheckout={async () => {
+        const { error } = await openStripeCheckout(_currentOrgId, user?.email, user?.name);
+        if (error) alert("Erro ao abrir checkout: " + error);
+      }} />
+      <BillingGate user={user} orgId={_currentOrgId} onLogout={onLogout}>
       <div className="content" ref={mainContentRef}>
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
@@ -31454,6 +31638,7 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} openWithUserId={chatOpenWith} onOpenWithConsumed={() => setChatOpenWith(null)} />}
       </div>
+      </BillingGate>
 
       <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map((t, idx) => {

@@ -1,0 +1,715 @@
+/**
+ * munique-v2 - Assistente com Claude OU OpenAI + anexos + tools expandidas
+ *
+ * POST body:
+ * {
+ *   messages: [{role, content, attachments?:[{type,mediaType,base64}]}],
+ *   provider: "claude" | "openai",
+ *   claudeModel?, openaiModel?,
+ *   userRole, userName, clientName,
+ *   context, memories, enableActions, stream
+ * }
+ */
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization,x-client-info,apikey,content-type",
+  "Access-Control-Allow-Methods": "POST,OPTIONS",
+};
+
+const json = (d: any, s = 200) =>
+  new Response(JSON.stringify(d), {
+    headers: { ...CORS, "Content-Type": "application/json" },
+    status: s,
+  });
+
+
+function buildSystemPrompt(userRole: string, userName: string, clientName: string, context: any, memories: string[], anchoredClient: any, enableActions: boolean) {
+  const now = new Date().toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo", dateStyle: "full", timeStyle: "short",
+  });
+
+  const roleDesc: Record<string, string> = {
+    admin: "Você está conversando com o ADMINISTRADOR da agência Unique Marketing 360 (" + (userName || "Matheus") + "). Ele tem acesso total: todos os clientes, dados financeiros, equipe, operação.",
+    collaborator: "Você está conversando com um COLABORADOR da Unique Marketing 360 (" + (userName || "colaborador") + "). Ele tem acesso aos dados operacionais (clientes, demandas, agenda, equipe) mas NÃO deve ver dados financeiros sensíveis da agência.",
+    client: "Você está conversando com um CLIENTE da agência (" + (clientName || userName || "cliente") + "). Ele SÓ pode ver dados relacionados ao próprio negócio dele. Nunca mencione outros clientes, nunca exponha operação interna da agência.",
+  };
+
+  let sys = "Você é a Munique A.I., assistente dentro do UniqueHub - plataforma SaaS de gestão para agências de marketing digital da Unique Marketing 360.\n\n";
+  sys += (roleDesc[userRole] || roleDesc.admin) + "\n\n";
+
+  if (anchoredClient && anchoredClient.name) {
+    sys += "=== CONVERSA ANCORADA NO CLIENTE: " + anchoredClient.name + " ===\n";
+    if (anchoredClient.segment) sys += "Segmento: " + anchoredClient.segment + "\n";
+    sys += "TODAS as perguntas devem ser interpretadas NO CONTEXTO deste cliente específico.\n";
+    sys += "Ex: \"agenda da semana\" = agenda deste cliente, \"métricas\" = métricas deste cliente, \"próxima gravação\" = gravação deste cliente.\n";
+    sys += "Se o usuário perguntar sobre outro cliente, responda dentro do contexto ancorado ou peça confirmação.\n";
+    sys += "Se ele mandar criar demanda, evento ou agendar post, já preencha client_name com: " + anchoredClient.name + "\n\n";
+  }
+
+  sys += "DUAS MODALIDADES:\n\n";
+  sys += "1. PERGUNTAS SOBRE A PLATAFORMA (clientes, demandas, posts, agenda, equipe, métricas, financeiro, performance):\n";
+  sys += "   - Use APENAS os dados no CONTEXTO e MEMÓRIAS abaixo.\n";
+  sys += "   - Se o dado não estiver no contexto, fale: \"Esse dado não está aqui comigo agora\".\n";
+  sys += "   - Nunca invente números, nomes, datas.\n";
+  sys += "   - Seja direto e breve - respostas curtas e úteis.\n\n";
+  sys += "2. ASSUNTOS GERAIS (qualquer outro tema): responda livremente, útil e prestativo.\n\n";
+  sys += "COMO RESPONDER:\n";
+  sys += "- Português brasileiro, tom natural e direto. Pode usar contrações.\n";
+  sys += "- Markdown leve (negrito, listas) quando ajudar.\n";
+  sys += "- Sem preâmbulo - vá direto ao ponto.\n\n";
+
+  sys += "COMPONENTES VISUAIS (use quando listar entidades da plataforma - clientes, demandas, eventos, métricas):\n";
+  sys += "Ao invés de listar em texto/bullets, prefira blocos UI abaixo. Misture livremente com texto quando fizer sentido (intro + cards + comentário).\n\n";
+  sys += "Card de cliente:\n";
+  sys += "```ui:client\n{\"name\":\"Joca Buddies\",\"segment\":\"Pets\",\"status\":\"active\",\"score\":82,\"monthly\":\"R$ 2.480\"}\n```\n\n";
+  sys += "Card de demanda:\n";
+  sys += "```ui:demand\n{\"title\":\"Reels dia das mães\",\"client\":\"Joca Buddies\",\"stage\":\"design\",\"type\":\"reels\",\"due\":\"2026-05-08\"}\n```\n\n";
+  sys += "Card de evento/reunião:\n";
+  sys += "```ui:event\n{\"title\":\"Gravação reels Joca\",\"client\":\"Joca Buddies\",\"date\":\"2026-05-02\",\"time\":\"14:00\",\"type\":\"recording\"}\n```\n\n";
+  sys += "Card de métrica (número grande destacado):\n";
+  sys += "```ui:stat\n{\"label\":\"Clientes ativos\",\"value\":12,\"trend\":\"+3 mes\",\"tone\":\"good\"}\n```\n";
+  sys += "tone pode ser: good (lime), warn (amarelo), urgent (vermelho), neutral.\n\n";
+  sys += "IMPORTANTE: só use esses blocos quando tiver dados concretos no contexto. Se estiver só conversando ou dando ideia criativa, texto normal.\n\n";
+
+  if (Array.isArray(memories) && memories.length > 0) {
+    sys += "MEMÓRIAS SALVAS (fatos importantes sobre esta agência/clientes que o usuário pediu pra guardar):\n";
+    for (const m of memories.slice(0, 30)) sys += "- " + m + "\n";
+    sys += "\n";
+  }
+
+  if (context && typeof context === "object") {
+    const ctxStr = JSON.stringify(context).slice(0, 12000);
+    sys += "CONTEXTO ATUAL DA PLATAFORMA (JSON, filtrado por permissão):\n```json\n" + ctxStr + "\n```\n\n";
+  }
+
+  if (enableActions) {
+    sys += "VOCÊ PODE EXECUTAR AÇÕES usando as ferramentas disponíveis.\n";
+    sys += "Use as tools com cuidado - elas criam/modificam dados reais na plataforma.\n";
+    sys += "Sempre que o usuário pedir algo concreto (\"cria\", \"agenda\", \"aprova\", \"gera imagem\", \"responde\"), USE a ferramenta correspondente.\n";
+    sys += "Se o usuário quer várias coisas, use várias tools na mesma resposta.\n";
+    sys += "Não precisa pedir confirmação - o frontend pede confirmação antes de executar.\n\n";
+  }
+
+  sys += "Data/hora atual: " + now;
+  return sys;
+}
+
+
+function buildClaudeTools(userRole: string) {
+  if (userRole === "client") {
+    // Cliente: tools bem limitadas — só gerar imagem pra usar em conteúdo
+    return [
+      {
+        name: "generate_image",
+        description: "Gera uma imagem com DALL-E a partir de uma descrição em texto. Use quando o usuário pedir pra criar/gerar imagem, arte, ilustração.",
+        input_schema: {
+          type: "object",
+          properties: {
+            prompt: { type: "string", description: "Descrição detalhada da imagem em inglês ou português (DALL-E funciona melhor em inglês)." },
+            size: { type: "string", enum: ["1024x1024","1024x1792","1792x1024"], description: "1024x1024=quadrado (feed), 1024x1792=vertical (story/reels), 1792x1024=horizontal" },
+            style: { type: "string", enum: ["vivid","natural"] },
+          },
+          required: ["prompt"],
+        },
+      },
+    ];
+  }
+
+  return [
+    // ===== CRIAÇÃO =====
+    {
+      name: "create_demand",
+      description: "Cria uma nova demanda (tarefa de conteúdo) para um cliente. Use quando o usuário pedir pra criar/registrar/abrir demanda, post, reels, carrossel, story, campanha.",
+      input_schema: {
+        type: "object",
+        properties: {
+          client_name: { type: "string", description: "Nome do cliente exatamente como aparece no contexto." },
+          title: { type: "string", description: "Título claro e direto do post/conteúdo." },
+          type: { type: "string", enum: ["post","carrossel","reels","story","outro"] },
+          stage: { type: "string", enum: ["brief","design","copy","client","scheduled"], description: "Estágio inicial. Padrão: brief." },
+          due_date: { type: "string", description: "YYYY-MM-DD (opcional)" },
+          description: { type: "string", description: "Briefing curto ou instrucoes (opcional)." },
+        },
+        required: ["client_name","title","type"],
+      },
+    },
+    {
+      name: "create_event",
+      description: "Cria um compromisso/evento na agenda (reunião, gravação, entrega, deadline).",
+      input_schema: {
+        type: "object",
+        properties: {
+          title: { type: "string" }, date: { type: "string", description: "YYYY-MM-DD" }, time: { type: "string", description: "HH:MM" },
+          client_name: { type: "string" },
+          type: { type: "string", enum: ["recording","meeting","deadline","other"] },
+          description: { type: "string" },
+        },
+        required: ["title","date"],
+      },
+    },
+    {
+      name: "create_task",
+      description: "Cria uma tarefa interna pra equipe. Diferente de demanda: task é item de to-do interno, não é conteúdo pra cliente.",
+      input_schema: {
+        type: "object",
+        properties: {
+          title: { type: "string" }, assignee: { type: "string", description: "Nome do colaborador responsável" },
+          priority: { type: "string", enum: ["low","medium","high"] },
+          due_date: { type: "string", description: "YYYY-MM-DD" },
+          description: { type: "string" },
+        },
+        required: ["title"],
+      },
+    },
+    {
+      name: "create_client",
+      description: "Cadastra um novo cliente na agência. Use quando o usuário pedir pra adicionar/registrar cliente novo.",
+      input_schema: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          contact: { type: "string", description: "Nome da pessoa de contato" },
+          email: { type: "string" }, phone: { type: "string" },
+          plan: { type: "string", enum: ["Traction","Growth 360","Partner"] },
+          segment: { type: "string", description: "Segmento de atuação (ex: Beleza, Alimentação, Saúde)" },
+          monthly: { type: "string", description: "Valor mensal em BRL (ex: R$ 2.480)" },
+        },
+        required: ["name"],
+      },
+    },
+
+
+    // ===== AÇÕES SOBRE DEMANDAS EXISTENTES =====
+    {
+      name: "update_demand_status",
+      description: "Atualiza o estágio de uma demanda existente (ex: mover de design pra aprovação).",
+      input_schema: {
+        type: "object",
+        properties: {
+          demand_title: { type: "string" },
+          new_stage: { type: "string", enum: ["brief","design","copy","client","scheduled","published"] },
+        },
+        required: ["demand_title","new_stage"],
+      },
+    },
+    {
+      name: "approve_post",
+      description: "Aprova um post/demanda que está aguardando aprovação. Move o estágio pra 'scheduled' e registra aprovação.",
+      input_schema: {
+        type: "object",
+        properties: {
+          demand_title: { type: "string", description: "Título da demanda aprovada." },
+          comment: { type: "string", description: "Comentário opcional de aprovação." },
+        },
+        required: ["demand_title"],
+      },
+    },
+    {
+      name: "reject_post",
+      description: "Reprova um post/demanda com feedback. Move estágio de volta pra 'design' ou 'copy' e registra a nota.",
+      input_schema: {
+        type: "object",
+        properties: {
+          demand_title: { type: "string" },
+          reason: { type: "string", description: "Motivo/feedback da reprovação (obrigatorio, vai pra equipe)." },
+          back_to: { type: "string", enum: ["design","copy","brief"], description: "Pra qual estágio voltar. Padrão: design." },
+        },
+        required: ["demand_title","reason"],
+      },
+    },
+    {
+      name: "schedule_post",
+      description: "Agenda um post pronto pra publicação automática no Instagram/Facebook. Demanda precisa estar em estágio 'scheduled' ou 'client' aprovado.",
+      input_schema: {
+        type: "object",
+        properties: {
+          demand_title: { type: "string" },
+          date: { type: "string", description: "YYYY-MM-DD" },
+          time: { type: "string", description: "HH:MM (timezone Sao Paulo)" },
+          networks: { type: "array", items: { type: "string", enum: ["instagram","facebook"] } },
+        },
+        required: ["demand_title","date","time"],
+      },
+    },
+
+    // ===== CONTEUDO / CRIATIVIDADE =====
+    {
+      name: "generate_copy_variations",
+      description: "Gera variações de texto/copy/legenda. Use quando usuário pedir mais opções, variações, alternativas ou reescritas de um texto.",
+      input_schema: {
+        type: "object",
+        properties: {
+          original: { type: "string", description: "Texto original (se o usuário forneceu)." },
+          brief: { type: "string", description: "Descrição do que precisa ser escrito (use quando não tem original)." },
+          count: { type: "number", description: "Quantas variações (padrão 3, max 5)." },
+          tone: { type: "string", enum: ["formal","casual","divertido","persuasivo","inspirador","vendas"] },
+          purpose: { type: "string", enum: ["feed","reels","story","anuncio","email","whatsapp"] },
+        },
+        required: [],
+      },
+    },
+    {
+      name: "generate_image",
+      description: "Gera uma imagem com DALL-E a partir de descrição em texto. Use quando o usuário pedir pra criar/gerar imagem, arte, ilustração, banner, capa.",
+      input_schema: {
+        type: "object",
+        properties: {
+          prompt: { type: "string", description: "Descrição detalhada. Ingles funciona melhor, mas aceita português." },
+          size: { type: "string", enum: ["1024x1024","1024x1792","1792x1024"], description: "1024x1024=quadrado (feed), 1024x1792=vertical (story/reels), 1792x1024=horizontal" },
+          style: { type: "string", enum: ["vivid","natural"] },
+        },
+        required: ["prompt"],
+      },
+    },
+
+
+    // ===== COMUNICAÇÃO =====
+    {
+      name: "reply_comment",
+      description: "Responde um comentário pendente de post no Instagram/Facebook via Comentários IA.",
+      input_schema: {
+        type: "object",
+        properties: {
+          comment_id: { type: "string", description: "ID do comentário (se conhecido)." },
+          comment_text: { type: "string", description: "Texto do comentário original (pra a IA reconhecer qual eh)." },
+          reply: { type: "string", description: "Texto da resposta." },
+          tone: { type: "string", enum: ["formal","casual","divertido","agradecido"] },
+        },
+        required: ["reply"],
+      },
+    },
+    {
+      name: "send_message_to_client",
+      description: "Envia uma mensagem pro chat interno do cliente dentro do UniqueHub (não é WhatsApp nem email).",
+      input_schema: {
+        type: "object",
+        properties: {
+          client_name: { type: "string" },
+          message: { type: "string", description: "Texto da mensagem." },
+        },
+        required: ["client_name","message"],
+      },
+    },
+
+    // ===== MEMORIA =====
+    {
+      name: "save_memory",
+      description: "Salva um fato importante que o usuário quer que você lembre em conversas futuras. Use quando ele disser 'lembra que', 'guarda isso', 'anota que'. Também use quando você perceber um fato útil pra futuras interações.",
+      input_schema: {
+        type: "object",
+        properties: {
+          fact: { type: "string", description: "Fato curto e claro em uma frase (ex: 'Joca Buddies prefere posts coloridos e emoji de cachorro')." },
+          category: { type: "string", enum: ["cliente","preferência","processo","estrategia","geral"] },
+        },
+        required: ["fact"],
+      },
+    },
+    {
+      name: "forget_memory",
+      description: "Apaga uma memória salva. Use quando o usuário pedir pra esquecer algo.",
+      input_schema: {
+        type: "object",
+        properties: {
+          fact: { type: "string", description: "A memória exata (ou parte dela) a esquecer." },
+        },
+        required: ["fact"],
+      },
+    },
+  ];
+}
+
+/** OpenAI tools (function-calling format) */
+function buildOpenAITools(userRole: string) {
+  const claude = buildClaudeTools(userRole);
+  return claude.map((t: any) => ({
+    type: "function",
+    function: {
+      name: t.name,
+      description: t.description,
+      parameters: t.input_schema,
+    },
+  }));
+}
+
+async function getClaudeKey(sb: any) {
+  try {
+    const { data } = await sb.from("app_settings").select("value").eq("key","claude_key").single();
+    return (data?.value || "").toString().trim();
+  } catch { return ""; }
+}
+
+async function getOpenAIKey(sb: any) {
+  // Primeiro tenta env, depois app_settings
+  const envKey = Deno.env.get("OPENAI_KEY");
+  if (envKey) return envKey.trim();
+  try {
+    const { data } = await sb.from("app_settings").select("value").eq("key","openai_key").single();
+    return (data?.value || "").toString().trim();
+  } catch { return ""; }
+}
+
+
+/** Convert agnostic messages to Claude API format */
+function toClaudeMessages(messages: any[]) {
+  return messages.slice(-20).map((m: any) => {
+    const atts = Array.isArray(m.attachments) ? m.attachments : [];
+    if (!atts.length) return { role: m.role, content: m.content || "" };
+    const content: any[] = [];
+    for (const a of atts) {
+      if (a.type === "image" && a.base64 && a.mediaType) {
+        content.push({ type: "image", source: { type: "base64", media_type: a.mediaType, data: a.base64 } });
+      } else if (a.type === "document" && a.base64) {
+        content.push({ type: "document", source: { type: "base64", media_type: a.mediaType || "application/pdf", data: a.base64 } });
+      } else if (a.type === "text" && a.text) {
+        content.push({ type: "text", text: "[Arquivo anexado: " + (a.name || "documento") + "]\n\n" + a.text });
+      }
+    }
+    if (m.content) content.push({ type: "text", text: m.content });
+    return { role: m.role, content };
+  });
+}
+
+/** Convert agnostic messages to OpenAI API format */
+function toOpenAIMessages(messages: any[], systemPrompt: string) {
+  const out: any[] = [{ role: "system", content: systemPrompt }];
+  for (const m of messages.slice(-20)) {
+    const atts = Array.isArray(m.attachments) ? m.attachments : [];
+    if (!atts.length) {
+      out.push({ role: m.role, content: m.content || "" });
+      continue;
+    }
+    const parts: any[] = [];
+    if (m.content) parts.push({ type: "text", text: m.content });
+    for (const a of atts) {
+      if (a.type === "image" && a.base64 && a.mediaType) {
+        parts.push({ type: "image_url", image_url: { url: "data:" + a.mediaType + ";base64," + a.base64 } });
+      } else if (a.type === "text" && a.text) {
+        parts.push({ type: "text", text: "[Arquivo: " + (a.name || "doc") + "]\n\n" + a.text });
+      }
+    }
+    out.push({ role: m.role, content: parts });
+  }
+  return out;
+}
+
+
+/** Convert OpenAI SSE stream to Claude-compatible SSE events */
+function openaiStreamToClaudeSSE(openaiBody: ReadableStream) {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const reader = openaiBody.getReader();
+  let buf = "";
+  const toolCallsBuffer: Record<number, { id: string; name: string; args: string }> = {};
+  let blockIdx = 0;
+
+  return new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: any) => {
+        controller.enqueue(encoder.encode("event: " + event + "\ndata: " + JSON.stringify(data) + "\n\n"));
+      };
+      send("message_start", { type: "message_start", message: { content: [], role: "assistant" } });
+      send("content_block_start", { type: "content_block_start", index: 0, content_block: { type: "text", text: "" } });
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let nl;
+          while ((nl = buf.indexOf("\n")) !== -1) {
+            const line = buf.slice(0, nl).trim();
+            buf = buf.slice(nl + 1);
+            if (!line.startsWith("data: ")) continue;
+            const payload = line.slice(6);
+            if (payload === "[DONE]") continue;
+            try {
+              const ev = JSON.parse(payload);
+              const choice = ev?.choices?.[0];
+              if (!choice) continue;
+              const delta = choice.delta || {};
+              if (typeof delta.content === "string" && delta.content.length) {
+                send("content_block_delta", {
+                  type: "content_block_delta", index: 0,
+                  delta: { type: "text_delta", text: delta.content },
+                });
+              }
+              if (Array.isArray(delta.tool_calls)) {
+                for (const tc of delta.tool_calls) {
+                  const idx = tc.index ?? 0;
+                  if (!toolCallsBuffer[idx]) {
+                    blockIdx++;
+                    toolCallsBuffer[idx] = { id: tc.id || "tool_" + idx, name: tc.function?.name || "", args: "" };
+                    send("content_block_start", {
+                      type: "content_block_start", index: blockIdx,
+                      content_block: { type: "tool_use", id: toolCallsBuffer[idx].id, name: toolCallsBuffer[idx].name, input: {} },
+                    });
+                  }
+                  if (tc.function?.name) toolCallsBuffer[idx].name = tc.function.name;
+                  if (tc.function?.arguments) {
+                    toolCallsBuffer[idx].args += tc.function.arguments;
+                    send("content_block_delta", {
+                      type: "content_block_delta", index: blockIdx,
+                      delta: { type: "input_json_delta", partial_json: tc.function.arguments },
+                    });
+                  }
+                }
+              }
+            } catch { /* skip malformed line */ }
+          }
+        }
+
+        send("content_block_stop", { type: "content_block_stop", index: 0 });
+        for (const idx of Object.keys(toolCallsBuffer)) {
+          send("content_block_stop", { type: "content_block_stop", index: parseInt(idx) + 1 });
+        }
+        send("message_stop", { type: "message_stop" });
+        controller.close();
+      } catch (err) {
+        send("error", { type: "error", message: String(err) });
+        controller.close();
+      }
+    },
+  });
+}
+
+
+/** Execute generate_image action server-side via DALL-E */
+async function executeGenerateImage(sb: any, input: any) {
+  const openaiKey = await getOpenAIKey(sb);
+  if (!openaiKey) return { ok: false, error: "OPENAI_KEY não configurada" };
+
+  const prompt = (input?.prompt || "").toString().trim();
+  if (!prompt) return { ok: false, error: "Prompt vazio" };
+  const size = ["1024x1024","1024x1792","1792x1024"].includes(input?.size) ? input.size : "1024x1024";
+  const style = ["vivid","natural"].includes(input?.style) ? input.style : "vivid";
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Authorization": "Bearer " + openaiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "dall-e-3",
+        prompt,
+        n: 1,
+        size,
+        style,
+        quality: "standard",
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { ok: false, error: "DALL-E " + res.status + ": " + errText.slice(0, 300) };
+    }
+    const data = await res.json();
+    const url = data?.data?.[0]?.url;
+    const revisedPrompt = data?.data?.[0]?.revised_prompt;
+    if (!url) return { ok: false, error: "DALL-E não retornou URL" };
+    return { ok: true, url, revisedPrompt, size, style };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || String(err) };
+  }
+}
+
+/** Execute generate_copy_variations server-side via Claude (mais rápido q deixar frontend pedir de novo) */
+async function executeGenerateCopyVariations(sb: any, input: any) {
+  const claudeKey = await getClaudeKey(sb);
+  if (!claudeKey) return { ok: false, error: "Claude key não configurada" };
+
+  const original = (input?.original || "").toString();
+  const brief = (input?.brief || "").toString();
+  const count = Math.min(Math.max(parseInt(input?.count) || 3, 1), 5);
+  const tone = input?.tone || "casual";
+  const purpose = input?.purpose || "feed";
+
+  let prompt = "Gere " + count + " variações de copy em português brasileiro, tom " + tone + ", pra " + purpose + ".\n\n";
+  if (original) prompt += "TEXTO ORIGINAL:\n" + original + "\n\nReescreva mantendo a ideia mas com palavras diferentes.";
+  else if (brief) prompt += "BRIEF: " + brief + "\n\nCrie " + count + " opções originais.";
+  else return { ok: false, error: "Precisa de original ou brief" };
+  prompt += "\n\nRetorne APENAS um JSON array de strings, sem markdown, sem código, sem explicacao. Ex: [\"opção 1\", \"opção 2\", \"opção 3\"]";
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": claudeKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1500,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    if (!res.ok) return { ok: false, error: "Claude " + res.status };
+    const data = await res.json();
+    const text = data?.content?.[0]?.text || "";
+    try {
+      const cleaned = text.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+      const arr = JSON.parse(cleaned);
+      if (Array.isArray(arr)) return { ok: true, variations: arr.slice(0, count) };
+    } catch {}
+    // fallback: split por linhas numeradas
+    const lines = text.split(/\n/).map((l: string) => l.replace(/^\s*\d+[\.\)]\s*/, "").trim()).filter((l: string) => l.length > 8);
+    return { ok: true, variations: lines.slice(0, count) };
+  } catch (err) {
+    return { ok: false, error: (err as Error).message || String(err) };
+  }
+}
+
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method !== "POST") return json({ error: "POST only" }, 405);
+
+  try {
+    const body = await req.json().catch(() => ({}));
+
+    const sb = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    // ===== MODE: execute_action (server-side) =====
+    // Usado pro frontend pedir execucao de tool que precisa de API key server-only
+    if (body.mode === "execute_action") {
+      const action = body.action;
+      const input = body.input || {};
+      if (action === "generate_image") {
+        const result = await executeGenerateImage(sb, input);
+        return json(result);
+      }
+      if (action === "generate_copy_variations") {
+        const result = await executeGenerateCopyVariations(sb, input);
+        return json(result);
+      }
+      return json({ ok: false, error: "Ação desconhecida: " + action }, 400);
+    }
+
+    // ===== MODE: chat (default) =====
+    const messages = Array.isArray(body.messages) ? body.messages : [];
+    const userRole = body.userRole || "admin";
+    const userName = body.userName || "";
+    const clientName = body.clientName || "";
+    const context = body.context || null;
+    const memories = Array.isArray(body.memories) ? body.memories : [];
+    const anchoredClient = body.anchoredClient || null;
+    const enableActions = !!body.enableActions;
+    const wantStream = body.stream !== false;
+    const provider = body.provider === "openai" ? "openai" : "claude";
+    const claudeModel = body.claudeModel || "claude-sonnet-4-5";
+    const openaiModel = body.openaiModel || "gpt-4o";
+
+    if (!messages.length) return json({ error: "messages required" }, 400);
+
+    const systemPrompt = buildSystemPrompt(userRole, userName, clientName, context, memories, anchoredClient, enableActions);
+
+    // ===== CLAUDE BRANCH =====
+    if (provider === "claude") {
+      const claudeKey = await getClaudeKey(sb);
+      if (!claudeKey) return json({ error: "Claude key não configurada" }, 500);
+
+      const tools = enableActions ? buildClaudeTools(userRole) : [];
+      const apiBody: any = {
+        model: claudeModel,
+        max_tokens: 2000,
+        temperature: 0.5,
+        system: systemPrompt,
+        messages: toClaudeMessages(messages),
+        stream: wantStream,
+      };
+      if (tools.length) apiBody.tools = tools;
+
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": claudeKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        body: JSON.stringify(apiBody),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        return json({ error: "Claude " + res.status + ": " + errText.slice(0, 300) }, 502);
+      }
+
+      if (wantStream) {
+        return new Response(res.body, {
+          headers: {
+            ...CORS,
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+          },
+        });
+      }
+
+      const data = await res.json();
+      let text = "";
+      const toolUses: any[] = [];
+      if (Array.isArray(data?.content)) {
+        for (const c of data.content) {
+          if (c?.type === "text" && typeof c.text === "string") text += c.text;
+          if (c?.type === "tool_use") toolUses.push({ id: c.id, name: c.name, input: c.input });
+        }
+      }
+      return json({ text: text.trim(), toolUses, provider: "claude" });
+    }
+
+
+    // ===== OPENAI BRANCH =====
+    const openaiKey = await getOpenAIKey(sb);
+    if (!openaiKey) return json({ error: "OPENAI_KEY não configurada" }, 500);
+
+    const oaiBody: any = {
+      model: openaiModel,
+      messages: toOpenAIMessages(messages, systemPrompt),
+      max_tokens: 2000,
+      temperature: 0.5,
+      stream: wantStream,
+    };
+    if (enableActions) {
+      const tools = buildOpenAITools(userRole);
+      if (tools.length) oaiBody.tools = tools;
+    }
+
+    const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + openaiKey, "Content-Type": "application/json" },
+      body: JSON.stringify(oaiBody),
+    });
+
+    if (!oaiRes.ok) {
+      const errText = await oaiRes.text();
+      return json({ error: "OpenAI " + oaiRes.status + ": " + errText.slice(0, 400) }, 502);
+    }
+
+    if (wantStream) {
+      const stream = openaiStreamToClaudeSSE(oaiRes.body!);
+      return new Response(stream, {
+        headers: {
+          ...CORS,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "X-Accel-Buffering": "no",
+        },
+      });
+    }
+
+    const data = await oaiRes.json();
+    const msg = data?.choices?.[0]?.message;
+    let text = msg?.content || "";
+    const toolUses: any[] = [];
+    if (Array.isArray(msg?.tool_calls)) {
+      for (const tc of msg.tool_calls) {
+        try { toolUses.push({ id: tc.id, name: tc.function?.name, input: JSON.parse(tc.function?.arguments || "{}") }); } catch {}
+      }
+    }
+    return json({ text: String(text).trim(), toolUses, provider: "openai" });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return json({ error: msg }, 500);
+  }
+});
