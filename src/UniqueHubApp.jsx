@@ -285,6 +285,603 @@ const _metaOAuthCapture = (() => {
 })();
 
 const supabase = SUPA_URL && SUPA_KEY ? createClient(SUPA_URL, SUPA_KEY) : null;
+
+/* ═══════════════════════════════════════════════════════════════════
+   i18n — Reviewer-mode English translation
+   Triggered by ?lang=en in URL or localStorage.uh_lang === "en"
+   Used ONLY for Meta App Review screencast purposes.
+   For agency/client production, language stays Portuguese (pt-BR).
+   ═══════════════════════════════════════════════════════════════════ */
+let _UH_LANG = "pt";
+try {
+  const _u = new URLSearchParams(window.location.search);
+  if (_u.get("lang") === "en") { localStorage.setItem("uh_lang", "en"); _UH_LANG = "en"; }
+  else if (_u.get("lang") === "pt") { localStorage.removeItem("uh_lang"); _UH_LANG = "pt"; }
+  else if (localStorage.getItem("uh_lang") === "en") _UH_LANG = "en";
+} catch {}
+
+const _UH_TRANSLATIONS = {
+  /* Login / auth */
+  "Olá, agência!": "Welcome, agency!",
+  "Olá, cliente!": "Welcome, client!",
+  "Entrar": "Sign in",
+  "E-mail": "Email",
+  "Senha": "Password",
+  "Esqueci minha senha": "Forgot my password",
+  "Criar minha agência grátis": "Create my agency for free",
+  "Já tenho conta": "I already have an account",
+  "Entrar como agência": "Sign in as agency",
+  "Entrar como cliente": "Sign in as client",
+  "Sair": "Sign out",
+  /* Bottom nav */
+  "Início": "Home",
+  "Home": "Home",
+  "Conteúdo": "Content",
+  "Calendário": "Calendar",
+  "Clientes": "Clients",
+  "Equipe": "Team",
+  "Chat": "Chat",
+  "Mais": "More",
+  "Configurações": "Settings",
+  /* Client profile / Social networks */
+  "Redes Sociais": "Social Networks",
+  "Conectar Facebook": "Connect Facebook",
+  "Conectar Instagram": "Connect Instagram",
+  "Conectar Threads": "Connect Threads",
+  "Conectar TikTok": "Connect TikTok",
+  "Conexão automática via Meta": "Automatic connection via Meta",
+  "Conexão direta via Instagram": "Direct connection via Instagram",
+  "Conecte o Facebook com OAuth oficial. Permite publicar e gerenciar a página.": "Connect Facebook with official OAuth. Enables publishing and Page management.",
+  "Conecte o Instagram Business/Creator diretamente. Permite publicar, acessar métricas e gerenciar comentários.": "Connect Instagram Business/Creator directly. Enables publishing, insights and comment management.",
+  "ou conecte manualmente": "or connect manually",
+  "Conectado via Meta": "Connected via Meta",
+  "Conectado": "Connected",
+  "Desconectar": "Disconnect",
+  /* Content / Demands */
+  "Nova demanda": "New demand",
+  "Novo conteúdo": "New content",
+  "Briefing": "Brief",
+  "Design": "Design",
+  "Revisão": "Review",
+  "Cliente": "Client",
+  "Agendado": "Scheduled",
+  "Publicado": "Published",
+  "Em andamento": "In progress",
+  "Aprovar": "Approve",
+  "Aprovado": "Approved",
+  "Rejeitar": "Reject",
+  "Rejeitado": "Rejected",
+  "Pendente": "Pending",
+  "Pendentes": "Pending",
+  "Em análise": "Under review",
+  "Aprovações": "Approvals",
+  "Conteúdos em Produção": "Content in Production",
+  "Agendar": "Schedule",
+  "Agendar publicação": "Schedule publication",
+  "Submeter para aprovação": "Submit for client approval",
+  "Submeter para o cliente": "Submit to client",
+  "Enviar para o cliente": "Send to client",
+  /* Calendar */
+  "Hoje": "Today",
+  "Semana": "Week",
+  "Mês": "Month",
+  /* Inbox */
+  "Caixa de Entrada": "Inbox",
+  "Inbox Social": "Social Inbox",
+  "Comentários": "Comments",
+  "Mensagens": "Messages",
+  "Responder": "Reply",
+  /* Reports */
+  "Relatórios": "Reports",
+  "Relatório": "Report",
+  "Métricas": "Metrics",
+  "Alcance": "Reach",
+  "Impressões": "Impressions",
+  "Engajamento": "Engagement",
+  "Seguidores": "Followers",
+  "Crescimento": "Growth",
+  "Visualizações": "Views",
+  "Curtidas": "Likes",
+  "Reações": "Reactions",
+  /* Common */
+  "Salvar": "Save",
+  "Cancelar": "Cancel",
+  "Buscar": "Search",
+  "Buscar...": "Search...",
+  "Buscar clientes, posts, ideias...": "Search clients, posts, ideas...",
+  "Carregando...": "Loading...",
+  "Sucesso": "Success",
+  "Erro": "Error",
+  "Notificações": "Notifications",
+  /* Agency identity / dashboard */
+  "Olá": "Hello",
+  "Bom dia": "Good morning",
+  "Boa tarde": "Good afternoon",
+  "Boa noite": "Good evening",
+  "Investimento": "Investment",
+  "Receita": "Revenue",
+  "Score": "Score",
+  "ativos": "active",
+  "Tráfego / mês": "Traffic / month",
+  "Aguardando você": "Awaiting you",
+  /* Calendar weekdays */
+  "domingo": "sunday",
+  "segunda": "monday",
+  "terça": "tuesday",
+  "quarta": "wednesday",
+  "quinta": "thursday",
+  "sexta": "friday",
+  "sábado": "saturday",
+  "janeiro": "january",
+  "fevereiro": "february",
+  "março": "march",
+  "abril": "april",
+  "maio": "may",
+  "junho": "june",
+  "julho": "july",
+  "agosto": "august",
+  "setembro": "september",
+  "outubro": "october",
+  "novembro": "november",
+  "dezembro": "december",
+  /* Misc */
+  "compromisso": "appointment",
+  "compromissos": "appointments",
+  "esta semana": "this week",
+  "Cliente atualizado ✓": "Client updated ✓",
+  "Rede atualizada ✓": "Network updated ✓",
+  "Página": "Page",
+  "Páginas": "Pages",
+  "Selecione uma Página": "Select a Page",
+  /* Login extras */
+  "Não tenho conta": "I don't have an account",
+  "Bem-vindo de volta": "Welcome back",
+  "Bem-vindo": "Welcome",
+  "Crie sua agência": "Create your agency",
+  "Crie sua conta": "Create your account",
+  "Continuar": "Continue",
+  "Voltar": "Back",
+  /* Demand stages */
+  "Brief": "Brief",
+  "Copy": "Copy",
+  "Aprovação": "Approval",
+  "Rascunho": "Draft",
+  "Arquivado": "Archived",
+  "Concluído": "Done",
+  "Em produção": "In production",
+  "Em design": "In design",
+  "Em revisão": "In review",
+  "Aguardando cliente": "Awaiting client",
+  /* Common labels */
+  "Nome": "Name",
+  "Telefone": "Phone",
+  "Endereço": "Address",
+  "Site": "Website",
+  "Segmento": "Segment",
+  "Empresa": "Company",
+  "Usuário": "User",
+  "Logo": "Logo",
+  "Logos": "Logos",
+  "Foto": "Photo",
+  "Foto de perfil": "Profile picture",
+  "Total": "Total",
+  "Filtros": "Filters",
+  "Limpar": "Clear",
+  "Aplicar": "Apply",
+  "Confirmar": "Confirm",
+  "Excluir": "Delete",
+  "Editar": "Edit",
+  "Adicionar": "Add",
+  "Remover": "Remove",
+  "Compartilhar": "Share",
+  "Copiar": "Copy",
+  "Copiar link": "Copy link",
+  "Baixar": "Download",
+  "Enviar": "Send",
+  "Postar": "Post",
+  "Publicar": "Publish",
+  "Anterior": "Previous",
+  "Próximo": "Next",
+  "Próximos": "Upcoming",
+  "Próximas": "Upcoming",
+  "Anteriores": "Previous",
+  "Recentes": "Recent",
+  "Todos": "All",
+  "Todas": "All",
+  "Nenhum": "None",
+  "Nenhuma": "None",
+  "Ver mais": "See more",
+  "Ver tudo": "See all",
+  "Ver detalhes": "View details",
+  "Ver todos": "See all",
+  "Ver todas": "See all",
+  /* Calendar */
+  "Janeiro": "January",
+  "Fevereiro": "February",
+  "Março": "March",
+  "Abril": "April",
+  "Maio": "May",
+  "Junho": "June",
+  "Julho": "July",
+  "Agosto": "August",
+  "Setembro": "September",
+  "Outubro": "October",
+  "Novembro": "November",
+  "Dezembro": "December",
+  "Dom": "Sun",
+  "Seg": "Mon",
+  "Ter": "Tue",
+  "Qua": "Wed",
+  "Qui": "Thu",
+  "Sex": "Fri",
+  "Sáb": "Sat",
+  "Hoje é": "Today is",
+  /* Notifications */
+  "Não há notificações": "No notifications",
+  "Marcar como lido": "Mark as read",
+  /* Reports - extra */
+  "Performance": "Performance",
+  "Crescimento mensal": "Monthly growth",
+  "Posts mais engajados": "Top performing posts",
+  "Visão geral": "Overview",
+  "Resumo": "Summary",
+  /* Inbox - extra */
+  "Sem mensagens": "No messages",
+  "Nova mensagem": "New message",
+  "Comentário": "Comment",
+  "Direct": "Direct",
+  "DM": "DM",
+  /* Content extra */
+  "Tipo de conteúdo": "Content type",
+  "Carrossel": "Carousel",
+  "Reel": "Reel",
+  "Story": "Story",
+  "Imagem única": "Single image",
+  "Vídeo": "Video",
+  "Foto única": "Single photo",
+  "Legenda": "Caption",
+  "Hashtags": "Hashtags",
+  "Data e hora": "Date & time",
+  "Data de publicação": "Publishing date",
+  "Mídia": "Media",
+  "Anexar mídia": "Attach media",
+  "Adicionar imagem": "Add image",
+  "Adicionar vídeo": "Add video",
+  /* Banking / Plans (mostly avoid in demo but just in case) */
+  "Plano": "Plan",
+  "Planos": "Plans",
+  "Mensal": "Monthly",
+  "Anual": "Yearly",
+  "Trial": "Trial",
+  "Faturas": "Invoices",
+  "Pagamento": "Payment",
+  "Vencimento": "Due date",
+  "Pago": "Paid",
+  /* Status / states */
+  "Ativo": "Active",
+  "Inativo": "Inactive",
+  "Online": "Online",
+  "Offline": "Offline",
+  "Conectando...": "Connecting...",
+  "Desconectado": "Disconnected",
+  /* Misc UI strings */
+  "Olá!": "Hello!",
+  "Bom dia!": "Good morning!",
+  "Boa tarde!": "Good afternoon!",
+  "Boa noite!": "Good evening!",
+  "Adicione um cliente": "Add a client",
+  "Buscar cliente": "Search client",
+  "Ver perfil": "View profile",
+  "Salvar alterações": "Save changes",
+  "Atualizar": "Update",
+  "agência": "agency",
+  "Agência": "Agency",
+  "minha agência": "my agency",
+  "Minha agência": "My agency",
+  /* ──────── LOGIN PAGE (English for Meta App Review screencast) ──────── */
+  "Colaborador": "Team member",
+  "Sou Cliente": "I'm a Client",
+  "Acesse sua conta": "Sign in to your account",
+  "Entre com seu e-mail e senha para continuar": "Enter your email and password to continue",
+  "E-mail": "Email",
+  "Senha": "Password",
+  "Esqueci a senha": "Forgot password",
+  "Entrar na plataforma": "Sign in",
+  "Entrar": "Sign in",
+  "É colaborador e ainda não tem conta?": "Team member without an account?",
+  "Cadastre-se aqui": "Sign up here",
+  "É dono de agência?": "Are you an agency owner?",
+  "Criar minha agência grátis": "Create my agency for free",
+  "Criar minha agência": "Create my agency",
+  "Toda sua agência.": "Your entire agency.",
+  "Um só lugar.": "In one place.",
+  "Agende posts, acompanhe métricas, aprove conteúdos, gere relatórios, gerencie equipes e muito mais.": "Schedule posts, track metrics, approve content, generate reports, manage teams and much more.",
+  "AGÊNCIAS": "AGENCIES",
+  "CLIENTES": "CLIENTS",
+  "POSTS": "POSTS",
+  "ou": "or",
+  "© 2026 Unique Marketing 360": "© 2026 Unique Marketing 360",
+
+  /* ──────── HOME / DASHBOARD ──────── */
+  "Home": "Home",
+  "Conteúdo": "Content",
+  "Conteúdos": "Content",
+  "Olá, ": "Hello, ",
+  "Compromissos da semana": "This week's events",
+  "compromisso": "event",
+  "compromissos": "events",
+  "esta semana": "this week",
+  "Hoje é": "Today is",
+  "Investimento": "Investment",
+  "Score": "Score",
+  "Check-in": "Check-in",
+  "Comunicados": "News",
+  "Assistente IA": "AI Assistant",
+  "Assistente": "Assistant",
+  "Falar com equipe": "Chat with team",
+  "Mostrar valores": "Show values",
+  "Ocultar valores": "Hide values",
+
+  /* ──────── CLIENTS LIST ──────── */
+  "Lista de clientes": "Clients list",
+  "Adicionar cliente": "Add client",
+  "Novo cliente": "New client",
+  "Buscar cliente": "Search client",
+  "Buscar clientes": "Search clients",
+  "Total de clientes": "Total clients",
+  "Cliente ativo": "Active client",
+  "Clientes ativos": "Active clients",
+  "Sem clientes": "No clients",
+  "Visão geral": "Overview",
+  "Empresa": "Company",
+  "Nome": "Name",
+  "Nome da empresa": "Company name",
+  "Telefone": "Phone",
+  "Endereço": "Address",
+  "Site": "Website",
+  "Logo": "Logo",
+  "Salvar cliente": "Save client",
+  "Excluir cliente": "Delete client",
+
+  /* ──────── CLIENT PROFILE — SOCIAL NETWORKS TAB ──────── */
+  "Conectar Facebook automaticamente": "Connect Facebook automatically",
+  "Conexão oficial via Meta. Permite publicar e gerenciar a página do Facebook.": "Official connection via Meta. Enables publishing and Facebook Page management.",
+  "Conectar Instagram diretamente": "Connect Instagram directly",
+  "Conexão direta com Instagram Business/Creator. Permite publicar, acessar métricas e gerenciar comentários.": "Direct connection with Instagram Business/Creator. Enables publishing, insights and comment management.",
+  "Conectar manualmente": "Connect manually",
+  "Conta conectada": "Account connected",
+  "Conta": "Account",
+  "Selecione uma página": "Select a Page",
+  "Páginas disponíveis": "Available Pages",
+  "Página do Facebook": "Facebook Page",
+  "Conta do Instagram": "Instagram account",
+  "Threads": "Threads",
+  "TikTok": "TikTok",
+  "Tem certeza que quer desconectar?": "Are you sure you want to disconnect?",
+
+  /* ──────── CONTENT / DEMANDS ──────── */
+  "Criar nova demanda": "Create new demand",
+  "Criar conteúdo": "Create content",
+  "Criar novo": "Create new",
+  "Título": "Title",
+  "Descrição": "Description",
+  "Tipo de conteúdo": "Content type",
+  "Imagem única": "Single image",
+  "Carrossel": "Carousel",
+  "Vídeo": "Video",
+  "Reels": "Reels",
+  "Story": "Story",
+  "Stories": "Stories",
+  "Post": "Post",
+  "Legenda": "Caption",
+  "Fazer upload": "Upload",
+  "Mídia": "Media",
+  "Mídias": "Media",
+  "Plataforma": "Platform",
+  "Plataformas": "Platforms",
+  "Data de publicação": "Publish date",
+  "Data agendada": "Scheduled date",
+  "Hora": "Time",
+  "Cliente aprovou": "Client approved",
+  "Aguardando aprovação": "Pending approval",
+  "Aguardando cliente": "Waiting for client",
+  "Pronto para publicar": "Ready to publish",
+  "Publicar agora": "Publish now",
+  "Publicar": "Publish",
+  "Publicado com sucesso": "Successfully published",
+  "Falha ao publicar": "Failed to publish",
+  "Etapa": "Stage",
+  "Próxima etapa": "Next stage",
+  "Voltar etapa": "Previous stage",
+
+  /* ──────── CALENDAR ──────── */
+  "Calendário editorial": "Editorial calendar",
+  "Calendário de conteúdo": "Content calendar",
+  "Próximos posts": "Upcoming posts",
+  "Posts publicados": "Published posts",
+  "Posts agendados": "Scheduled posts",
+  "Janeiro": "January",
+  "Fevereiro": "February",
+  "Março": "March",
+  "Abril": "April",
+  "Maio": "May",
+  "Junho": "June",
+  "Julho": "July",
+  "Agosto": "August",
+  "Setembro": "September",
+  "Outubro": "October",
+  "Novembro": "November",
+  "Dezembro": "December",
+  "Janeiro de": "January of",
+  "Fevereiro de": "February of",
+
+  /* ──────── INBOX ──────── */
+  "Mensagens diretas": "Direct messages",
+  "DMs": "DMs",
+  "Comentário": "Comment",
+  "Conversa": "Conversation",
+  "Conversas": "Conversations",
+  "Nova mensagem": "New message",
+  "Resposta": "Reply",
+  "Sem conversas": "No conversations",
+  "Sem comentários": "No comments",
+
+  /* ──────── REPORTS / INSIGHTS ──────── */
+  "Relatório de performance": "Performance report",
+  "Métricas da página": "Page metrics",
+  "Métricas dos posts": "Post metrics",
+  "Top posts": "Top posts",
+  "Posts com melhor desempenho": "Top performing posts",
+  "Período": "Period",
+  "Últimos 7 dias": "Last 7 days",
+  "Últimos 30 dias": "Last 30 days",
+  "Últimos 90 dias": "Last 90 days",
+  "Total de seguidores": "Total followers",
+  "Novos seguidores": "New followers",
+  "Total de impressões": "Total impressions",
+  "Total de alcance": "Total reach",
+  "Taxa de engajamento": "Engagement rate",
+  "Cliques": "Clicks",
+  "Compartilhamentos": "Shares",
+  "Salvamentos": "Saves",
+  "Exportar PDF": "Export PDF",
+  "Exportar relatório": "Export report",
+  "Baixar": "Download",
+
+  /* ──────── BUSINESS MANAGER ──────── */
+  "Ativos do cliente": "Client assets",
+  "Gerenciador de Negócios": "Business Manager",
+  "Conta de anúncios": "Ad Account",
+  "Contas de anúncios": "Ad Accounts",
+  "Páginas gerenciadas": "Managed Pages",
+  "Portfólio empresarial": "Business portfolio",
+
+  /* ──────── COMMON UI ──────── */
+  "Voltar": "Back",
+  "Próximo": "Next",
+  "Anterior": "Previous",
+  "Continuar": "Continue",
+  "Confirmar": "Confirm",
+  "Sair": "Sign out",
+  "Sair da conta": "Sign out",
+  "Salvar e continuar": "Save and continue",
+  "Selecionar": "Select",
+  "Selecionado": "Selected",
+  "Editar": "Edit",
+  "Excluir": "Delete",
+  "Remover": "Remove",
+  "Adicionar": "Add",
+  "Detalhes": "Details",
+  "Mais informações": "More information",
+  "Visualizar": "View",
+  "Visualizar post": "View post",
+  "Abrir post": "Open post",
+  "Copiar link": "Copy link",
+  "Copiado": "Copied",
+  "Filtrar": "Filter",
+  "Filtros": "Filters",
+  "Limpar filtros": "Clear filters",
+  "Ordenar": "Sort",
+  "Mais recentes": "Most recent",
+  "Mais antigos": "Oldest",
+};
+
+const t = (s) => {
+  if (_UH_LANG !== "en" || !s) return s;
+  return _UH_TRANSLATIONS[s] || s;
+};
+
+/* Allow runtime toggle for testing */
+if (typeof window !== "undefined") {
+  window.uhSetLang = (lang) => {
+    if (lang === "en") { localStorage.setItem("uh_lang", "en"); }
+    else { localStorage.removeItem("uh_lang"); }
+    window.location.reload();
+  };
+}
+
+/* DOM-based auto-translator — reviewer mode only.
+   Walks the DOM and replaces Portuguese text nodes with English equivalents.
+   Activated when ?lang=en is present. Re-runs on DOM mutations.
+   Has minimal performance impact when lang=pt (early-return). */
+if (typeof window !== "undefined" && _UH_LANG === "en") {
+  const _translateNode = (node) => {
+    if (!node) return;
+    if (node.nodeType === 3) { /* text node */
+      const txt = node.nodeValue;
+      if (!txt) return;
+      const trimmed = txt.trim();
+      if (!trimmed) return;
+      if (_UH_TRANSLATIONS[trimmed]) {
+        node.nodeValue = txt.replace(trimmed, _UH_TRANSLATIONS[trimmed]);
+      }
+    } else if (node.nodeType === 1) { /* element */
+      /* Translate placeholders */
+      if (node.placeholder && _UH_TRANSLATIONS[node.placeholder]) {
+        node.placeholder = _UH_TRANSLATIONS[node.placeholder];
+      }
+      /* Translate title attribute */
+      if (node.title && _UH_TRANSLATIONS[node.title]) {
+        node.title = _UH_TRANSLATIONS[node.title];
+      }
+      /* Translate aria-label */
+      const al = node.getAttribute && node.getAttribute("aria-label");
+      if (al && _UH_TRANSLATIONS[al]) {
+        node.setAttribute("aria-label", _UH_TRANSLATIONS[al]);
+      }
+      /* Recurse children */
+      for (let i = 0; i < node.childNodes.length; i++) {
+        _translateNode(node.childNodes[i]);
+      }
+    }
+  };
+  const _runTranslation = () => {
+    if (document.body) _translateNode(document.body);
+    /* Also translate document title */
+    if (_UH_TRANSLATIONS[document.title]) document.title = _UH_TRANSLATIONS[document.title];
+  };
+  /* Initial run when DOM is ready */
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", _runTranslation);
+  } else {
+    setTimeout(_runTranslation, 0);
+  }
+  /* Watch for new content (React renders, route changes, etc) */
+  const _observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      for (const n of m.addedNodes) _translateNode(n);
+      if (m.type === "characterData") _translateNode(m.target);
+      if (m.type === "attributes" && m.target) {
+        const t2 = m.target;
+        if (m.attributeName === "placeholder" && t2.placeholder && _UH_TRANSLATIONS[t2.placeholder]) {
+          t2.placeholder = _UH_TRANSLATIONS[t2.placeholder];
+        }
+      }
+    }
+  });
+  if (typeof MutationObserver !== "undefined") {
+    const startObs = () => {
+      if (document.body) {
+        _observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["placeholder", "title", "aria-label"] });
+      } else {
+        setTimeout(startObs, 50);
+      }
+    };
+    startObs();
+  }
+  /* Visual indicator badge for reviewer */
+  setTimeout(() => {
+    if (document.body && !document.getElementById("uh-lang-badge")) {
+      const b = document.createElement("div");
+      b.id = "uh-lang-badge";
+      b.textContent = "EN (review mode)";
+      b.style.cssText = "position:fixed;bottom:8px;left:8px;z-index:99999;background:rgba(13,17,23,0.85);color:#BBF246;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;font-family:monospace;letter-spacing:0.5px;pointer-events:none;backdrop-filter:blur(8px);";
+      document.body.appendChild(b);
+    }
+  }, 500);
+}
+
+
 let _currentOrgId = null; /* Module-level org ID for use in top-level supabase helpers */
 let _currentOrgPlan = "escala"; /* Module-level org plan — defaults to escala for Unique Marketing */
 let _isSuperAdmin = false; /* true if user belongs to Unique Marketing org */
@@ -6289,7 +6886,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o Facebook com OAuth oficial. Permite publicar e gerenciar a página.</p>
               <button onClick={() => { if (!sel?.supaId && !sel?.id) { showToast("Salve o cliente primeiro"); return; } startMetaOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"#1877F2", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M24 12c0-6.627-5.373-12-12-12S0 5.373 0 12c0 5.99 4.388 10.954 10.125 11.854V15.47H7.078V12h3.047V9.356c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.234 2.686.234v2.953H15.83c-1.491 0-1.956.925-1.956 1.875V12h3.328l-.532 3.469h-2.796v8.385C19.612 22.954 24 17.99 24 12z"/></svg>
-                Conectar Facebook
+                {t("Conectar Facebook")}
               </button>
             </div>
           </Card>
@@ -6308,7 +6905,7 @@ function ClientsPage({ onBack, onNavigate, clients: propClients, setClients: pro
               <p style={{ fontSize:11, color:B.muted, marginBottom:12, lineHeight:1.5 }}>Conecte o Instagram Business/Creator diretamente. Permite publicar, acessar métricas e gerenciar comentários.</p>
               <button onClick={() => { if (!sel?.supaId && !sel?.id) { showToast("Salve o cliente primeiro"); return; } startInstagramOAuth(sel.supaId || sel.id); }} style={{ width:"100%", padding:"14px 0", borderRadius:14, background:"linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", border:"none", cursor:"pointer", fontFamily:"inherit", fontSize:14, fontWeight:700, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
-                Conectar Instagram
+                {t("Conectar Instagram")}
               </button>
             </div>
           </Card>
