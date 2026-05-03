@@ -4029,8 +4029,14 @@ function SubscriptionLock({ orgId, user, status, onCheckout, onLogout }) {
     } catch (e) { alert("Erro: " + (e?.message || "falha")); setLoadingPlan(null); }
   };
 
-  return (
-    <div style={{ position:"fixed", inset:0, zIndex:9999, background:"#0D1117", overflow:"auto", display:"flex", flexDirection:"column" }}>
+  /* Add class on documentElement when lock is active so we can hide navbar via CSS */
+  React.useEffect(() => {
+    document.documentElement.classList.add("uh-locked");
+    return () => { document.documentElement.classList.remove("uh-locked"); };
+  }, []);
+
+  const lockJSX = (
+    <div className="uh-lock-overlay" style={{ position:"fixed", inset:0, zIndex:2147483647, background:"#0D1117", overflow:"auto", display:"flex", flexDirection:"column" }}>
       <style>{`
         @keyframes lockCardUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
         @keyframes lockLogoIn{from{transform:translateY(-16px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -4039,6 +4045,9 @@ function SubscriptionLock({ orgId, user, status, onCheckout, onLogout }) {
         .lock-plan{transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease}
         .lock-plan:hover{transform:translateY(-4px)}
         .lock-toggle-btn{transition:all .18s cubic-bezier(.4,0,.2,1)}
+        /* Esconde navbar e qualquer UI flutuante quando lock esta ativo */
+        html.uh-locked .bnav,
+        html.uh-locked nav.bnav { display:none !important; visibility:hidden !important; }
       `}</style>
 
       {/* Header dark com logo */}
