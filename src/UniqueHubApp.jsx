@@ -532,6 +532,53 @@ const _proxyR2Quick = async (supaUrl, fileName, contentType) => {
   } catch { return supaUrl; }
 };
 
+/* ── Helper: detecta HEVC/H.265 client-side via byte sniffing nos primeiros 5MB.
+   Procura pelos FourCC "hvc1", "hev1" ou "hvcC" no MP4/MOV header. Detecção
+   funciona em ~95% dos casos: false positives são raros (sem custo extra além de
+   uma transcoda desnecessária); false negatives são possíveis se o moov estiver
+   no fim do arquivo (raro pra vídeos novos do iPhone). */
+const _isHEVCVideo = async (file) => {
+  if (!file?.type?.startsWith?.("video/")) return false;
+  try {
+    const slice = file.slice ? file.slice(0, 5 * 1024 * 1024) : file;
+    const buf = await slice.arrayBuffer();
+    const v = new Uint8Array(buf);
+    /* Procura FourCC "hvc1"=0x68766331, "hev1"=0x68657631, "hvcC"=0x68766343 */
+    for (let i = 0, n = v.length - 4; i < n; i++) {
+      if (v[i] !== 0x68) continue;
+      const b1 = v[i+1], b2 = v[i+2], b3 = v[i+3];
+      if (b1 === 0x76 && b2 === 0x63 && (b3 === 0x31 || b3 === 0x43)) return true; /* hvc1 / hvcC */
+      if (b1 === 0x65 && b2 === 0x76 && b3 === 0x31) return true; /* hev1 */
+    }
+    return false;
+  } catch { return false; }
+};
+
+/* ── Helper: chama edge function transcode-video se file for HEVC.
+   Retorna URL convertida (H.264) no R2 OU URL original se transcoda não for
+   necessária / falhar (gracioso). Mostra toast de progresso opcional. */
+const _transcodeIfHEVC = async (r2Url, fileName, file, onProgress) => {
+  if (!r2Url || !file) return r2Url;
+  const isHEVC = await _isHEVCVideo(file);
+  if (!isHEVC) return r2Url;
+  console.log("[transcode] HEVC detectado, convertendo:", fileName);
+  if (onProgress) onProgress("Convertendo vídeo (HEVC → H.264)... pode levar até 1 minuto");
+  try {
+    const r = await fetch(`${SUPA_URL}/functions/v1/transcode-video`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceUrl: r2Url, fileName: fileName || "video.mp4" }),
+    });
+    const d = await r.json();
+    if (r.ok && d?.publicUrl) {
+      console.log(`[transcode] OK em ${d.elapsedSec}s →`, d.publicUrl);
+      return d.publicUrl;
+    }
+    console.warn("[transcode] falhou:", d?.error || r.status);
+  } catch (e) { console.warn("[transcode] exception:", e?.message); }
+  return r2Url; /* fallback gracioso */
+};
+
 /* ── Supabase Storage: compress + upload files for demands ── */
 const compressImage = (file, maxWidth = 1200, quality = 0.75) => {
   return new Promise(async (resolve) => {
@@ -681,7 +728,9 @@ const supaUploadFile = async (file, demandId) => {
           const ok = await xhrUpload(r2Data.signedUrl, compressed, ct);
           if (ok) {
             console.log("[R2] upload OK:", r2Data.publicUrl);
-            return { name: file.name, path: r2Data.key, url: r2Data.publicUrl, size: compressed.size, type: compressed.type || file.type, storage: "r2" };
+            /* Transcode se vídeo HEVC (Instagram não aceita H.265) */
+            const finalUrl = await _transcodeIfHEVC(r2Data.publicUrl, safeName, isVideo ? file : null, null);
+            return { name: file.name, path: r2Data.key, url: finalUrl, size: compressed.size, type: compressed.type || file.type, storage: finalUrl !== r2Data.publicUrl ? "r2-transcoded" : "r2" };
           }
           console.error("[R2] XHR upload FAILED");
         } else {
@@ -714,6 +763,11 @@ const supaUploadFile = async (file, demandId) => {
         else console.warn("[Upload→R2] proxy fail, keeping Supabase:", r2Data?.error);
       }
     } catch (proxyErr) { console.warn("[Upload→R2] proxy exception, keeping Supabase:", proxyErr.message); }
+    /* Transcode se vídeo HEVC */
+    if (isVideo) {
+      const transUrl = await _transcodeIfHEVC(finalUrl, safeName, file, null);
+      if (transUrl !== finalUrl) { finalUrl = transUrl; finalStorage = "r2-transcoded"; }
+    }
     return { name: file.name, path, url: finalUrl, size: compressed.size, type: compressed.type || file.type, storage: finalStorage, supabasePath: path };
   } catch (e) { console.error("Upload catch:", e); return { error: e.message }; }
 };
@@ -1450,7 +1504,11 @@ const uploadToStorage = async (file, folder = "quick-publish") => {
         if (r2Data.signedUrl) {
           const ct = processed.type || "application/octet-stream";
           const ok = await xhrUpload(r2Data.signedUrl, processed, ct);
-          if (ok) { console.log("R2 upload OK (quick):", r2Data.publicUrl); return r2Data.publicUrl; }
+          if (ok) {
+            console.log("R2 upload OK (quick):", r2Data.publicUrl);
+            const finalUrl = isVideo ? await _transcodeIfHEVC(r2Data.publicUrl, safeName, file, null) : r2Data.publicUrl;
+            return finalUrl;
+          }
           console.warn("R2 direct upload failed");
         }
       } catch(r2Err) { console.warn("R2 error (quick), falling back:", r2Err); }
@@ -1464,6 +1522,7 @@ const uploadToStorage = async (file, folder = "quick-publish") => {
     const supaUrl = pub?.publicUrl || null;
     if (!supaUrl) return null;
     /* Proxy pra R2 logo apos upload */
+    let finalUrl = supaUrl;
     try {
       const r2Resp = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
         method: "POST",
@@ -1471,9 +1530,11 @@ const uploadToStorage = async (file, folder = "quick-publish") => {
         body: JSON.stringify({ fileName: safeName, contentType: processed.type || "application/octet-stream", sourceUrl: supaUrl }),
       });
       const r2Data = await r2Resp.json();
-      if (r2Data?.publicUrl) return r2Data.publicUrl;
+      if (r2Data?.publicUrl) finalUrl = r2Data.publicUrl;
     } catch {}
-    return supaUrl;
+    /* Transcode se HEVC */
+    if (isVideo) finalUrl = await _transcodeIfHEVC(finalUrl, safeName, file, null);
+    return finalUrl;
   } catch(e) { console.error("uploadToStorage:", e); return null; }
 };
 
@@ -12589,7 +12650,7 @@ REGRAS TÉCNICAS:
                 <div style={{display:"flex",gap:2,margin:"10px 0 8px"}}>{stgs.map((s,i)=><div key={s} style={{flex:1,height:4,borderRadius:2,background:i<=sIdx?(STAGE_CFG[s]?.c||B.accent):`${B.muted}15`}}/>)}</div>
                 {d.stage==="idea"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>IDEIA</p><textarea value={d.steps?.idea?.text||""} onChange={e=>updStep("idea",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Descreva a ideia..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
                 {d.stage==="briefing"&&<div style={{marginBottom:8}}>{d.steps?.idea?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.idea.c}08`,border:`1px solid ${STAGE_CFG.idea.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.idea.c}}>{"💡"} Ideia:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.idea.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>BRIEFING</p><textarea value={d.steps?.briefing?.text||""} onChange={e=>updStep("briefing",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Instruções para o designer..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/></div>}
-                {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>CRIATIVO{(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?" — Enviar vídeo":" — Enviar arte"}</p>{(d.steps?.design?.files||[]).map((f,fi)=>{const isImg=f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"");const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink||"#EC4899"}06`,border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink||"#EC4899")}15`,marginBottom:4}}>{isImg?<SmartImage src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}} alt=""/>:isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"📷"} {(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"Enviar vídeo":"Enviar arquivo"}<input type="file" accept={(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"video/*":"image/*,video/*,.pdf,.heic,.heif"} style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;showToast("Comprimindo...");const compressed=await compressImage(file);showToast("Enviando...");const safeName=compressed.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+safeName;const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const finalUrl=await _proxyR2Quick(u.publicUrl,safeName,compressed.type);const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:finalUrl,path}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro");}}/></label></div>}
+                {d.stage==="design"&&<div style={{marginBottom:8}}>{d.steps?.briefing?.text&&<div style={{padding:8,borderRadius:8,background:`${STAGE_CFG.briefing.c}08`,border:`1px solid ${STAGE_CFG.briefing.c}15`,marginBottom:6}}><p style={{fontSize:8,fontWeight:700,color:STAGE_CFG.briefing.c}}>{"📋"} Briefing:</p><p style={{fontSize:10,lineHeight:1.4}}>{d.steps.briefing.text}</p></div>}<p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>CRIATIVO{(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?" — Enviar vídeo":" — Enviar arte"}</p>{(d.steps?.design?.files||[]).map((f,fi)=>{const isImg=f.url&&/\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name||"");const isVid=f.url&&/\.(mp4|mov|webm|avi)$/i.test(f.name||"");return <div key={fi} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 8px",borderRadius:8,background:isVid?`${B.blue||"#3B82F6"}06`:`${B.pink||"#EC4899"}06`,border:`1px solid ${isVid?(B.blue||"#3B82F6"):(B.pink||"#EC4899")}15`,marginBottom:4}}>{isImg?<SmartImage src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}} alt=""/>:isVid?<video src={f.url} style={{width:40,height:40,borderRadius:6,objectFit:"cover"}}/>:<span style={{fontSize:10}}>{"📎"}</span>}<span style={{fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name||"arquivo"}</span></div>})}<label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"10px",borderRadius:10,border:`2px dashed ${B.border}`,cursor:"pointer",fontSize:10,fontWeight:600,color:B.muted}}>{"📷"} {(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"Enviar vídeo":"Enviar arquivo"}<input type="file" accept={(d.format==="Reels"||d.format==="Vídeo"||d.format==="Shorts")?"video/*":"image/*,video/*,.pdf,.heic,.heif"} style={{display:"none"}} onChange={async(e)=>{const file=e.target.files?.[0];if(!file||!supabase)return;const isVid=file.type?.startsWith("video/");isVid?showToast("Enviando vídeo..."):showToast("Comprimindo...");const compressed=isVid?file:await compressImage(file);if(!isVid)showToast("Enviando...");const safeName=compressed.name.replace(/[^a-zA-Z0-9._-]/g,"_");const path="demands/"+(d.supaId||d.id)+"/design/"+Date.now()+"_"+safeName;const{error:er}=await supabase.storage.from("demand-files").upload(path,compressed,{upsert:true,cacheControl:"3600",contentType:compressed.type});if(!er){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);let finalUrl=await _proxyR2Quick(u.publicUrl,safeName,compressed.type);if(isVid){showToast("Verificando codec...");const transUrl=await _transcodeIfHEVC(finalUrl,safeName,file,(msg)=>showToast(msg));if(transUrl!==finalUrl){finalUrl=transUrl;showToast("Vídeo convertido ✓");}}const nf=[...(d.steps?.design?.files||[]),{name:file.name,url:finalUrl,path}];updStep("design",{files:nf,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});showToast("Enviado ✓");}else showToast("Erro");}}/></label></div>}
                                 {d.stage==="caption"&&d.format!=="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><textarea value={d.steps?.caption?.text||""} onChange={e=>updStep("caption",{text:e.target.value,by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})})} placeholder="Escreva a legenda..." className="tinput" style={{fontSize:11,minHeight:60,resize:"vertical"}}/><input value={d.steps?.caption?.hashtags||""} onChange={e=>updStep("caption",{...d.steps?.caption,hashtags:e.target.value})} placeholder="#hashtags" className="tinput" style={{fontSize:10,marginTop:4}}/></div>}
                 {d.stage==="caption"&&d.format==="Stories"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>LEGENDA</p><div style={{padding:"16px 12px",borderRadius:10,background:(B.orange||"#F59E0B")+"06",border:"1.5px dashed "+(B.orange||"#F59E0B")+"30",textAlign:"center"}}><p style={{fontSize:11,fontWeight:700,color:B.orange||"#F59E0B"}}>🔒 Stories não suporta legenda</p><p style={{fontSize:9,color:B.muted,marginTop:4}}>Texto vai direto na arte. Avance para revisão.</p></div></div>}
                 {d.stage==="review"&&<div style={{marginBottom:8}}><p style={{fontSize:9,fontWeight:700,color:B.muted,marginBottom:4}}>REVISÃO</p><p style={{fontSize:10,color:B.text}}>Verifique legenda, arte e informações.</p></div>}
@@ -12794,7 +12855,7 @@ REGRAS TÉCNICAS:
                       const textFields=["idea","briefing","copy","caption","script","review"];
                       const fileFields=["design"];
                       const inlineUpdate=(data)=>{const ns={...(d.steps||{}),[stageKey]:{...(d.steps?.[stageKey]||{}),...data}};setDemands(p=>p.map(x=>x.id===d.id?{...x,steps:ns}:x));if(d.supaId)supaUpdateDemand(d.supaId,{steps:ns});};
-                      const handleFiles=async(e)=>{const files=Array.from(e.target.files||[]);if(!files.length)return;const uploaded=[];for(const f of files){const path=`demands/${d.supaId||d.id}/${stageKey}/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);const finalUrl=await _proxyR2Quick(u.publicUrl,f.name,f.type);uploaded.push({name:f.name,url:finalUrl,path});}}if(uploaded.length)inlineUpdate({files:[...stepFiles,...uploaded],by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});};
+                      const handleFiles=async(e)=>{const files=Array.from(e.target.files||[]);if(!files.length)return;const uploaded=[];for(const f of files){const path=`demands/${d.supaId||d.id}/${stageKey}/${Date.now()}_${f.name}`;const{error}=await supabase.storage.from("demand-files").upload(path,f,{upsert:true,cacheControl:"3600"});if(!error){const{data:u}=supabase.storage.from("demand-files").getPublicUrl(path);let finalUrl=await _proxyR2Quick(u.publicUrl,f.name,f.type);if(f.type?.startsWith("video/")){const transUrl=await _transcodeIfHEVC(finalUrl,f.name,f,(msg)=>showToast(msg));if(transUrl!==finalUrl)finalUrl=transUrl;}uploaded.push({name:f.name,url:finalUrl,path});}}if(uploaded.length)inlineUpdate({files:[...stepFiles,...uploaded],by:user?.name||"",date:new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})});};
                       return(
                         <div key={stageKey} style={{marginBottom:6,borderRadius:12,border:`1px solid ${active?cfg.c:done?`${cfg.c}30`:B.border}`,background:active?`${cfg.c}06`:"transparent",padding:"8px 10px",opacity:future?0.4:1}}>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
