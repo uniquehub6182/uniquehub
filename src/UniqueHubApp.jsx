@@ -31628,11 +31628,6 @@ ${uiPrefs.headerStyle==="accent"?`.pg>div:first-child{background:${B.accent}10;b
 ${isDesktop?`html.uh-desktop .content>div:not(.desktop-dash):not(.content-wide){max-width:860px;margin-left:auto;margin-right:auto;padding:0 20px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}
 html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;margin-right:auto;padding:0 24px!important;box-sizing:border-box;position:relative!important;inset:auto!important;min-height:auto}`:""}
 ` }} />
-      <TrialBanner orgId={_currentOrgId} user={user} onCheckout={async () => {
-        const { error } = await openStripeCheckout(_currentOrgId, user?.email, user?.name);
-        if (error) alert("Erro ao abrir checkout: " + error);
-      }} />
-      <BillingGate user={user} orgId={_currentOrgId} onLogout={onLogout}>
       <div className="content" ref={mainContentRef}>
         {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
@@ -31664,7 +31659,6 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         {sub === "team" && <TeamPage onBack={() => setSub(null)} user={user} onTeamChange={() => { supaLoadTeam().then(rows => { if(rows) setSharedTeam(rows); }); }} />}
         {!sub && tab === "chat" && <ChatPage user={user} chatTermsOk={chatTermsOk} setChatTermsOk={setChatTermsOk} openWithUserId={chatOpenWith} onOpenWithConsumed={() => setChatOpenWith(null)} />}
       </div>
-      </BillingGate>
 
       <nav className="bnav" style={{ position:"relative", overflow:"visible" }}>
         {TABS.map((t, idx) => {
