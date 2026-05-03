@@ -22,14 +22,22 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const SK = Deno.env.get("STRIPE_SECRET_KEY");
-    const PRICE_ID = Deno.env.get("STRIPE_PRICE_ID_ESCALA");
     const APP_URL = Deno.env.get("APP_URL") || "https://uniquehub.pages.dev";
     if (!SK) return json({ error: "STRIPE_SECRET_KEY não configurada" }, 500);
-    if (!PRICE_ID) return json({ error: "STRIPE_PRICE_ID_ESCALA não configurada" }, 500);
 
     const body = await req.json().catch(() => ({}));
-    const { orgId, email, name, returnUrl } = body || {};
+    const { orgId, email, name, returnUrl, planKey, period } = body || {};
     if (!orgId || !email) return json({ error: "orgId e email são obrigatórios" }, 400);
+
+    /* Mapeia plan + periodo pra price_id correto. Default: agencia mensal (mais popular). */
+    const PLAN_KEY = (planKey || "agencia").toLowerCase();
+    const PERIOD = period === "yearly" || period === "anual" ? "ANUAL" : "MENSAL";
+    const SECRET_NAME = PERIOD === "ANUAL"
+      ? `STRIPE_PRICE_ID_${PLAN_KEY.toUpperCase()}_ANUAL`
+      : `STRIPE_PRICE_ID_${PLAN_KEY.toUpperCase()}`;
+    const PRICE_ID = Deno.env.get(SECRET_NAME);
+    if (!PRICE_ID) return json({ error: `Price ID não configurado: ${SECRET_NAME}` }, 500);
+    console.log(`[stripe-checkout] plan=${PLAN_KEY} period=${PERIOD} price=${PRICE_ID}`);
 
     const sb = createClient(
       Deno.env.get("SUPABASE_URL")!,

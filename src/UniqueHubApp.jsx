@@ -17382,7 +17382,33 @@ function SettingsPage({ onBack, user, setUser, onLogout, dark, setDark, themeCol
   if (sub === "plans") {
     return (
       <SetPage title="Planos e Assinatura" wide>
-        <PlansPage onBack={() => setSub(null)} currentPlan={_currentOrgPlan} orgName={null} onUpgrade={(plan, price, billing) => {}} embedded />
+        <PlansPage onBack={() => setSub(null)} currentPlan={_currentOrgPlan} orgName={null} onUpgrade={async (plan, price, billing) => {
+          /* Abre Stripe Checkout pro plano + periodo escolhido */
+          const period = billing === "anual" ? "yearly" : "monthly";
+          showToast("Abrindo checkout...");
+          try {
+            const r = await fetch(`${SUPA_URL}/functions/v1/stripe-checkout`, {
+              method: "POST",
+              headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orgId: _currentOrgId,
+                email: user?.email,
+                name: user?.name,
+                planKey: plan,
+                period,
+                returnUrl: window.location.origin,
+              }),
+            });
+            const d = await r.json();
+            if (!r.ok || !d?.url) {
+              showToast("Erro: " + (d?.error || "falha ao abrir checkout"));
+              return;
+            }
+            window.location.href = d.url;
+          } catch (e) {
+            showToast("Erro: " + (e?.message || "falha de conexao"));
+          }
+        }} embedded />
       </SetPage>
     );
   }
