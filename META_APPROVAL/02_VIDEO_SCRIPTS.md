@@ -1,6 +1,8 @@
 # UniqueHub — Meta App Review Screencast Scripts
 
-> Two videos to be recorded — one per app. Both in English UI, with on-screen captions explaining each step. Use Loom, OBS, QuickTime or similar. Format: MP4, 1080p, max 100MB.
+> Two videos to be recorded — one per app. **Recording in Portuguese (pt-BR) UI, with English captions added afterwards via Loom translation feature.** This approach is accepted by Meta and avoids any code changes that could break production. See `04_LOOM_CAPTIONS_GUIDE.md` for the captioning step.
+
+**Format:** MP4, 1080p, max 100MB. **App language:** Portuguese (no `?lang=en`). **Captions:** English (added in Loom after recording).
 
 ---
 
@@ -8,16 +10,16 @@
 
 **Covers:** `instagram_business_basic` + `instagram_business_content_publish`
 **Estimated duration:** 4–5 minutes
-**Browser language:** English (set Chrome → Settings → Languages → English)
-**App language:** English (use `?lang=en` in URL)
+**Browser language:** Portuguese (default Brazilian Portuguese)
+**App language:** Portuguese (default — no URL params)
 
 ### Pre-recording checklist
 
 - [ ] Sign out of all Meta accounts in the recording browser
 - [ ] Have a test Instagram Business account ready (username + password, with at least 1 Page already linked via Meta Business)
 - [ ] Have a test image saved on desktop (a sample post image, JPG/PNG)
-- [ ] Open Chrome in **English** (Cmd+, → Languages → English at top)
-- [ ] Open UniqueHub at `https://uniquehub.com.br/?lang=en` (English forced)
+- [ ] Open Chrome in default Portuguese (no language change needed)
+- [ ] Open UniqueHub at `https://uniquehub.com.br/` (default Portuguese)
 - [ ] Have a clean test client created in UniqueHub named "Demo Client"
 
 ### Script
@@ -133,8 +135,8 @@ Caption: *"This concludes the demo of `instagram_business_basic` and `instagram_
 
 **Covers:** `pages_show_list`, `pages_read_user_content`, `pages_read_engagement`, `read_insights`, `business_management`
 **Estimated duration:** 6–8 minutes
-**Browser language:** English
-**App language:** English (`?lang=en`)
+**Browser language:** Portuguese (default)
+**App language:** Portuguese (default)
 
 ### Pre-recording checklist
 
@@ -242,6 +244,8 @@ Caption: *"This concludes the demo of all 5 Facebook Page permissions. All data 
 
 ## 🎬 General recording best practices
 
+**🌐 Language note:** Record in Portuguese (UI), then add **English captions in Loom** after recording. See `04_LOOM_CAPTIONS_GUIDE.md`.
+
 1. **Always show the URL bar** — reviewers need to confirm you're on the actual production URL (`uniquehub.com.br`), not localhost
 2. **Pause 2–3 seconds** on the Meta consent screen — this is the most important frame for the reviewer
 3. **Add captions** as text overlays (not voice) — reviewers may have audio off
@@ -255,7 +259,7 @@ Caption: *"This concludes the demo of all 5 Facebook Page permissions. All data 
 
 | Mistake | Why it fails |
 |---|---|
-| App in Portuguese | Meta requires English UI |
+| App in Portuguese **without English captions** | Meta requires either English UI or English captions |
 | Video shorter than full flow | Reviewer can't see the complete use case |
 | Skipping the OAuth consent screen | The consent screen is the proof of permission scope |
 | Using mock/fake data | Reviewer needs real API responses |
