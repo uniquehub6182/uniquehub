@@ -3959,22 +3959,26 @@ function TrialBanner({ orgId, user, onCheckout }) {
 function SubscriptionLock({ orgId, user, status, onCheckout, onLogout }) {
   const state = status?.billing_state;
   const [period, setPeriod] = React.useState("monthly");
-  const [hoveredPlan, setHoveredPlan] = React.useState(null);
   const [loadingPlan, setLoadingPlan] = React.useState(null);
+  const [hoveredPlan, setHoveredPlan] = React.useState(null);
   const isAdmin = user?.supaRole === "admin" || user?.role === "CEO" || user?.role === "owner";
+  const _isDsk = typeof window !== "undefined" && window.innerWidth > 900;
+
   const stateConfig = {
-    trial_expired: { kicker: "TRIAL FINALIZADO", title: "Seu trial dos 15 dias acabou", sub: "Que bom ter você aqui! Pra continuar usando todos os recursos da plataforma, escolha o plano que faz mais sentido pra agência." },
+    trial_expired: { kicker: "TRIAL FINALIZADO", title: "Seu trial dos 15 dias acabou", sub: "Pra continuar usando todos os recursos da plataforma, escolha o plano que faz mais sentido pra agência." },
     past_due:      { kicker: "PAGAMENTO PENDENTE", title: "Identificamos uma cobrança em atraso", sub: "Pra reativar o acesso completo, atualize seus dados de pagamento ou escolha um novo plano." },
-    canceled:      { kicker: "ASSINATURA CANCELADA", title: "Sua assinatura foi encerrada", sub: "Você cancelou sua assinatura. Pra voltar a usar a plataforma, escolha um plano abaixo." },
-    suspended:     { kicker: "CONTA SUSPENSA", title: "Sua conta está suspensa", sub: "Sua conta está temporariamente fora do ar por inadimplência. Reative escolhendo um plano." },
+    canceled:      { kicker: "ASSINATURA CANCELADA", title: "Sua assinatura foi encerrada", sub: "Pra voltar a usar a plataforma, escolha um plano abaixo." },
+    suspended:     { kicker: "CONTA SUSPENSA", title: "Sua conta está suspensa", sub: "Sua conta está temporariamente fora do ar. Reative escolhendo um plano." },
   };
   const cfg = stateConfig[state] || { kicker: "ACESSO BLOQUEADO", title: "Sua conta está sem acesso", sub: "Entre em contato com o suporte ou escolha um plano abaixo." };
+
   const PLANS = [
     { k:"essencial",    name:"Essencial",    monthly:197, yearly:1891, sub:"Pra freelas e SMs", clients:"5 clientes", users:"2 usuários" },
     { k:"profissional", name:"Profissional", monthly:397, yearly:3811, sub:"Pra agências pequenas", clients:"10 clientes", users:"5 usuários" },
     { k:"agencia",      name:"Agência",      monthly:597, yearly:5731, sub:"Pra crescer sem medo", clients:"20 clientes", users:"15 usuários", popular:true },
     { k:"escala",       name:"Escala",       monthly:997, yearly:9571, sub:"Pra times grandes", clients:"40 clientes", users:"ilimitado" },
   ];
+
   const handlePick = async (planKey) => {
     if (!isAdmin || loadingPlan) return;
     setLoadingPlan(planKey);
@@ -3989,103 +3993,122 @@ function SubscriptionLock({ orgId, user, status, onCheckout, onLogout }) {
       else { alert("Erro: " + (d?.error || "falha ao abrir checkout")); setLoadingPlan(null); }
     } catch (e) { alert("Erro: " + (e?.message || "falha")); setLoadingPlan(null); }
   };
+
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #0A0E14 0%, #0F1419 50%, #0A0E14 100%)", color: "#fff", fontFamily: "inherit", overflow: "auto", position: "relative" }}>
-      {/* glow ambient */}
-      <div style={{ position:"fixed", top:"-20%", right:"-10%", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, #BBF24618 0%, transparent 60%)", pointerEvents:"none", filter:"blur(40px)" }} />
-      <div style={{ position:"fixed", bottom:"-30%", left:"-10%", width:600, height:600, borderRadius:"50%", background:"radial-gradient(circle, #BBF24612 0%, transparent 60%)", pointerEvents:"none", filter:"blur(40px)" }} />
-      <div style={{ position:"relative", maxWidth: 1180, margin: "0 auto", padding: "48px 24px 64px" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <div style={{ display:"inline-flex", alignItems:"center", gap:10, marginBottom: 24 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #BBF246, #9AE010)", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 4px 16px #BBF24640" }}>
-              <span style={{ fontSize: 18, fontWeight: 900, color:"#0A0E14" }}>U</span>
+    <div style={{ position:"fixed", inset:0, zIndex:9999, background:"#0D1117", overflow:"auto", display:"flex", flexDirection:"column" }}>
+      <style>{`
+        @keyframes lockCardUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes lockLogoIn{from{transform:translateY(-16px);opacity:0}to{transform:translateY(0);opacity:1}}
+        .lock-logo{animation:lockLogoIn .4s ease both}
+        .lock-card{animation:lockCardUp .5s cubic-bezier(.34,1.1,.64,1) both}
+        .lock-plan{transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease}
+        .lock-plan:hover{transform:translateY(-4px)}
+        .lock-toggle-btn{transition:all .18s cubic-bezier(.4,0,.2,1)}
+      `}</style>
+
+      {/* Header dark com logo */}
+      <div className="lock-logo" style={{ padding:_isDsk?"24px 28px 16px":"calc(env(safe-area-inset-top,0px) + 24px) 24px 20px", textAlign:"center" }}>
+        <img src={LOGO_B64} alt="UniqueHub" style={{ height:_isDsk?34:38, objectFit:"contain", marginBottom:8 }} />
+        <p style={{ fontSize:11, color:"#BBF246", fontWeight:700, letterSpacing:"0.18em", margin:0 }}>{cfg.kicker}</p>
+      </div>
+
+      {/* Card branco */}
+      <div className="lock-card" style={{ flex:1, background:"#fff", borderRadius:_isDsk?"32px 32px 0 0":"32px 32px 0 0", padding:_isDsk?"40px 32px 32px":"36px 24px calc(env(safe-area-inset-bottom,0px) + 32px)", overflowY:"auto" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+
+          {/* Title */}
+          <div style={{ textAlign:"center", marginBottom:_isDsk?32:24, maxWidth:600, margin:_isDsk?"0 auto 32px":"0 auto 24px" }}>
+            <h1 style={{ fontSize:_isDsk?32:24, fontWeight:900, color:"#1A1D23", margin:"0 0 10px", letterSpacing:"-0.6px", lineHeight:1.15 }}>{cfg.title}</h1>
+            <p style={{ fontSize:_isDsk?14:13, color:"#9CA3AF", lineHeight:1.6, margin:0 }}>{cfg.sub}</p>
+          </div>
+
+          {/* Toggle Mensal/Anual */}
+          {isAdmin && (<div style={{ display:"flex", justifyContent:"center", marginBottom:_isDsk?28:20 }}>
+            <div style={{ display:"inline-flex", padding:4, background:"#F8F9FC", borderRadius:14, border:"1.5px solid #E8EAF0" }}>
+              <button className="lock-toggle-btn" onClick={() => setPeriod("monthly")} style={{ padding:"10px 22px", borderRadius:10, border:"none", background: period === "monthly" ? "#1A1D23" : "transparent", color: period === "monthly" ? "#fff" : "#9CA3AF", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>Mensal</button>
+              <button className="lock-toggle-btn" onClick={() => setPeriod("yearly")} style={{ padding:"10px 22px", borderRadius:10, border:"none", background: period === "yearly" ? "#1A1D23" : "transparent", color: period === "yearly" ? "#fff" : "#9CA3AF", fontSize:13, fontWeight:800, cursor:"pointer", fontFamily:"inherit", display:"inline-flex", alignItems:"center", gap:6 }}>
+                Anual <span style={{ fontSize:9, padding:"2px 7px", borderRadius:6, background:"#BBF246", color:"#0D1117", fontWeight:900, letterSpacing:0.4 }}>-20%</span>
+              </button>
             </div>
-            <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.4 }}>UniqueHub</span>
-          </div>
-          <p style={{ fontSize: 11, fontWeight: 700, color: "#BBF246", letterSpacing: 2, margin: "0 0 12px" }}>{cfg.kicker}</p>
-          <h1 style={{ fontSize: "clamp(28px, 5vw, 44px)", fontWeight: 900, margin: "0 0 16px", letterSpacing: -1, lineHeight: 1.1 }}>{cfg.title}</h1>
-          <p style={{ fontSize: 16, color: "#9CA3AF", lineHeight: 1.5, margin: "0 auto", maxWidth: 560 }}>{cfg.sub}</p>
-        </div>
-        {/* Toggle Mensal/Anual */}
-        <div style={{ display:"flex", justifyContent:"center", marginBottom: 32 }}>
-          <div style={{ display:"inline-flex", padding: 4, background:"#192126", borderRadius: 14, border: "1px solid #2A3038" }}>
-            <button onClick={() => setPeriod("monthly")} style={{ padding: "10px 22px", borderRadius: 10, border: "none", background: period === "monthly" ? "#BBF246" : "transparent", color: period === "monthly" ? "#0A0E14" : "#9CA3AF", fontSize: 13, fontWeight: 800, cursor:"pointer", fontFamily:"inherit", transition:"all .2s" }}>Mensal</button>
-            <button onClick={() => setPeriod("yearly")} style={{ padding: "10px 22px", borderRadius: 10, border: "none", background: period === "yearly" ? "#BBF246" : "transparent", color: period === "yearly" ? "#0A0E14" : "#9CA3AF", fontSize: 13, fontWeight: 800, cursor:"pointer", fontFamily:"inherit", transition:"all .2s", display:"inline-flex", alignItems:"center", gap:6 }}>
-              Anual <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 6, background: period === "yearly" ? "#0A0E1420" : "#BBF24620", color: period === "yearly" ? "#0A0E14" : "#BBF246", fontWeight: 800 }}>-20%</span>
-            </button>
-          </div>
-        </div>
-        {/* Planos */}
-        {isAdmin ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginBottom: 32 }}>
-            {PLANS.map(p => {
-              const price = period === "yearly" ? p.yearly : p.monthly;
-              const isLoading = loadingPlan === p.k;
-              const isHovered = hoveredPlan === p.k;
-              return (
-                <div key={p.k} onClick={() => handlePick(p.k)} onMouseEnter={() => setHoveredPlan(p.k)} onMouseLeave={() => setHoveredPlan(null)} style={{ position:"relative", background: p.popular ? "linear-gradient(135deg, #1A2419 0%, #0F1419 100%)" : "#0F1419", borderRadius: 20, padding: 24, cursor: isLoading ? "wait" : "pointer", border: p.popular ? "1.5px solid #BBF24650" : "1.5px solid #2A3038", transition: "all .2s ease", transform: isHovered ? "translateY(-4px)" : "translateY(0)", boxShadow: isHovered ? "0 12px 40px rgba(187,242,70,0.15)" : (p.popular ? "0 4px 24px rgba(187,242,70,0.08)" : "0 2px 8px rgba(0,0,0,0.2)"), opacity: isLoading ? 0.6 : 1 }}>
-                  {p.popular && <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", padding: "4px 12px", borderRadius: 100, background: "linear-gradient(135deg, #BBF246, #9AE010)", color: "#0A0E14", fontSize: 10, fontWeight: 900, letterSpacing: 0.5 }}>MAIS POPULAR</div>}
-                  <p style={{ fontSize: 18, fontWeight: 800, margin: "0 0 4px" }}>{p.name}</p>
-                  <p style={{ fontSize: 12, color: "#6B7280", margin: "0 0 16px" }}>{p.sub}</p>
-                  <div style={{ display:"flex", alignItems:"baseline", gap: 4, marginBottom: 16 }}>
-                    <span style={{ fontSize: 12, color: "#9CA3AF", fontWeight: 700 }}>R$</span>
-                    <span style={{ fontSize: 36, fontWeight: 900, color: "#fff", letterSpacing: -1.5, lineHeight: 1 }}>{price.toLocaleString("pt-BR")}</span>
-                    <span style={{ fontSize: 13, color: "#6B7280", fontWeight: 600 }}>/{period === "yearly" ? "ano" : "mês"}</span>
+          </div>)}
+
+          {/* Planos */}
+          {isAdmin ? (
+            <div style={{ display:"grid", gridTemplateColumns: _isDsk ? "repeat(4, 1fr)" : "1fr", gap:_isDsk?14:12, marginBottom:_isDsk?28:20 }}>
+              {PLANS.map(p => {
+                const price = period === "yearly" ? p.yearly : p.monthly;
+                const isLoading = loadingPlan === p.k;
+                return (
+                  <div key={p.k} className="lock-plan" onClick={() => handlePick(p.k)} onMouseEnter={() => setHoveredPlan(p.k)} onMouseLeave={() => setHoveredPlan(null)} style={{ position:"relative", background: p.popular ? "#0D1117" : "#fff", borderRadius:20, padding:_isDsk?"24px 20px":"22px 18px", cursor: isLoading ? "wait" : "pointer", border: p.popular ? "2px solid #BBF246" : (hoveredPlan === p.k ? "1.5px solid #BBF246" : "1.5px solid #E8EAF0"), boxShadow: hoveredPlan === p.k ? "0 12px 32px rgba(0,0,0,0.08)" : (p.popular ? "0 8px 24px rgba(13,17,23,0.12)" : "none"), opacity: isLoading ? 0.6 : 1 }}>
+                    {p.popular && (
+                      <div style={{ position:"absolute", top:-11, left:"50%", transform:"translateX(-50%)", padding:"4px 12px", borderRadius:100, background:"linear-gradient(135deg, #BBF246, #9AE010)", color:"#0D1117", fontSize:10, fontWeight:900, letterSpacing:0.6, whiteSpace:"nowrap" }}>
+                        MAIS POPULAR
+                      </div>
+                    )}
+                    <p style={{ fontSize:18, fontWeight:900, margin:"0 0 4px", color: p.popular ? "#fff" : "#1A1D23", letterSpacing:"-0.3px" }}>{p.name}</p>
+                    <p style={{ fontSize:12, color: p.popular ? "rgba(255,255,255,0.5)" : "#9CA3AF", margin:"0 0 18px" }}>{p.sub}</p>
+                    <div style={{ display:"flex", alignItems:"baseline", gap:3, marginBottom:18 }}>
+                      <span style={{ fontSize:13, color: p.popular ? "rgba(255,255,255,0.6)" : "#9CA3AF", fontWeight:700 }}>R$</span>
+                      <span style={{ fontSize:34, fontWeight:900, color: p.popular ? "#BBF246" : "#1A1D23", letterSpacing:"-1.4px", lineHeight:1 }}>{price.toLocaleString("pt-BR")}</span>
+                      <span style={{ fontSize:12, color: p.popular ? "rgba(255,255,255,0.5)" : "#9CA3AF", fontWeight:600 }}>/{period === "yearly" ? "ano" : "mês"}</span>
+                    </div>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:18, paddingBottom:18, borderBottom: p.popular ? "1px solid rgba(255,255,255,0.08)" : "1px solid #F0F1F5" }}>
+                      <span style={{ fontSize:12, color: p.popular ? "rgba(255,255,255,0.85)" : "#1A1D23", display:"inline-flex", alignItems:"center", gap:8, fontWeight:600 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        {p.clients}
+                      </span>
+                      <span style={{ fontSize:12, color: p.popular ? "rgba(255,255,255,0.85)" : "#1A1D23", display:"inline-flex", alignItems:"center", gap:8, fontWeight:600 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        {p.users}
+                      </span>
+                    </div>
+                    <div style={{ width:"100%", padding:"12px", borderRadius:12, background: p.popular ? "linear-gradient(135deg, #BBF246, #9AE010)" : "#F8F9FC", color: p.popular ? "#0D1117" : "#1A1D23", fontSize:13, fontWeight:800, textAlign:"center", border: p.popular ? "none" : "1.5px solid #E8EAF0", boxShadow: p.popular ? "0 6px 20px rgba(187,242,70,0.4)" : "none" }}>
+                      {isLoading ? "Abrindo..." : "Escolher plano"}
+                    </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection:"column", gap: 6, marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid #1F2630" }}>
-                    <span style={{ fontSize: 12, color:"#D1D5DB", display:"inline-flex", alignItems:"center", gap:6 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      {p.clients}
-                    </span>
-                    <span style={{ fontSize: 12, color:"#D1D5DB", display:"inline-flex", alignItems:"center", gap:6 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      {p.users}
-                    </span>
-                  </div>
-                  <button disabled={isLoading} style={{ width:"100%", padding: "12px", borderRadius: 12, border:"none", background: p.popular ? "linear-gradient(135deg, #BBF246, #9AE010)" : "#fff", color: "#0A0E14", fontSize: 13, fontWeight: 800, cursor: isLoading ? "wait" : "pointer", fontFamily:"inherit", transition:"all .15s" }}>
-                    {isLoading ? "Abrindo..." : "Escolher plano"}
-                  </button>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ maxWidth:480, margin:"0 auto 28px", padding:"24px 28px", background:"#F8F9FC", borderRadius:20, border:"1.5px solid #E8EAF0", textAlign:"center" }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:"#FEF3C7", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 12px" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.93 4.93l2.83 2.83"/><path d="M16.24 16.24l2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/></svg>
+              </div>
+              <p style={{ fontSize:14, fontWeight:700, color:"#1A1D23", margin:"0 0 4px" }}>Aguardando o administrador</p>
+              <p style={{ fontSize:13, color:"#9CA3AF", margin:0, lineHeight:1.55 }}>Peça pro admin da agência adicionar o cartão e escolher um plano.</p>
+            </div>
+          )}
+
+          {/* Trust strip */}
+          <div style={{ display:"flex", justifyContent:"center", flexWrap:"wrap", gap:_isDsk?20:12, padding:"18px 0 4px", marginTop:8, borderTop:"1px solid #F0F1F5" }}>
+            {[
+              { ic:"shield", txt:"Pagamento via Stripe" },
+              { ic:"clock", txt:"Cancele quando quiser" },
+              { ic:"refresh", txt:"Sem fidelidade" },
+              { ic:"zap", txt:"Acesso imediato" },
+            ].map((b,i) => (
+              <span key={i} style={{ fontSize:11, color:"#9CA3AF", display:"inline-flex", alignItems:"center", gap:6, fontWeight:600 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  {b.ic === "shield" && <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>}
+                  {b.ic === "clock" && <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}
+                  {b.ic === "refresh" && <><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></>}
+                  {b.ic === "zap" && <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}
+                </svg>
+                {b.txt}
+              </span>
+            ))}
           </div>
-        ) : (
-          <div style={{ maxWidth: 480, margin:"0 auto 32px", padding: 24, background: "#0F1419", borderRadius: 16, border: "1px solid #2A3038", textAlign:"center" }}>
-            <p style={{ fontSize: 14, color:"#D1D5DB", margin: 0, lineHeight: 1.6 }}>
-              Peça pro administrador da agência adicionar o cartão e escolher um plano. Você não tem permissão pra essa ação.
-            </p>
+
+          {/* Footer */}
+          <div style={{ display:"flex", justifyContent:"center", gap:18, alignItems:"center", marginTop:22, flexWrap:"wrap" }}>
+            <button onClick={onLogout} style={{ padding:"9px 18px", borderRadius:10, background:"transparent", color:"#9CA3AF", border:"1.5px solid #E8EAF0", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>Sair da conta</button>
+            <a href="mailto:contato@uniquemkt.com.br" style={{ fontSize:12, color:"#1A1D23", fontWeight:700, textDecoration:"none", borderBottom:"1.5px solid #BBF246", paddingBottom:1 }}>Falar com suporte</a>
           </div>
-        )}
-        {/* Trust strip */}
-        <div style={{ display:"flex", justifyContent:"center", flexWrap:"wrap", gap: 24, marginBottom: 24, padding: "20px 0", borderTop: "1px solid #1F2630", borderBottom: "1px solid #1F2630" }}>
-          {[
-            { ic:"shield", txt:"Pagamento seguro via Stripe" },
-            { ic:"clock", txt:"Cancele quando quiser" },
-            { ic:"refresh", txt:"Sem fidelidade" },
-            { ic:"zap", txt:"Acesso imediato" },
-          ].map((b,i) => (
-            <span key={i} style={{ fontSize: 12, color:"#9CA3AF", display:"inline-flex", alignItems:"center", gap:6, fontWeight: 600 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round">
-                {b.ic === "shield" && <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>}
-                {b.ic === "clock" && <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}
-                {b.ic === "refresh" && <><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></>}
-                {b.ic === "zap" && <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>}
-              </svg>
-              {b.txt}
-            </span>
-          ))}
-        </div>
-        {/* Footer actions */}
-        <div style={{ display:"flex", justifyContent:"center", gap: 16, alignItems:"center" }}>
-          <button onClick={onLogout} style={{ padding: "10px 20px", borderRadius: 10, background: "transparent", color: "#9CA3AF", border: "1px solid #2A3038", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sair da conta</button>
-          <a href="mailto:contato@uniquemkt.com.br" style={{ fontSize: 13, color: "#BBF246", fontWeight: 600, textDecoration:"none" }}>Falar com suporte</a>
         </div>
       </div>
     </div>
   );
 }
-
 /* Gate: envolve a app, mostra lock quando bloqueado, deixa passar caso contrário */
 function BillingGate({ user, orgId, onLogout, children }) {
   const { status, loading, refresh } = useBillingStatus(orgId);
