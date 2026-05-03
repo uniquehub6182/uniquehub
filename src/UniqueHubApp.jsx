@@ -315,7 +315,6 @@ const _UH_TRANSLATIONS = {
   "Sair": "Sign out",
   /* Bottom nav */
   "Início": "Home",
-  "Home": "Home",
   "Conteúdo": "Content",
   "Calendário": "Calendar",
   "Clientes": "Clients",
@@ -400,7 +399,6 @@ const _UH_TRANSLATIONS = {
   "Boa noite": "Good evening",
   "Investimento": "Investment",
   "Receita": "Revenue",
-  "Score": "Score",
   "ativos": "active",
   "Tráfego / mês": "Traffic / month",
   "Aguardando você": "Awaiting you",
@@ -460,7 +458,6 @@ const _UH_TRANSLATIONS = {
   "Segmento": "Segment",
   "Empresa": "Company",
   "Usuário": "User",
-  "Logo": "Logo",
   "Logos": "Logos",
   "Foto": "Photo",
   "Foto de perfil": "Profile picture",
@@ -533,9 +530,7 @@ const _UH_TRANSLATIONS = {
   "DM": "DM",
   /* Content extra */
   "Tipo de conteúdo": "Content type",
-  "Carrossel": "Carousel",
   "Reel": "Reel",
-  "Story": "Story",
   "Imagem única": "Single image",
   "Vídeo": "Video",
   "Foto única": "Single photo",
@@ -598,12 +593,9 @@ const _UH_TRANSLATIONS = {
   "Agende posts, acompanhe métricas, aprove conteúdos, gere relatórios, gerencie equipes e muito mais.": "Schedule posts, track metrics, approve content, generate reports, manage teams and much more.",
   "AGÊNCIAS": "AGENCIES",
   "CLIENTES": "CLIENTS",
-  "POSTS": "POSTS",
   "ou": "or",
-  "© 2026 Unique Marketing 360": "© 2026 Unique Marketing 360",
 
   /* ──────── HOME / DASHBOARD ──────── */
-  "Home": "Home",
   "Conteúdo": "Content",
   "Conteúdos": "Content",
   "Olá, ": "Hello, ",
@@ -613,8 +605,6 @@ const _UH_TRANSLATIONS = {
   "esta semana": "this week",
   "Hoje é": "Today is",
   "Investimento": "Investment",
-  "Score": "Score",
-  "Check-in": "Check-in",
   "Comunicados": "News",
   "Assistente IA": "AI Assistant",
   "Assistente": "Assistant",
@@ -639,7 +629,6 @@ const _UH_TRANSLATIONS = {
   "Telefone": "Phone",
   "Endereço": "Address",
   "Site": "Website",
-  "Logo": "Logo",
   "Salvar cliente": "Save client",
   "Excluir cliente": "Delete client",
 
@@ -655,8 +644,6 @@ const _UH_TRANSLATIONS = {
   "Páginas disponíveis": "Available Pages",
   "Página do Facebook": "Facebook Page",
   "Conta do Instagram": "Instagram account",
-  "Threads": "Threads",
-  "TikTok": "TikTok",
   "Tem certeza que quer desconectar?": "Are you sure you want to disconnect?",
 
   /* ──────── CONTENT / DEMANDS ──────── */
@@ -667,12 +654,7 @@ const _UH_TRANSLATIONS = {
   "Descrição": "Description",
   "Tipo de conteúdo": "Content type",
   "Imagem única": "Single image",
-  "Carrossel": "Carousel",
   "Vídeo": "Video",
-  "Reels": "Reels",
-  "Story": "Story",
-  "Stories": "Stories",
-  "Post": "Post",
   "Legenda": "Caption",
   "Fazer upload": "Upload",
   "Mídia": "Media",
@@ -717,7 +699,6 @@ const _UH_TRANSLATIONS = {
 
   /* ──────── INBOX ──────── */
   "Mensagens diretas": "Direct messages",
-  "DMs": "DMs",
   "Comentário": "Comment",
   "Conversa": "Conversation",
   "Conversas": "Conversations",
@@ -730,7 +711,6 @@ const _UH_TRANSLATIONS = {
   "Relatório de performance": "Performance report",
   "Métricas da página": "Page metrics",
   "Métricas dos posts": "Post metrics",
-  "Top posts": "Top posts",
   "Posts com melhor desempenho": "Top performing posts",
   "Período": "Period",
   "Últimos 7 dias": "Last 7 days",
@@ -804,7 +784,17 @@ if (typeof window !== "undefined") {
    Walks the DOM and replaces Portuguese text nodes with English equivalents.
    Activated when ?lang=en is present. Re-runs on DOM mutations.
    Has minimal performance impact when lang=pt (early-return). */
-if (typeof window !== "undefined" && _UH_LANG === "en") {
+/* Auto-translator e OPT-IN — so ativa com ?autotr=1 explicitamente.
+   Razao: pode causar loop infinito em alguns casos. Funcao t() (early-return)
+   continua funcionando normalmente pra strings que sao chamadas via t(). */
+let _UH_AUTOTR_ENABLED = false;
+try {
+  if (typeof window !== "undefined") {
+    const _u2 = new URLSearchParams(window.location.search);
+    if (_u2.get("autotr") === "1") _UH_AUTOTR_ENABLED = true;
+  }
+} catch {}
+if (typeof window !== "undefined" && _UH_LANG === "en" && _UH_AUTOTR_ENABLED) {
   const _translateNode = (node) => {
     if (!node) return;
     if (node.nodeType === 3) { /* text node */
@@ -812,21 +802,21 @@ if (typeof window !== "undefined" && _UH_LANG === "en") {
       if (!txt) return;
       const trimmed = txt.trim();
       if (!trimmed) return;
-      if (_UH_TRANSLATIONS[trimmed]) {
+      if (_UH_TRANSLATIONS[trimmed] && _UH_TRANSLATIONS[trimmed] !== trimmed) {
         node.nodeValue = txt.replace(trimmed, _UH_TRANSLATIONS[trimmed]);
       }
     } else if (node.nodeType === 1) { /* element */
       /* Translate placeholders */
-      if (node.placeholder && _UH_TRANSLATIONS[node.placeholder]) {
+      if (node.placeholder && _UH_TRANSLATIONS[node.placeholder] && _UH_TRANSLATIONS[node.placeholder] !== node.placeholder) {
         node.placeholder = _UH_TRANSLATIONS[node.placeholder];
       }
       /* Translate title attribute */
-      if (node.title && _UH_TRANSLATIONS[node.title]) {
+      if (node.title && _UH_TRANSLATIONS[node.title] && _UH_TRANSLATIONS[node.title] !== node.title) {
         node.title = _UH_TRANSLATIONS[node.title];
       }
       /* Translate aria-label */
       const al = node.getAttribute && node.getAttribute("aria-label");
-      if (al && _UH_TRANSLATIONS[al]) {
+      if (al && _UH_TRANSLATIONS[al] && _UH_TRANSLATIONS[al] !== al) {
         node.setAttribute("aria-label", _UH_TRANSLATIONS[al]);
       }
       /* Recurse children */
@@ -853,7 +843,7 @@ if (typeof window !== "undefined" && _UH_LANG === "en") {
       if (m.type === "characterData") _translateNode(m.target);
       if (m.type === "attributes" && m.target) {
         const t2 = m.target;
-        if (m.attributeName === "placeholder" && t2.placeholder && _UH_TRANSLATIONS[t2.placeholder]) {
+        if (m.attributeName === "placeholder" && t2.placeholder && _UH_TRANSLATIONS[t2.placeholder] && _UH_TRANSLATIONS[t2.placeholder] !== t2.placeholder) {
           t2.placeholder = _UH_TRANSLATIONS[t2.placeholder];
         }
       }
