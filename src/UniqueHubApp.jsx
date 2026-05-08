@@ -4781,6 +4781,40 @@ function BillingGate({ user, orgId, onLogout, children }) {
   return <SubscriptionLock orgId={orgId} user={user} status={status} onCheckout={handleCheckout} onLogout={onLogout} />;
 }
 
+/* ═══════════════════════ HOME V2 TOGGLE ═══════════════════════
+   Ative com ?home=v2 (persiste em localStorage). Volte com ?home=v1.
+   ═════════════════════════════════════════════════════════════ */
+let _UH_HOME_V2 = false;
+try {
+  const _u2 = new URLSearchParams(window.location.search);
+  if (_u2.get("home") === "v2") { localStorage.setItem("uh_home", "v2"); _UH_HOME_V2 = true; }
+  else if (_u2.get("home") === "v1") { localStorage.removeItem("uh_home"); _UH_HOME_V2 = false; }
+  else if (localStorage.getItem("uh_home") === "v2") _UH_HOME_V2 = true;
+} catch {}
+
+/* ═══════════════════════ HOME PAGE V2 (em construção) ═══════════════════════
+   Redesign baseado em uniquehub-preview.pages.dev (dashboard v9)
+   Fase 1 OK — esqueleto + toggle. Próximo: Header + Hero (Fase 2)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function HomePageV2(props) {
+  const { user } = props;
+  return (
+    <div style={{ minHeight: "calc(100vh - 26px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px", fontFamily: "inherit", textAlign: "center" }}>
+      <div style={{ width: 64, height: 64, borderRadius: 20, background: "#0F1611", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+        <span style={{ fontSize: 28 }}>🚧</span>
+      </div>
+      <h1 style={{ fontSize: 34, fontWeight: 800, lineHeight: 1.1, marginBottom: 12, color: "#0F1611" }}>HomePage V2 em construção</h1>
+      <p style={{ fontSize: 15, color: "#666", maxWidth: 460, lineHeight: 1.5, marginBottom: 8 }}>
+        Olá{user?.name ? `, ${user.name.split(" ")[0]}` : ""}! Esse é o ponto de partida do redesign 1:1 do preview.
+      </p>
+      <p style={{ fontSize: 13, color: "#888", marginBottom: 28 }}>
+        Próxima fase: <strong style={{ color: "#0F1611" }}>Header + Hero</strong> (logo, agency info, relógio, "Vamos começar forte!")
+      </p>
+      <a href="?home=v1" style={{ fontSize: 12, fontWeight: 600, color: "#0F1611", background: "#BBF246", padding: "10px 18px", borderRadius: 999, textDecoration: "none", border: "1px solid #BBF246" }}>← Voltar pra HomePage atual</a>
+    </div>
+  );
+}
+
 /* ═══════════════════════ HOME / DASHBOARD ═══════════════════════ */
 function HomePage({ user, goSub, goTab, clients, notifCount, team, demands, setDemands, articles, articlesLoaded, agencyIdentity, cloudDash, savePrefsToCloud, canAccess: ca, isDesktop }) {
   const canAccessFn = ca || (() => true);
@@ -32405,7 +32439,10 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
         if (r.ok && d?.url) window.location.href = d.url;
         else alert("Erro: " + (d?.error || "falha ao abrir checkout"));
       }} />
-        {!sub && tab === "home" && <HomePage user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />}
+        {!sub && tab === "home" && (() => {
+          const HC = _UH_HOME_V2 ? HomePageV2 : HomePage;
+          return <HC user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />;
+        })()}
         {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
 
