@@ -287,6 +287,80 @@ const _metaOAuthCapture = (() => {
 const supabase = SUPA_URL && SUPA_KEY ? createClient(SUPA_URL, SUPA_KEY) : null;
 
 /* ═══════════════════════════════════════════════════════════════════
+   PREVIEW WRITE LOCK — apenas branch redesign-v2
+   Bloqueia inserts/updates/deletes/upserts no Supabase + storage uploads/removes + RPCs.
+   Reads continuam funcionando normalmente. Auth (login/logout) também intacto.
+   Mostra banner fixo no topo + toast quando uma escrita é bloqueada.
+   Pra desativar: setar PREVIEW_WRITE_LOCK = false ou remover este bloco.
+   ═══════════════════════════════════════════════════════════════════ */
+const PREVIEW_WRITE_LOCK = true;
+if (PREVIEW_WRITE_LOCK && supabase && typeof window !== "undefined") {
+  const _origFrom = supabase.from.bind(supabase);
+  const notifyBlock = (op, table) => {
+    console.warn(`🔒 [PREVIEW] Bloqueada ${op} em ${table}`);
+    try { window.dispatchEvent(new CustomEvent("preview-write-blocked", { detail: { op, table } })); } catch {}
+  };
+  const makeBlocked = (op, table) => {
+    notifyBlock(op, table);
+    const fake = { data: null, error: null, count: null, status: 200, statusText: "OK" };
+    const handler = {
+      get(_, prop) {
+        if (prop === "then") return (res, rej) => Promise.resolve(fake).then(res, rej);
+        if (prop === "catch") return (rej) => Promise.resolve(fake).catch(rej);
+        if (prop === "finally") return (cb) => Promise.resolve(fake).finally(cb);
+        return () => new Proxy({}, handler);
+      }
+    };
+    return new Proxy({}, handler);
+  };
+  supabase.from = (table) => {
+    const b = _origFrom(table);
+    b.insert = () => makeBlocked("insert", table);
+    b.update = () => makeBlocked("update", table);
+    b.delete = () => makeBlocked("delete", table);
+    b.upsert = () => makeBlocked("upsert", table);
+    return b;
+  };
+  if (supabase.storage?.from) {
+    const _origStorage = supabase.storage.from.bind(supabase.storage);
+    supabase.storage.from = (bucket) => {
+      const sb = _origStorage(bucket);
+      sb.upload = async (path) => { notifyBlock("storage.upload", bucket); return { data: { path: "preview-blocked/" + (path || "file") }, error: null }; };
+      sb.remove = async (paths) => { notifyBlock("storage.remove", bucket); return { data: paths || [], error: null }; };
+      return sb;
+    };
+  }
+  if (supabase.rpc) {
+    supabase.rpc = (fn) => { notifyBlock("rpc", fn); return makeBlocked("rpc", fn); };
+  }
+  const setupPreviewUI = () => {
+    if (document.getElementById("uh-preview-banner")) return;
+    const banner = document.createElement("div");
+    banner.id = "uh-preview-banner";
+    banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#0F1611;color:#BBF246;font-family:system-ui,-apple-system,sans-serif;font-size:11px;font-weight:600;padding:5px 14px;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:0.02em;border-bottom:1px solid rgba(187,242,70,0.25);pointer-events:none;";
+    banner.innerHTML = "🔒 <span>MODO PREVIEW · Escrita bloqueada · branch redesign-v2</span>";
+    document.body.appendChild(banner);
+    const toastBox = document.createElement("div");
+    toastBox.id = "uh-preview-toasts";
+    toastBox.style.cssText = "position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:99998;display:flex;flex-direction:column-reverse;gap:6px;align-items:center;pointer-events:none;";
+    document.body.appendChild(toastBox);
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", setupPreviewUI);
+  else setupPreviewUI();
+  window.addEventListener("preview-write-blocked", (e) => {
+    const { op, table } = e.detail || {};
+    const box = document.getElementById("uh-preview-toasts");
+    if (!box) return;
+    const t = document.createElement("div");
+    t.style.cssText = "background:#0F1611;color:#fff;padding:9px 14px;border-radius:10px;font-size:12px;font-family:system-ui,-apple-system,sans-serif;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,0.2);border:0.5px solid rgba(187,242,70,0.5);transition:opacity .2s;";
+    t.innerHTML = `<span style="color:#BBF246">🔒</span> Modo preview <span style="opacity:0.5">·</span> <span style="opacity:0.7">${op} em ${table}</span>`;
+    box.appendChild(t);
+    setTimeout(() => { t.style.opacity = "0"; }, 1800);
+    setTimeout(() => t.remove(), 2100);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    i18n — Reviewer-mode English translation
    Triggered by ?lang=en in URL or localStorage.uh_lang === "en"
    Used ONLY for Meta App Review screencast purposes.
@@ -13083,7 +13157,8 @@ REGRAS TÉCNICAS:
       {isContentDesktop && <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:0, padding:"14px 16px 0" }}>
         {/* Date filter */}
         <div ref={dateFilterBtnRef} style={{ position:"relative" }}>
-        <button onClick={() => { setShowCalendar(v => !v); setShowClientPicker(false); }} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${dateFilter ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: dateFilter ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: dateFilter ? "#1A1D23" : "#9CA3AF" }}>
+        <button onClick={() => { setShowCalendar(v => !v); setShowClientPicker(false); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:999, border:`1px solid ${dateFilter ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.08)"}`, background:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: dateFilter ? "#1A1D23" : "#9CA3AF", whiteSpace:"nowrap" }}>
+          {dateFilter && <span style={{ width:7, height:7, borderRadius:"50%", background:"#BBF246", boxShadow:"0 0 0 2px #BBF24640", flexShrink:0 }} />}
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           {dateFilter ? (dateFilter.substring(5).split("-").reverse().join("/") + (dateFilterEnd && dateFilterEnd !== dateFilter ? " → " + dateFilterEnd.substring(5).split("-").reverse().join("/") : "")) : "Data"}
           {dateFilter && <span onClick={e => { e.stopPropagation(); setDateFilter(""); setDateFilterEnd(""); setShowCalendar(false); }} style={{ marginLeft:4, cursor:"pointer" }}>×</span>}
@@ -13091,7 +13166,8 @@ REGRAS TÉCNICAS:
         </div>
         {/* Client filter */}
         <div style={{ position:"relative" }}>
-          <button onClick={() => { setShowClientPicker(!showClientPicker); setShowCalendar(false); }} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", borderRadius:12, border:`1.5px solid ${clientFilter !== "all" ? "#BBF246" : "rgba(0,0,0,0.08)"}`, background: clientFilter !== "all" ? "#BBF24608" : "#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: clientFilter !== "all" ? "#1A1D23" : "#9CA3AF" }}>
+          <button onClick={() => { setShowClientPicker(!showClientPicker); setShowCalendar(false); }} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:999, border:`1px solid ${clientFilter !== "all" ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.08)"}`, background:"#fff", cursor:"pointer", fontFamily:"inherit", fontSize:12, fontWeight:600, color: clientFilter !== "all" ? "#1A1D23" : "#9CA3AF", whiteSpace:"nowrap" }}>
+            {clientFilter !== "all" && <span style={{ width:7, height:7, borderRadius:"50%", background:"#BBF246", boxShadow:"0 0 0 2px #BBF24640", flexShrink:0 }} />}
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
             {clientFilter !== "all" ? clientFilter : "Clientes"}
             {clientFilter !== "all" && <span onClick={e => { e.stopPropagation(); setClientFilter("all"); setShowClientPicker(false); }} style={{ marginLeft:4, cursor:"pointer" }}>×</span>}
@@ -13285,8 +13361,8 @@ REGRAS TÉCNICAS:
         );
       })()}
 
-      {/* Active filters summary */}
-      {!contained && (clientFilter !== "all" || dateFilter) && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, flexWrap:"wrap" }}>
+      {/* Active filters summary - mobile only (desktop chips show value inline) */}
+      {!contained && !isContentDesktop && (clientFilter !== "all" || dateFilter) && <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, flexWrap:"wrap" }}>
         <span style={{ fontSize:10, color:B.muted }}>Filtros:</span>
         {clientFilter !== "all" && <span style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:8, background:`${B.accent}10`, fontSize:10, fontWeight:600, color:B.accent }}>
           {clientFilter} <button onClick={()=>setClientFilter("all")} style={{ background:"none", border:"none", cursor:"pointer", color:B.accent, display:"flex", padding:0 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
