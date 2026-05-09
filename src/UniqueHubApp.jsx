@@ -335,6 +335,7 @@ if (PREVIEW_WRITE_LOCK && supabase && typeof window !== "undefined") {
   }
   const setupPreviewUI = () => {
     if (document.getElementById("uh-preview-banner")) return;
+    document.body.style.paddingTop = "26px";
     const banner = document.createElement("div");
     banner.id = "uh-preview-banner";
     banner.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#0F1611;color:#BBF246;font-family:system-ui,-apple-system,sans-serif;font-size:11px;font-weight:600;padding:5px 14px;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:0.02em;border-bottom:1px solid rgba(187,242,70,0.25);pointer-events:none;";
@@ -4797,20 +4798,122 @@ try {
    Fase 1 OK — esqueleto + toggle. Próximo: Header + Hero (Fase 2)
    ═══════════════════════════════════════════════════════════════════════════ */
 function HomePageV2(props) {
-  const { user } = props;
+  const { user, agencyIdentity } = props;
+
+  // Live clock — atualiza a cada minuto
+  const [_uhTime, _uhSetTime] = useState(() => {
+    const n = new Date();
+    return { h: String(n.getHours()).padStart(2, "0"), m: String(n.getMinutes()).padStart(2, "0") };
+  });
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const n = new Date();
+      _uhSetTime({ h: String(n.getHours()).padStart(2, "0"), m: String(n.getMinutes()).padStart(2, "0") });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const _uhDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const _uhMonths = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  const _uhNow = new Date();
+  const _uhDateStr = `${_uhDays[_uhNow.getDay()]}, ${_uhNow.getDate()} de ${_uhMonths[_uhNow.getMonth()]}`;
+
+  const _uhFirstName = user?.name?.split(" ")[0] || "Matheus";
+  const _uhAgencyName = agencyIdentity?.name || user?.company || "Unique Marketing 360";
+  const _uhInitial = _uhFirstName[0]?.toUpperCase() || "M";
+  const _uhLogoSrc = agencyIdentity?.logo_url || agencyIdentity?.logoUrl;
+
+  const _UH_SHADOW = "0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06), 0 24px 60px rgba(0,0,0,0.04)";
+  const _UH_ICONBTN = { width: 44, height: 44, borderRadius: 14, background: "#FFFFFF", boxShadow: _UH_SHADOW, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", flexShrink: 0 };
+
   return (
-    <div style={{ minHeight: "calc(100vh - 26px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px", fontFamily: "inherit", textAlign: "center" }}>
-      <div style={{ width: 64, height: 64, borderRadius: 20, background: "#0F1611", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
-        <span style={{ fontSize: 28 }}>🚧</span>
+    <div style={{
+      maxWidth: 1560, margin: "0 auto", padding: "32px 48px 160px",
+      minHeight: "calc(100vh - 26px)",
+      fontFamily: "'Inter','Poppins',-apple-system,BlinkMacSystemFont,sans-serif",
+      background: "radial-gradient(1200px 800px at 20% 10%, #F3F3F3 0%, #E8E8E8 60%, #DDDDDD 100%)",
+      color: "#192126", letterSpacing: "-0.01em",
+    }}>
+      {/* TOPBAR */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div style={{ ..._UH_ICONBTN, overflow: "hidden", padding: 0, cursor: "default" }}>
+            {_uhLogoSrc ? (
+              <img src={_uhLogoSrc} alt={_uhAgencyName} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: 14 }} />
+            ) : (
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#0D0D0D" }}>{_uhInitial}</div>
+            )}
+          </div>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>unique<b style={{ fontWeight: 300 }}> hub</b></div>
+            <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 500, marginTop: 1 }}>{_uhAgencyName} · Agência</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, padding: "0 16px 0 4px", borderRight: "1px solid rgba(0,0,0,0.08)", marginRight: 4 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#8B8F92", whiteSpace: "nowrap", textTransform: "capitalize" }}>{_uhDateStr}</div>
+            <div style={{ fontFamily: "'JetBrains Mono',ui-monospace,monospace", fontSize: 20, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+              <span>{_uhTime.h}</span><span style={{ color: "#A8DF33", animation: "_uhblink 1.2s step-end infinite" }}>:</span><span>{_uhTime.m}</span>
+            </div>
+          </div>
+          <div style={_UH_ICONBTN}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+            </svg>
+          </div>
+          <div style={_UH_ICONBTN}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>
+            </svg>
+            <div style={{ position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: "50%", background: "#BBF246", boxShadow: "0 0 0 2px #F0F0F0, 0 0 8px rgba(187,242,70,0.7)" }}></div>
+          </div>
+          <div style={{ ..._UH_ICONBTN, background: "#0D0D0D", color: "#BBF246", fontWeight: 800, fontSize: 15 }}>{_uhInitial}</div>
+        </div>
       </div>
-      <h1 style={{ fontSize: 34, fontWeight: 800, lineHeight: 1.1, marginBottom: 12, color: "#0F1611" }}>HomePage V2 em construção</h1>
-      <p style={{ fontSize: 15, color: "#666", maxWidth: 460, lineHeight: 1.5, marginBottom: 8 }}>
-        Olá{user?.name ? `, ${user.name.split(" ")[0]}` : ""}! Esse é o ponto de partida do redesign 1:1 do preview.
-      </p>
-      <p style={{ fontSize: 13, color: "#888", marginBottom: 28 }}>
-        Próxima fase: <strong style={{ color: "#0F1611" }}>Header + Hero</strong> (logo, agency info, relógio, "Vamos começar forte!")
-      </p>
-      <a href="?home=v1" style={{ fontSize: 12, fontWeight: 600, color: "#0F1611", background: "#BBF246", padding: "10px 18px", borderRadius: 999, textDecoration: "none", border: "1px solid #BBF246" }}>← Voltar pra HomePage atual</a>
+
+      {/* HERO TITLE */}
+      <h1 style={{ fontSize: 64, fontWeight: 800, lineHeight: 0.98, letterSpacing: "-0.035em", marginBottom: 28, color: "#192126" }}>
+        Vamos começar<br/>forte, {_uhFirstName}! <span style={{ display: "inline-block", animation: "_uhwave 2.5s ease-in-out infinite", transformOrigin: "70% 70%" }}>👋</span>
+      </h1>
+
+      {/* BRIEFING DO DIA */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 4px 14px", marginBottom: 4, position: "relative" }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 10px rgba(187,242,70,0.4)", flexShrink: 0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#0D0D0D"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, color: "#8B8F92", letterSpacing: "-0.005em", overflow: "hidden" }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#192126", textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0 }}>Briefing do dia</span>
+          <span style={{ color: "rgba(0,0,0,0.18)", fontWeight: 600, flexShrink: 0 }}>·</span>
+          <span style={{ fontFamily: "'JetBrains Mono',ui-monospace,monospace", fontSize: 11, fontWeight: 700, color: "#192126", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em", flexShrink: 0 }}>~45s</span>
+          <span style={{ color: "rgba(0,0,0,0.18)", fontWeight: 600, flexShrink: 0 }}>·</span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: "#8B8F92" }}>Aperta play e eu te conto o que é prioridade agora.</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 2, height: 18, flexShrink: 0, opacity: 0.35 }}>
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} style={{ width: 2, background: "#A8DF33", borderRadius: 999, height: 5 }}></div>
+          ))}
+        </div>
+      </div>
+
+      {/* PLACEHOLDER PRA RESTO DAS FASES */}
+      <div style={{ marginTop: 80, padding: "48px 32px", borderRadius: 24, background: "rgba(255,255,255,0.55)", boxShadow: _UH_SHADOW, textAlign: "center", color: "#8B8F92" }}>
+        <div style={{ fontSize: 28, marginBottom: 12 }}>🏗️</div>
+        <p style={{ fontSize: 14, fontWeight: 700, color: "#192126", marginBottom: 6 }}>Fase 2 OK · Header + Hero portados</p>
+        <p style={{ fontSize: 13, fontWeight: 400, marginBottom: 20, lineHeight: 1.5 }}>
+          Próximas fases:&nbsp;
+          <strong>3.</strong> Cards de status ·{" "}
+          <strong>4.</strong> Quick action cards ·{" "}
+          <strong>5.</strong> Munique IA chat ·{" "}
+          <strong>6.</strong> Compromissos &amp; Resumo
+        </p>
+        <a href="?home=v1" style={{ display: "inline-block", fontSize: 12, fontWeight: 600, color: "#0D0D0D", background: "#BBF246", padding: "10px 18px", borderRadius: 999, textDecoration: "none" }}>← Voltar pra HomePage atual</a>
+      </div>
+
+      {/* Animations */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes _uhblink { 50% { opacity: 0.3; } }
+        @keyframes _uhwave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-8deg); } }
+      `}} />
     </div>
   );
 }
