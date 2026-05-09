@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ReactDOM from "react-dom";
 import { createClient } from "@supabase/supabase-js";
 
@@ -4829,6 +4829,60 @@ function HomePageV2(props) {
   const _UH_SHADOW = "0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06), 0 24px 60px rgba(0,0,0,0.04)";
   const _UH_ICONBTN = { width: 44, height: 44, borderRadius: 14, background: "#FFFFFF", boxShadow: _UH_SHADOW, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", flexShrink: 0 };
 
+  // Metrics da Fase 3 — calculadas de demands (com fallback)
+  const _uhPostsGoal = 300;
+  const _uhPostsDone = useMemo(() => {
+    if (!Array.isArray(props.demands)) return 186;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    return props.demands.filter(d => {
+      if (!d) return false;
+      const status = (d.status || "").toLowerCase();
+      const isDone = ["published", "done", "publicado", "concluido", "concluído"].includes(status);
+      if (!isDone) return false;
+      const dt = d.published_at || d.publishedAt || d.scheduling?.date || d.scheduleDate || d.updated_at || d.updatedAt || d.created_at || d.createdAt;
+      if (!dt) return false;
+      const date = new Date(dt);
+      return !isNaN(date.getTime()) && date >= monthStart;
+    }).length;
+  }, [props.demands]);
+  const _uhGoalPct = Math.min(100, Math.round((_uhPostsDone / _uhPostsGoal) * 100));
+
+  // Atenção: posts agendados nos próximos 7 dias
+  const _uhAttItems = useMemo(() => {
+    const items = [];
+    if (Array.isArray(props.demands)) {
+      const now = new Date();
+      const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const scheduled7d = props.demands.filter(d => {
+        if (!d) return false;
+        const status = (d.status || "").toLowerCase();
+        const isScheduled = ["scheduled", "client", "review", "agendado"].includes(status);
+        if (!isScheduled) return false;
+        const dt = d.scheduling?.date || d.scheduleDate || d.scheduled_date;
+        if (!dt) return false;
+        const date = new Date(dt);
+        return !isNaN(date.getTime()) && date >= now && date <= in7days;
+      }).length;
+      if (scheduled7d < 7) {
+        items.push({ label: "SEMANA", dot: "warn", text: `Apenas <b>${scheduled7d} posts</b> agendados pros próximos 7 dias` });
+      }
+      // Pendentes de aprovação
+      const pendingApprovals = props.demands.filter(d => {
+        const s = (d?.status || "").toLowerCase();
+        return ["client", "approval", "aguardando_aprovacao", "aguardando aprovação"].includes(s);
+      }).length;
+      if (pendingApprovals >= 5) {
+        items.push({ label: "APROVAÇÕES", dot: "urg", text: `<b>${pendingApprovals} demandas</b> aguardando aprovação do cliente` });
+      }
+    }
+    if (items.length === 0) {
+      items.push({ label: "SEMANA", dot: "warn", text: `Apenas <b>4 posts</b> agendados pros próximos 7 dias` });
+    }
+    return items;
+  }, [props.demands]);
+  const _uhAttCount = _uhAttItems.length;
+
   return (
     <div style={{
       maxWidth: 1560, margin: "0 auto", padding: "32px 48px 160px",
@@ -4962,21 +5016,91 @@ function HomePageV2(props) {
           ))}
         </div>
       </div>
+      {/* HERO SPLIT — goal card + attention card lado a lado */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0,1fr) 1px minmax(0,1fr)",
+        gap: 22,
+        alignItems: "stretch",
+        background: "rgba(255,255,255,0.55)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: "1px solid rgba(255,255,255,0.7)",
+        borderRadius: 28,
+        padding: "22px 24px",
+        boxShadow: _UH_SHADOW,
+        marginBottom: 24,
+        minHeight: 180,
+      }}>
+        {/* GOAL CARD (esquerda) */}
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 14, padding: "4px 2px" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.02em", color: "#192126" }}>
+              Você está <b style={{ background: "linear-gradient(180deg, transparent 60%, #BBF246 60%)", padding: "0 4px" }}>{_uhGoalPct}%</b> da meta<br/>de entregas do mês
+            </div>
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 28px rgba(187,242,70,0.5)", flexShrink: 0, position: "relative" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#0D0D0D"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+            </div>
+          </div>
+          <div style={{ height: 38, borderRadius: 999, background: "#FFFFFF", boxShadow: "inset 2px 2px 6px rgba(255,255,255,0.8), inset -3px -3px 8px rgba(0,0,0,0.05)", position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 16 }}>
+            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: `${_uhGoalPct}%`, background: "linear-gradient(90deg, rgba(187,242,70,0.0), rgba(187,242,70,0.45))", borderRadius: 999 }}></div>
+            <div style={{ position: "relative", fontSize: 14, fontWeight: 700, color: "#192126" }}>
+              {_uhPostsDone}<span style={{ color: "#8B8F92", fontWeight: 500 }}>/{_uhPostsGoal} posts</span>
+            </div>
+          </div>
+        </div>
 
-      {/* PLACEHOLDER PRA RESTO DAS FASES */}
-      <div style={{ marginTop: 80, padding: "48px 32px", borderRadius: 24, background: "rgba(255,255,255,0.55)", boxShadow: _UH_SHADOW, textAlign: "center", color: "#8B8F92" }}>
-        <div style={{ fontSize: 28, marginBottom: 12 }}>🏗️</div>
-        <p style={{ fontSize: 14, fontWeight: 700, color: "#192126", marginBottom: 6 }}>Fase 2 OK · Header + Hero portados</p>
-        <p style={{ fontSize: 13, fontWeight: 400, marginBottom: 20, lineHeight: 1.5 }}>
-          Próximas fases:&nbsp;
-          <strong>3.</strong> Cards de status ·{" "}
-          <strong>4.</strong> Quick action cards ·{" "}
-          <strong>5.</strong> Munique IA chat ·{" "}
-          <strong>6.</strong> Compromissos &amp; Resumo
-        </p>
-        <a href="?home=v1" style={{ display: "inline-block", fontSize: 12, fontWeight: 600, color: "#0D0D0D", background: "#BBF246", padding: "10px 18px", borderRadius: 999, textDecoration: "none" }}>← Voltar pra HomePage atual</a>
+        {/* DIVIDER */}
+        <div style={{ background: "rgba(0,0,0,0.06)", width: 1, alignSelf: "stretch", margin: "6px 0" }}></div>
+
+        {/* ATTENTION CARD (direita) */}
+        <div style={{ display: "flex", flexDirection: "column", padding: "4px 2px", minHeight: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <div style={{ width: 40, height: 40, borderRadius: "50%", background: _uhAttCount > 0 ? "#0D0D0D" : "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: _uhAttCount > 0 ? "0 6px 16px rgba(0,0,0,0.18)" : "0 6px 16px rgba(187,242,70,0.4)", flexShrink: 0 }}>
+              {_uhAttCount > 0 ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em", lineHeight: 1.15 }}>
+                {_uhAttCount > 0 ? "Atenção necessária" : "Tudo em ordem"}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "#8B8F92", marginTop: 2 }}>
+                {_uhAttCount > 0 ? `${_uhAttCount} ${_uhAttCount === 1 ? "item pra você revisar" : "itens pra você revisar"}` : "Nada pendente agora"}
+              </div>
+            </div>
+            {_uhAttCount > 0 && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#0D0D0D", color: "#BBF246", fontSize: 11, fontWeight: 800, padding: "5px 11px", borderRadius: 999, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em", flexShrink: 0 }}>
+                {_uhAttCount}
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            {_uhAttItems.map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.82)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 14, padding: "10px 12px 10px 14px", boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 3px 10px rgba(0,0,0,0.04)", cursor: "pointer", minWidth: 0 }}>
+                <div style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: item.dot === "urg" ? "#0D0D0D" : item.dot === "warn" ? "#A8DF33" : "#8B8F92", boxShadow: item.dot === "warn" ? "0 0 8px rgba(168,223,51,0.6)" : item.dot === "urg" ? "0 0 8px rgba(13,13,13,0.35)" : "none" }}></div>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 700, color: "#192126", letterSpacing: "-0.01em", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginRight: 6 }}>{item.label}</span>
+                  <span dangerouslySetInnerHTML={{ __html: item.text }} />
+                </div>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", color: "#8B8F92", flexShrink: 0 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
+      {/* Voltar pra v1 (pequeno, no rodapé do conteúdo desenvolvido) */}
+      <div style={{ marginTop: 40, textAlign: "center", opacity: 0.6 }}>
+        <a href="?home=v1" style={{ fontSize: 11, fontWeight: 600, color: "#8B8F92", textDecoration: "none", borderBottom: "1px dashed #8B8F92", paddingBottom: 1 }}>← voltar pra HomePage atual</a>
+        <span style={{ fontSize: 10, color: "#A0A4A7", marginLeft: 12 }}>Próximas: 4. Quick actions · 5. Munique IA · 6. Compromissos</span>
+      </div>
+
+      {/* Animations */}
       {/* Animations */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes _uhblink { 50% { opacity: 0.3; } }
