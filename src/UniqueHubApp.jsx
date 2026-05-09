@@ -4798,7 +4798,10 @@ try {
    Fase 1 OK — esqueleto + toggle. Próximo: Header + Hero (Fase 2)
    ═══════════════════════════════════════════════════════════════════════════ */
 function HomePageV2(props) {
-  const { user, agencyIdentity } = props;
+  const { user, agencyIdentity, goSub, notifCount } = props;
+
+  // Search expand state
+  const [_uhSearchOpen, _uhSetSearchOpen] = useState(false);
 
   // Live clock — atualiza a cada minuto
   const [_uhTime, _uhSetTime] = useState(() => {
@@ -4875,18 +4878,64 @@ function HomePageV2(props) {
               <span>{_uhTime.h}</span><span style={{ color: "#A8DF33", animation: "_uhblink 1.2s step-end infinite" }}>:</span><span>{_uhTime.m}</span>
             </div>
           </div>
-          <div style={_UH_ICONBTN}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-            </svg>
+          <div
+            onClick={() => !_uhSearchOpen && _uhSetSearchOpen(true)}
+            style={{
+              display: "flex", alignItems: "center", height: 44,
+              borderRadius: 14, background: "#FFFFFF", boxShadow: _UH_SHADOW,
+              overflow: "hidden",
+              width: _uhSearchOpen ? 280 : 44,
+              transition: "width .4s cubic-bezier(0.25, 1.4, 0.5, 1)",
+              cursor: _uhSearchOpen ? "default" : "pointer",
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={_uhSearchOpen ? "#A8DF33" : "#192126"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Buscar clientes, posts, ideias..."
+              autoFocus={_uhSearchOpen}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.target.value = "";
+                  _uhSetSearchOpen(false);
+                  e.target.blur();
+                }
+              }}
+              onBlur={(e) => {
+                if (!e.target.value) _uhSetSearchOpen(false);
+              }}
+              style={{
+                flex: 1, border: "none", outline: "none", background: "transparent",
+                fontFamily: "inherit", fontSize: 14, fontWeight: 500, color: "#192126",
+                padding: "0 14px 0 4px",
+                opacity: _uhSearchOpen ? 1 : 0,
+                transition: "opacity .25s 0.15s",
+                minWidth: 0,
+              }}
+            />
+            {_uhSearchOpen && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "3px 6px", borderRadius: 5, marginRight: 10, fontFamily: "inherit", flexShrink: 0 }}>esc</span>
+            )}
           </div>
-          <div style={_UH_ICONBTN}>
+          <div style={_UH_ICONBTN} onClick={() => goSub && goSub("notifs")}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#192126" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>
             </svg>
-            <div style={{ position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: "50%", background: "#BBF246", boxShadow: "0 0 0 2px #F0F0F0, 0 0 8px rgba(187,242,70,0.7)" }}></div>
+            {(notifCount > 0) && (
+              <div style={{ position: "absolute", top: 6, right: 6, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: "#BBF246", color: "#0D0D0D", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #F0F0F0, 0 0 8px rgba(187,242,70,0.7)", fontFamily: "inherit" }}>
+                {notifCount > 99 ? "99+" : notifCount}
+              </div>
+            )}
+            {!(notifCount > 0) && (
+              <div style={{ position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: "50%", background: "#BBF246", boxShadow: "0 0 0 2px #F0F0F0, 0 0 8px rgba(187,242,70,0.7)" }}></div>
+            )}
           </div>
-          <div style={{ ..._UH_ICONBTN, background: "#0D0D0D", color: "#BBF246", fontWeight: 800, fontSize: 15 }}>{_uhInitial}</div>
+          <div style={{ ..._UH_ICONBTN, background: "#0D0D0D", color: "#BBF246", fontWeight: 800, fontSize: 15 }} onClick={() => goSub && goSub("settings")}>{_uhInitial}</div>
         </div>
       </div>
 
