@@ -4838,11 +4838,30 @@ function HomePageV2(props) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
           <div style={{ ..._UH_ICONBTN, overflow: "hidden", padding: 0, cursor: "default" }}>
-            {_uhLogoSrc ? (
-              <img src={_uhLogoSrc} alt={_uhAgencyName} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: 14 }} />
-            ) : (
-              <div style={{ fontSize: 18, fontWeight: 800, color: "#0D0D0D" }}>{_uhInitial}</div>
-            )}
+            <img
+              src={_uhLogoSrc || "/logo.png"}
+              alt={_uhAgencyName}
+              onError={(e) => {
+                const stage = e.target.dataset.fbStage || "0";
+                if (stage === "0" && _uhLogoSrc) {
+                  // First fail: try /logo.png
+                  e.target.dataset.fbStage = "1";
+                  e.target.src = "/logo.png";
+                } else {
+                  // /logo.png also failed (or no _uhLogoSrc): show initial
+                  e.target.style.display = "none";
+                  const parent = e.target.parentElement;
+                  if (parent && !parent.querySelector("[data-uh-initial]")) {
+                    const div = document.createElement("div");
+                    div.setAttribute("data-uh-initial", "1");
+                    div.style.cssText = "width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#0D0D0D";
+                    div.textContent = _uhInitial;
+                    parent.appendChild(div);
+                  }
+                }
+              }}
+              style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", borderRadius: 14, padding: 4 }}
+            />
           </div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em", lineHeight: 1.1 }}>unique<b style={{ fontWeight: 300 }}> hub</b></div>
