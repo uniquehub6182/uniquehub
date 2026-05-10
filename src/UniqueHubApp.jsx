@@ -4803,6 +4803,9 @@ function HomePageV2(props) {
   // Search expand state
   const [_uhSearchOpen, _uhSetSearchOpen] = useState(false);
 
+  // Briefing playing state (Fase 2 polimento — animações)
+  const [_uhBriefPlaying, _uhSetBriefPlaying] = useState(false);
+
   // Live clock — atualiza a cada minuto
   const [_uhTime, _uhSetTime] = useState(() => {
     const n = new Date();
@@ -5012,21 +5015,50 @@ function HomePageV2(props) {
         Vamos começar<br/>forte, {_uhFirstName}! <span style={{ display: "inline-block", animation: "_uhwave 2.5s ease-in-out infinite", transformOrigin: "70% 70%" }}>👋</span>
       </h1>
 
-      {/* BRIEFING DO DIA */}
+      {/* BRIEFING DO DIA — com play state animado */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 4px 14px", marginBottom: 4, position: "relative" }}>
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 10px rgba(187,242,70,0.4)", flexShrink: 0 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="#0D0D0D"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        <div
+          onClick={() => _uhSetBriefPlaying(p => !p)}
+          style={{
+            width: 32, height: 32, borderRadius: "50%", background: "#BBF246",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 4px 10px rgba(187,242,70,0.4)",
+            flexShrink: 0,
+            animation: _uhBriefPlaying ? "_uhBriefPulse 1.2s ease-in-out infinite" : "none",
+            transition: "transform .15s",
+          }}
+          onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.92)"; }}
+          onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+        >
+          {_uhBriefPlaying ? (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#0D0D0D"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#0D0D0D"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, color: "#8B8F92", letterSpacing: "-0.005em", overflow: "hidden" }}>
           <span style={{ fontSize: 11, fontWeight: 800, color: "#192126", textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0 }}>Briefing do dia</span>
           <span style={{ color: "rgba(0,0,0,0.18)", fontWeight: 600, flexShrink: 0 }}>·</span>
           <span style={{ fontFamily: "'JetBrains Mono',ui-monospace,monospace", fontSize: 11, fontWeight: 700, color: "#192126", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em", flexShrink: 0 }}>~45s</span>
           <span style={{ color: "rgba(0,0,0,0.18)", fontWeight: 600, flexShrink: 0 }}>·</span>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: "#8B8F92" }}>Aperta play e eu te conto o que é prioridade agora.</span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: _uhBriefPlaying ? "#0D0D0D" : "#8B8F92", transition: "color .25s" }}>
+            {_uhBriefPlaying ? "Tocando seu briefing — prioridade hoje: aprovações pendentes da semana e meta de entregas." : "Aperta play e eu te conto o que é prioridade agora."}
+          </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 2, height: 18, flexShrink: 0, opacity: 0.35 }}>
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} style={{ width: 2, background: "#A8DF33", borderRadius: 999, height: 5 }}></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 2, height: 18, flexShrink: 0, opacity: _uhBriefPlaying ? 1 : 0.35, transition: "opacity .3s" }}>
+          {[0, 0.1, 0.2, 0.3, 0.4, 0.15, 0.25, 0.05, 0.35, 0.2, 0.15, 0.3].map((delay, i) => (
+            <div
+              key={i}
+              style={{
+                width: 2,
+                background: "#A8DF33",
+                borderRadius: 999,
+                height: 5,
+                animation: _uhBriefPlaying ? `_uhWaveBounce 0.8s ease-in-out ${delay}s infinite` : "none",
+              }}
+            ></div>
           ))}
         </div>
       </div>
@@ -5193,6 +5225,14 @@ function HomePageV2(props) {
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes _uhblink { 50% { opacity: 0.3; } }
         @keyframes _uhwave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-8deg); } }
+        @keyframes _uhBriefPulse {
+          0%, 100% { box-shadow: 0 4px 10px rgba(187,242,70,0.4), 0 0 0 0 rgba(187,242,70,0.6); }
+          50% { box-shadow: 0 4px 10px rgba(187,242,70,0.4), 0 0 0 10px rgba(187,242,70,0); }
+        }
+        @keyframes _uhWaveBounce {
+          0%, 100% { height: 4px; }
+          50% { height: 16px; }
+        }
       `}} />
     </div>
   );
