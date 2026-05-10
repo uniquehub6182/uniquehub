@@ -4806,6 +4806,20 @@ function HomePageV2(props) {
   // Briefing playing state (Fase 2 polimento — animações)
   const [_uhBriefPlaying, _uhSetBriefPlaying] = useState(false);
 
+  // Apply V2 gradient background to body so it covers entire screen
+  // (parent app container may limit width, so we paint the body itself)
+  useEffect(() => {
+    const prevBg = document.body.style.background;
+    const prevBgColor = document.body.style.backgroundColor;
+    document.body.style.background = "radial-gradient(1200px 800px at 20% 10%, #F3F3F3 0%, #E8E8E8 60%, #DDDDDD 100%)";
+    document.body.style.backgroundAttachment = "fixed";
+    return () => {
+      document.body.style.background = prevBg;
+      document.body.style.backgroundColor = prevBgColor;
+      document.body.style.backgroundAttachment = "";
+    };
+  }, []);
+
   // Live clock — atualiza a cada minuto
   const [_uhTime, _uhSetTime] = useState(() => {
     const n = new Date();
@@ -4902,11 +4916,16 @@ function HomePageV2(props) {
 
   return (
     <div style={{
-      maxWidth: 1560, margin: "0 auto", padding: "32px 48px 160px",
       minHeight: "calc(100vh - 26px)",
+      width: "100%",
+      maxWidth: "none",
+      padding: 0,
       fontFamily: "'Inter','Poppins',-apple-system,BlinkMacSystemFont,sans-serif",
-      background: "radial-gradient(1200px 800px at 20% 10%, #F3F3F3 0%, #E8E8E8 60%, #DDDDDD 100%)",
-      color: "#192126", letterSpacing: "-0.01em",
+      color: "#192126",
+      letterSpacing: "-0.01em",
+    }}>
+    <div style={{
+      maxWidth: 1560, margin: "0 auto", padding: "32px 48px 160px",
     }}>
       {/* TOPBAR */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 40 }}>
@@ -5226,7 +5245,6 @@ function HomePageV2(props) {
       </div>
 
       {/* Animations */}
-      {/* Animations */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes _uhblink { 50% { opacity: 0.3; } }
         @keyframes _uhwave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(14deg); } 75% { transform: rotate(-8deg); } }
@@ -5243,6 +5261,7 @@ function HomePageV2(props) {
           50% { box-shadow: 0 14px 34px rgba(187,242,70,0.65), 0 0 0 14px rgba(187,242,70,0); transform: scale(1.05); }
         }
       `}} />
+    </div>
     </div>
   );
 }
