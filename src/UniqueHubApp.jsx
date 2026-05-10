@@ -4824,6 +4824,8 @@ function HomePageV2(props) {
   });
   const [_uhPickerOpen, _uhSetPickerOpen] = useState(false);
   const [_uhPickerSelection, _uhSetPickerSelection] = useState([]);
+  const [_uhDragIndex, _uhSetDragIndex] = useState(null);
+  const [_uhDragOverIndex, _uhSetDragOverIndex] = useState(null);
   useEffect(() => {
     try { localStorage.setItem("uh_quick_apps_v2", JSON.stringify(_uhQuickAppKeys)); } catch {}
   }, [_uhQuickAppKeys]);
@@ -5666,7 +5668,71 @@ function HomePageV2(props) {
               {_uhPickerSelection.length} de 5 selecionados
             </div>
 
-            {/* GRID */}
+            {/* SECTION 1: SUA ORDEM (drag pra reordenar) */}
+            {_uhPickerSelection.length > 0 && (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                  Sua ordem · arraste pra reordenar
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${_uhPickerSelection.length}, 1fr)`, gap: 6 }}>
+                  {_uhPickerSelection.map((key, idx) => {
+                    const app = _UH_APPS_REGISTRY[key];
+                    if (!app) return null;
+                    const isDragging = _uhDragIndex === idx;
+                    const isDragOver = _uhDragOverIndex === idx && _uhDragIndex !== null && _uhDragIndex !== idx;
+                    return (
+                      <div
+                        key={key}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          _uhSetDragIndex(idx);
+                          e.dataTransfer.effectAllowed = "move";
+                          try { e.dataTransfer.setData("text/plain", String(idx)); } catch {}
+                        }}
+                        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (_uhDragOverIndex !== idx) _uhSetDragOverIndex(idx); }}
+                        onDragLeave={(e) => { if (_uhDragOverIndex === idx) _uhSetDragOverIndex(null); }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (_uhDragIndex === null || _uhDragIndex === idx) return;
+                          const arr = [..._uhPickerSelection];
+                          const [moved] = arr.splice(_uhDragIndex, 1);
+                          arr.splice(idx, 0, moved);
+                          _uhSetPickerSelection(arr);
+                          _uhSetDragIndex(null);
+                          _uhSetDragOverIndex(null);
+                        }}
+                        onDragEnd={() => { _uhSetDragIndex(null); _uhSetDragOverIndex(null); }}
+                        style={{
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                          padding: "12px 6px",
+                          background: isDragOver ? "#F0FAD5" : "#0D0D0D",
+                          border: `2px solid ${isDragOver ? "#A8DF33" : isDragging ? "#BBF246" : "#0D0D0D"}`,
+                          borderRadius: 14,
+                          cursor: "grab",
+                          opacity: isDragging ? 0.4 : 1,
+                          transform: isDragOver ? "translateY(-3px)" : "translateY(0)",
+                          transition: "transform .2s, border-color .2s, background .2s",
+                          position: "relative",
+                          userSelect: "none",
+                        }}
+                      >
+                        <div style={{ position: "absolute", top: 4, right: 4, fontSize: 8, color: isDragOver ? "#0D7C00" : "rgba(255,255,255,0.4)", fontWeight: 800 }}>{idx + 1}</div>
+                        <div style={{ width: 30, height: 30, borderRadius: 8, background: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {React.cloneElement(app.icon, { width: 16, height: 16, stroke: "#0D0D0D" })}
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: isDragOver ? "#0D0D0D" : "#FFFFFF", textAlign: "center", lineHeight: 1.2 }}>{app.name}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* SECTION 2: TODOS APPS DISPONIVEIS */}
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+              Apps disponíveis
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, overflow: "auto", flex: 1, paddingRight: 4 }}>
               {Object.keys(_UH_APPS_REGISTRY).map(key => {
                 const app = _UH_APPS_REGISTRY[key];
@@ -5685,28 +5751,27 @@ function HomePageV2(props) {
                     disabled={!canSelect}
                     style={{
                       display: "flex", alignItems: "center", gap: 12,
-                      padding: "12px 14px",
+                      padding: "10px 12px",
                       background: selected ? "#0D0D0D" : canSelect ? "rgba(0,0,0,0.03)" : "rgba(0,0,0,0.02)",
                       border: `1px solid ${selected ? "#0D0D0D" : "rgba(0,0,0,0.08)"}`,
-                      borderRadius: 14,
+                      borderRadius: 12,
                       cursor: canSelect ? "pointer" : "not-allowed",
                       opacity: canSelect ? 1 : 0.4,
                       textAlign: "left",
                       fontFamily: "inherit",
-                      transition: "background .2s, border-color .2s, transform .15s",
+                      transition: "background .2s, border-color .2s",
                     }}
                     onMouseEnter={(e) => { if (canSelect && !selected) e.currentTarget.style.background = "rgba(0,0,0,0.06)"; }}
                     onMouseLeave={(e) => { if (canSelect && !selected) e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
                   >
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: selected ? "#BBF246" : "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: selected ? "none" : "inset 0 0 0 1px rgba(0,0,0,0.06)" }}>
-                      {React.cloneElement(app.icon, { width: 18, height: 18, stroke: selected ? "#0D0D0D" : "#0D0D0D" })}
+                    <div style={{ width: 30, height: 30, borderRadius: 8, background: selected ? "#BBF246" : "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: selected ? "none" : "inset 0 0 0 1px rgba(0,0,0,0.06)" }}>
+                      {React.cloneElement(app.icon, { width: 16, height: 16, stroke: "#0D0D0D" })}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: selected ? "#FFFFFF" : "#192126" }}>{app.name}</div>
-                      <div style={{ fontSize: 11, color: selected ? "rgba(255,255,255,0.6)" : "#8B8F92", marginTop: 1 }}>Atalho rápido</div>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: selected ? "#FFFFFF" : "#192126" }}>{app.name}</div>
                     </div>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: selected ? "#BBF246" : "transparent", border: selected ? "none" : "2px solid rgba(0,0,0,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      {selected && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    <div style={{ width: 18, height: 18, borderRadius: "50%", background: selected ? "#BBF246" : "transparent", border: selected ? "none" : "2px solid rgba(0,0,0,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {selected && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
                     </div>
                   </button>
                 );
