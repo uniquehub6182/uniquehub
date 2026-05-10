@@ -5034,8 +5034,12 @@ function HomePageV2(props) {
         </div>
       </div>
 
+      {/* SPLIT 2 COLUNAS (left + main-panel) — Fase 5 */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 420px", gap: 24, alignItems: "flex-start" }}>
+        <div style={{ minWidth: 0 }}>
+
       {/* HERO TITLE */}
-      <h1 style={{ fontSize: 64, fontWeight: 800, lineHeight: 0.98, letterSpacing: "-0.035em", marginBottom: 28, color: "#192126" }}>
+      <h1 style={{ fontSize: 56, fontWeight: 800, lineHeight: 0.98, letterSpacing: "-0.035em", marginBottom: 28, color: "#192126" }}>
         Vamos começar<br/>forte, {_uhFirstName}! <span style={{ display: "inline-block", animation: "_uhwave 2.5s ease-in-out infinite", transformOrigin: "70% 70%" }}>👋</span>
       </h1>
 
@@ -5437,6 +5441,139 @@ function HomePageV2(props) {
         );
       })()}
 
+        </div>{/* close .left */}
+
+        {/* MAIN PANEL (direita) — Munique IA ou pinned app */}
+        <div style={{
+          position: "sticky",
+          top: 32,
+          background: "rgba(255,255,255,0.85)",
+          border: "1px solid rgba(255,255,255,0.7)",
+          borderRadius: 28,
+          boxShadow: _UH_SHADOW,
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          overflow: "hidden",
+          minHeight: 520,
+          display: "flex",
+          flexDirection: "column",
+        }}>
+          {/* MP GLOW — radial lime animado pulse */}
+          <div style={{
+            position: "absolute", top: -80, right: -80,
+            width: 280, height: 280, borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(187,242,70,0.3), transparent 70%)",
+            pointerEvents: "none",
+            animation: "_uhMpGlowPulse 4s ease-in-out infinite",
+          }}></div>
+
+          {_uhPinnedApp ? (() => {
+            // PINNED APP no painel direito (substitui Munique)
+            const pinnedConfigs = {
+              conteudo: { name: "Conteúdo", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> },
+              comentarios: { name: "Coment. IA", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+              aprovacoes: { name: "Aprovações", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><circle cx="12" cy="12" r="9"/><polyline points="9 12 11 14 15 10"/></svg> },
+              agenda: { name: "Agenda", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/></svg> },
+              munique: { name: "Munique A.I.", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><circle cx="12" cy="12" r="3"/></svg> },
+            };
+            const cfg = pinnedConfigs[_uhPinnedApp] || pinnedConfigs.conteudo;
+            return (
+              <div style={{ display: "flex", flexDirection: "column", flex: 1, animation: "_uhPinOpen .45s cubic-bezier(0.25, 1.4, 0.5, 1) both", position: "relative", zIndex: 1 }}>
+                <div style={{ padding: "18px 20px", borderBottom: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 9, background: "#F0FAD5", display: "flex", alignItems: "center", justifyContent: "center" }}>{cfg.icon}</div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em" }}>{cfg.name}</div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: "#0D7C00", marginTop: 1, display: "flex", alignItems: "center", gap: 4 }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 17v5M9 10.76V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4.76l2.5 3.74-1 1.5h-9l-1-1.5L9 10.76z"/></svg>
+                        Fixado
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => _uhSetPinnedApp(null)} style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,0.06)", border: "none", color: "#192126", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }} title="Despinar">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                <div style={{ padding: 16, flex: 1, overflow: "auto", maxHeight: 420 }}>
+                  <div style={{ fontSize: 12, color: "#8B8F92", lineHeight: 1.5 }}>
+                    Conteúdo do <b>{cfg.name}</b> renderiza aqui quando pinado.<br/>
+                    <span style={{ fontSize: 11 }}>(Fase 5B: conectar com bodies reais ao invés de mock)</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })() : (
+            // MUNIQUE IA chat
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, position: "relative", zIndex: 1 }}>
+              {/* HEADER */}
+              <div style={{ padding: "18px 20px", borderBottom: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#0D0D0D", padding: "5px 12px 5px 5px", borderRadius: 999 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#BBF246", color: "#0D0D0D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 900 }}>M</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.01em" }}>Munique A.I.</div>
+                  </div>
+                </div>
+                <button style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.04)", border: "none", color: "#192126", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, transition: "transform .3s, background .2s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "#0D0D0D"; e.currentTarget.style.color = "#BBF246"; e.currentTarget.style.transform = "rotate(180deg)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; e.currentTarget.style.color = "#192126"; e.currentTarget.style.transform = "rotate(0)"; }}
+                  title="Trocar app"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                </button>
+              </div>
+              <div style={{ padding: "10px 20px 4px", fontSize: 11, fontWeight: 600, color: "#8B8F92", display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#BBF246", boxShadow: "0 0 6px rgba(187,242,70,0.7)" }}></div>
+                Online · 3 sugestões
+              </div>
+
+              {/* BODY — chat bubbles */}
+              <div style={{ padding: "14px 20px", flex: 1, overflow: "auto", maxHeight: 380, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", gap: 8, animation: "_uhMqBubbleIn .35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>M</div>
+                  <div style={{ background: "#F4F4F5", borderRadius: 14, padding: "10px 13px", fontSize: 12.5, color: "#192126", maxWidth: "78%", lineHeight: 1.4 }}>
+                    Bom dia, {_uhFirstName}! 👋 Vi que você tem <b>7 demandas aguardando aprovação</b>. Posso te ajudar a priorizar?
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", animation: "_uhMqBubbleIn .35s cubic-bezier(0.34,1.56,0.64,1) .1s both" }}>
+                  <div style={{ background: "#BBF246", borderRadius: 14, padding: "10px 13px", fontSize: 12.5, color: "#0D0D0D", maxWidth: "78%", lineHeight: 1.4, fontWeight: 500 }}>
+                    Bora. Quais são as mais urgentes?
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, animation: "_uhMqBubbleIn .35s cubic-bezier(0.34,1.56,0.64,1) .2s both" }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>M</div>
+                  <div style={{ background: "#F4F4F5", borderRadius: 14, padding: "10px 13px", fontSize: 12.5, color: "#192126", maxWidth: "78%", lineHeight: 1.4 }}>
+                    3 são do <b>Café Luís</b> (cookie red velvet tá excelente), 2 da <b>Boutique XYZ</b> e 2 do <b>Studio Z</b>. Começo pela do Café Luís?
+                  </div>
+                </div>
+                {/* typing indicator */}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>M</div>
+                  <div style={{ background: "#F4F4F5", borderRadius: 14, padding: "10px 13px", display: "flex", gap: 4, alignItems: "center" }}>
+                    {[0, 0.2, 0.4].map((d, i) => (
+                      <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#8B8F92", animation: `_uhMqBounce 1.3s ease-in-out ${d}s infinite` }}></div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* INPUT FOOTER */}
+              <div style={{ padding: "12px 16px 16px", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "6px 6px 6px 16px" }}>
+                  <input
+                    type="text"
+                    placeholder="Pergunta algo pra Munique..."
+                    style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "inherit", fontSize: 13, color: "#192126", minWidth: 0 }}
+                  />
+                  <button style={{ width: 32, height: 32, borderRadius: "50%", background: "#BBF246", border: "none", color: "#0D0D0D", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, boxShadow: "0 2px 8px rgba(187,242,70,0.4)" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>{/* close .main-panel */}
+      </div>{/* close grid 2 cols */}
+
       {/* Voltar pra v1 (pequeno, no rodapé do conteúdo desenvolvido) */}
       <div style={{ marginTop: 40, textAlign: "center", opacity: 0.6 }}>
         <a href="?home=v1" style={{ fontSize: 11, fontWeight: 600, color: "#8B8F92", textDecoration: "none", borderBottom: "1px dashed #8B8F92", paddingBottom: 1 }}>← voltar pra HomePage atual</a>
@@ -5458,6 +5595,22 @@ function HomePageV2(props) {
         @keyframes _uhGoalPulse {
           0%, 100% { box-shadow: 0 10px 28px rgba(187,242,70,0.5), 0 0 0 0 rgba(187,242,70,0.5); transform: scale(1); }
           50% { box-shadow: 0 14px 34px rgba(187,242,70,0.65), 0 0 0 14px rgba(187,242,70,0); transform: scale(1.05); }
+        }
+        @keyframes _uhMpGlowPulse {
+          0%, 100% { opacity: 0.7; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.15); }
+        }
+        @keyframes _uhMqBubbleIn {
+          0% { opacity: 0; transform: translateY(8px) scale(0.95); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes _uhMqBounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+          40% { transform: translateY(-4px); opacity: 1; }
+        }
+        @keyframes _uhPinOpen {
+          0% { transform: scale(0.85) translateX(-12px); opacity: 0; }
+          100% { transform: scale(1) translateX(0); opacity: 1; }
         }
       `}} />
     </div>
