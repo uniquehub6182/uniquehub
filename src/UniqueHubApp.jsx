@@ -5084,7 +5084,7 @@ function HomePageV2(props) {
             <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.02em", color: "#192126" }}>
               Você está <b style={{ background: "linear-gradient(180deg, transparent 60%, #BBF246 60%)", padding: "0 4px" }}>{_uhGoalPct}%</b> da meta<br/>de entregas do mês
             </div>
-            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 28px rgba(187,242,70,0.5)", flexShrink: 0, position: "relative" }}>
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 10px 28px rgba(187,242,70,0.5)", flexShrink: 0, position: "relative", animation: "_uhGoalPulse 4s ease-in-out infinite" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="#0D0D0D"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
             </div>
           </div>
@@ -5125,7 +5125,12 @@ function HomePageV2(props) {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             {_uhAttItems.map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.82)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 14, padding: "10px 12px 10px 14px", boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 3px 10px rgba(0,0,0,0.04)", cursor: "pointer", minWidth: 0 }}>
+              <div
+                key={i}
+                style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.82)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 14, padding: "10px 12px 10px 14px", boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 3px 10px rgba(0,0,0,0.04)", cursor: "pointer", minWidth: 0, transition: "transform .25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow .25s, background .25s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateX(3px)"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.95)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "translateX(0)"; e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.03), 0 3px 10px rgba(0,0,0,0.04)"; e.currentTarget.style.background = "rgba(255,255,255,0.82)"; }}
+              >
                 <div style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: item.dot === "urg" ? "#0D0D0D" : item.dot === "warn" ? "#A8DF33" : "#8B8F92", boxShadow: item.dot === "warn" ? "0 0 8px rgba(168,223,51,0.6)" : item.dot === "urg" ? "0 0 8px rgba(13,13,13,0.35)" : "none" }}></div>
                 <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 700, color: "#192126", letterSpacing: "-0.01em", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginRight: 6 }}>{item.label}</span>
@@ -5232,6 +5237,10 @@ function HomePageV2(props) {
         @keyframes _uhWaveBounce {
           0%, 100% { height: 4px; }
           50% { height: 16px; }
+        }
+        @keyframes _uhGoalPulse {
+          0%, 100% { box-shadow: 0 10px 28px rgba(187,242,70,0.5), 0 0 0 0 rgba(187,242,70,0.5); transform: scale(1); }
+          50% { box-shadow: 0 14px 34px rgba(187,242,70,0.65), 0 0 0 14px rgba(187,242,70,0); transform: scale(1.05); }
         }
       `}} />
     </div>
