@@ -4811,6 +4811,23 @@ function HomePageV2(props) {
   const [_uhPinnedApp, _uhSetPinnedApp] = useState(null);
   const [_uhFading, _uhSetFading] = useState(false);
 
+  // Picker do edit quicks (Fase 4B — personalização)
+  const [_uhQuickAppKeys, _uhSetQuickAppKeys] = useState(() => {
+    try {
+      const saved = localStorage.getItem("uh_quick_apps_v2");
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr) && arr.length === 5) return arr;
+      }
+    } catch {}
+    return ['conteudo', 'comentarios', 'aprovacoes', 'agenda', 'munique'];
+  });
+  const [_uhPickerOpen, _uhSetPickerOpen] = useState(false);
+  const [_uhPickerSelection, _uhSetPickerSelection] = useState([]);
+  useEffect(() => {
+    try { localStorage.setItem("uh_quick_apps_v2", JSON.stringify(_uhQuickAppKeys)); } catch {}
+  }, [_uhQuickAppKeys]);
+
   // Apply V2 gradient background to body so it covers entire screen
   // (parent app container may limit width, so we paint the body itself)
   useEffect(() => {
@@ -4918,6 +4935,38 @@ function HomePageV2(props) {
       agenda: 4, // TODO: contar próximos compromissos
     };
   }, [props.demands]);
+
+  // Apps registry (Fase 4B — 14 apps disponíveis para personalização)
+  const _UH_APPS_REGISTRY = useMemo(() => ({
+    conteudo:    { name: "Conteúdo",      defaultCount: 47, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>, nav: () => goTab && goTab("content") },
+    comentarios: { name: "Coment. IA",    defaultCount: 23, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, nav: () => goSub && goSub("commentsai") },
+    aprovacoes:  { name: "Aprovações",    defaultCount: 7,  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="9 12 11 14 15 10"/></svg>, nav: () => goSub && goSub("approvals") },
+    agenda:      { name: "Agenda",        defaultCount: 4,  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, nav: () => goSub && goSub("calendar") },
+    munique:     { name: "Munique A.I.",  defaultCount: "M",isMunique: true, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>, nav: () => goTab && goTab("chat") },
+    clientes:    { name: "Clientes",      defaultCount: 12, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>, nav: () => goTab && goTab("clients") },
+    ideias:      { name: "Ideias",        defaultCount: 34, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.5.4 1 1 1 1.3v2h6v-2c0-.3.5-.9 1-1.3A7 7 0 0 0 12 2z"/></svg>, nav: () => goSub && goSub("ideas") },
+    biblioteca:  { name: "Biblioteca",    defaultCount: 142,icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>, nav: () => goSub && goSub("library") },
+    noticias:    { name: "Comunicados",   defaultCount: 3,  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-8v18l-18-8z"/><path d="M11.6 16.8L11 22a1 1 0 0 1-1.7.7L7 19"/></svg>, nav: () => goSub && goSub("news") },
+    notas:       { name: "Notas",         defaultCount: 12, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, nav: () => goSub && goSub("notes") },
+    relatorios:  { name: "Relatórios",    defaultCount: 8,  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>, nav: () => goSub && goSub("reports") },
+    metricas:    { name: "Métricas",      defaultCount: 0,  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, nav: () => goSub && goSub("metrics") },
+    equipe:      { name: "Equipe",        defaultCount: 5,  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>, nav: () => goSub && goSub("team") },
+    financeiro:  { name: "Financeiro",    defaultCount: 0,  icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, nav: () => goSub && goSub("financial") },
+  }), [goTab, goSub]);
+
+  // Quicks ativos derivados do registry + state
+  const _uhQuickRow = _uhQuickAppKeys.map(key => {
+    const app = _UH_APPS_REGISTRY[key];
+    if (!app) return null;
+    return {
+      key,
+      label: app.name,
+      count: _uhQuickCounts[key] !== undefined ? _uhQuickCounts[key] : app.defaultCount,
+      isMunique: app.isMunique,
+      onClick: app.nav,
+      icon: app.icon,
+    };
+  }).filter(Boolean);
 
   return (
     <div style={{
@@ -5177,18 +5226,7 @@ function HomePageV2(props) {
       {/* QUICK ACTION CARDS — Fase 4 */}
       <div style={{ display: "flex", alignItems: "stretch", gap: 10, marginBottom: 24 }}>
         <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14 }}>
-          {[
-            { key: "conteudo", label: "Conteúdo", count: _uhQuickCounts.conteudo, onClick: () => goTab && goTab("content"),
-              icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> },
-            { key: "comentarios", label: "Coment. IA", count: _uhQuickCounts.comentarios, onClick: () => goSub && goSub("commentsai"),
-              icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
-            { key: "aprovacoes", label: "Aprovações", count: _uhQuickCounts.aprovacoes, onClick: () => goSub && goSub("approvals"),
-              icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="9 12 11 14 15 10"/></svg> },
-            { key: "agenda", label: "Agenda", count: _uhQuickCounts.agenda, onClick: () => goSub && goSub("calendar"),
-              icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-            { key: "munique", label: "Munique A.I.", count: "M", isMunique: true, onClick: () => goTab && goTab("chat"),
-              icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg> },
-          ].map((q) => {
+          {_uhQuickRow.map((q) => {
             const isActive = q.key === _uhActiveApp;
             const isPinned = q.key === _uhPinnedApp;
             const handleClick = () => {
@@ -5270,6 +5308,7 @@ function HomePageV2(props) {
           transition: "transform .2s, border-color .2s, color .2s, background .2s",
         }}
         onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#A8DF33"; e.currentTarget.style.color = "#A8DF33"; e.currentTarget.style.background = "#F0FAD5"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+        onClick={() => { _uhSetPickerSelection([..._uhQuickAppKeys]); _uhSetPickerOpen(true); }}
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(0,0,0,0.12)"; e.currentTarget.style.color = "#8B8F92"; e.currentTarget.style.background = "rgba(255,255,255,0.5)"; e.currentTarget.style.transform = "translateY(0)"; }}
         title="Editar blocos rápidos">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08 4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08 4.24-4.24"/></svg>
@@ -5580,6 +5619,137 @@ function HomePageV2(props) {
         <span style={{ fontSize: 10, color: "#A0A4A7", marginLeft: 12 }}>Próximas: 4. Quick actions · 5. Munique IA · 6. Compromissos</span>
       </div>
 
+      {/* PICKER MODAL — escolher quais 5 apps aparecem como quicks (Fase 4B) */}
+      {_uhPickerOpen && (
+        <div
+          onClick={() => _uhSetPickerOpen(false)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 1000,
+            background: "rgba(13,13,13,0.55)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20,
+            animation: "_uhFadeIn .25s ease-out",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#FFFFFF",
+              borderRadius: 24,
+              padding: 24,
+              maxWidth: 640, width: "100%",
+              maxHeight: "85vh",
+              display: "flex", flexDirection: "column",
+              boxShadow: "0 24px 80px rgba(0,0,0,0.3)",
+              animation: "_uhPickerIn .35s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            }}
+          >
+            {/* HEAD */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em" }}>Personalizar acessos rápidos</div>
+                <div style={{ fontSize: 12, color: "#8B8F92", marginTop: 4 }}>Escolha 5 apps que aparecem na home como cards de atalho</div>
+              </div>
+              <button
+                onClick={() => _uhSetPickerOpen(false)}
+                style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.05)", border: "none", color: "#192126", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {/* COUNTER */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: _uhPickerSelection.length === 5 ? "#F0FAD5" : "rgba(0,0,0,0.04)", borderRadius: 999, marginBottom: 16, fontSize: 12, fontWeight: 700, color: _uhPickerSelection.length === 5 ? "#0D7C00" : "#8B8F92", alignSelf: "flex-start" }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: _uhPickerSelection.length === 5 ? "#0D7C00" : "#8B8F92" }}></div>
+              {_uhPickerSelection.length} de 5 selecionados
+            </div>
+
+            {/* GRID */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8, overflow: "auto", flex: 1, paddingRight: 4 }}>
+              {Object.keys(_UH_APPS_REGISTRY).map(key => {
+                const app = _UH_APPS_REGISTRY[key];
+                const selected = _uhPickerSelection.includes(key);
+                const canSelect = selected || _uhPickerSelection.length < 5;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      if (selected) {
+                        _uhSetPickerSelection(_uhPickerSelection.filter(k => k !== key));
+                      } else if (_uhPickerSelection.length < 5) {
+                        _uhSetPickerSelection([..._uhPickerSelection, key]);
+                      }
+                    }}
+                    disabled={!canSelect}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "12px 14px",
+                      background: selected ? "#0D0D0D" : canSelect ? "rgba(0,0,0,0.03)" : "rgba(0,0,0,0.02)",
+                      border: `1px solid ${selected ? "#0D0D0D" : "rgba(0,0,0,0.08)"}`,
+                      borderRadius: 14,
+                      cursor: canSelect ? "pointer" : "not-allowed",
+                      opacity: canSelect ? 1 : 0.4,
+                      textAlign: "left",
+                      fontFamily: "inherit",
+                      transition: "background .2s, border-color .2s, transform .15s",
+                    }}
+                    onMouseEnter={(e) => { if (canSelect && !selected) e.currentTarget.style.background = "rgba(0,0,0,0.06)"; }}
+                    onMouseLeave={(e) => { if (canSelect && !selected) e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
+                  >
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: selected ? "#BBF246" : "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: selected ? "none" : "inset 0 0 0 1px rgba(0,0,0,0.06)" }}>
+                      {React.cloneElement(app.icon, { width: 18, height: 18, stroke: selected ? "#0D0D0D" : "#0D0D0D" })}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: selected ? "#FFFFFF" : "#192126" }}>{app.name}</div>
+                      <div style={{ fontSize: 11, color: selected ? "rgba(255,255,255,0.6)" : "#8B8F92", marginTop: 1 }}>Atalho rápido</div>
+                    </div>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: selected ? "#BBF246" : "transparent", border: selected ? "none" : "2px solid rgba(0,0,0,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {selected && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* FOOTER */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16, paddingTop: 16, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+              <button
+                onClick={() => _uhSetPickerOpen(false)}
+                style={{ fontSize: 13, fontWeight: 600, color: "#192126", background: "transparent", border: "1px solid rgba(0,0,0,0.12)", padding: "9px 16px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (_uhPickerSelection.length === 5) {
+                    _uhSetQuickAppKeys(_uhPickerSelection);
+                    _uhSetPickerOpen(false);
+                    if (_uhActiveApp && !_uhPickerSelection.includes(_uhActiveApp)) _uhSetActiveApp(null);
+                    if (_uhPinnedApp && !_uhPickerSelection.includes(_uhPinnedApp)) _uhSetPinnedApp(null);
+                  }
+                }}
+                disabled={_uhPickerSelection.length !== 5}
+                style={{
+                  fontSize: 13, fontWeight: 700,
+                  color: _uhPickerSelection.length === 5 ? "#0D0D0D" : "#8B8F92",
+                  background: _uhPickerSelection.length === 5 ? "#BBF246" : "rgba(0,0,0,0.06)",
+                  border: "none",
+                  padding: "10px 18px",
+                  borderRadius: 999,
+                  cursor: _uhPickerSelection.length === 5 ? "pointer" : "not-allowed",
+                  fontFamily: "inherit",
+                  boxShadow: _uhPickerSelection.length === 5 ? "0 4px 12px rgba(187,242,70,0.4)" : "none",
+                }}
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Animations */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes _uhblink { 50% { opacity: 0.3; } }
@@ -5611,6 +5781,11 @@ function HomePageV2(props) {
         @keyframes _uhPinOpen {
           0% { transform: scale(0.85) translateX(-12px); opacity: 0; }
           100% { transform: scale(1) translateX(0); opacity: 1; }
+        }
+        @keyframes _uhFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        @keyframes _uhPickerIn {
+          0% { transform: scale(0.92) translateY(8px); opacity: 0; }
+          100% { transform: scale(1) translateY(0); opacity: 1; }
         }
       `}} />
     </div>
