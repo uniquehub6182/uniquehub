@@ -4830,6 +4830,136 @@ function HomePageV2(props) {
     try { localStorage.setItem("uh_quick_apps_v2", JSON.stringify(_uhQuickAppKeys)); } catch {}
   }, [_uhQuickAppKeys]);
 
+  // ─── Fase 5B: Munique IA chat funcional ───
+  const _uhMqStorageKey = `uh_munique_v2_chat_${user?.id || "anon"}`;
+  const [_uhMqMessages, _uhSetMqMessages] = useState([]);
+  const [_uhMqInput, _uhSetMqInput] = useState("");
+  const [_uhMqLoading, _uhSetMqLoading] = useState(false);
+  const [_uhMqAiKeys, _uhSetMqAiKeys] = useState(null); // null = ainda carregando
+  const [_uhMqError, _uhSetMqError] = useState("");
+  const _uhMqScrollRef = useRef(null);
+  const _uhMqInputRef = useRef(null);
+
+  // Load AI keys + restore chat from localStorage (one-time)
+  useEffect(() => {
+    supaGetAIKeys().then(k => _uhSetMqAiKeys(k || {})).catch(() => _uhSetMqAiKeys({}));
+    try {
+      const saved = localStorage.getItem(_uhMqStorageKey);
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr) && arr.length > 0) _uhSetMqMessages(arr.slice(-30));
+      }
+    } catch {}
+    // eslint-disable-next-line
+  }, []);
+
+  // Persist chat on change
+  useEffect(() => {
+    try { localStorage.setItem(_uhMqStorageKey, JSON.stringify(_uhMqMessages.slice(-30))); } catch {}
+    // eslint-disable-next-line
+  }, [_uhMqMessages]);
+
+  // Auto-scroll on new message / loading change
+  useEffect(() => {
+    if (_uhMqScrollRef.current) {
+      _uhMqScrollRef.current.scrollTop = _uhMqScrollRef.current.scrollHeight;
+    }
+  }, [_uhMqMessages, _uhMqLoading]);
+
+  const _uhMqResetChat = () => {
+    _uhSetMqMessages([]);
+    _uhSetMqError("");
+    try { localStorage.removeItem(_uhMqStorageKey); } catch {}
+  };
+
+  const _uhMqSend = async (overrideText) => {
+    const text = (overrideText !== undefined ? overrideText : _uhMqInput).trim();
+    if (!text || _uhMqLoading) return;
+    const keys = _uhMqAiKeys || {};
+    const provider = keys.ai_provider || "openai";
+    const claudeKey = keys.claude_key;
+    const openaiKey = keys.openai_key;
+    const geminiKey = keys.gemini_key;
+
+    if (!claudeKey && !openaiKey && !geminiKey) {
+      _uhSetMqError("Nenhuma chave de IA configurada. Vá em Configurações → Assistente IA.");
+      return;
+    }
+    _uhSetMqError("");
+
+    const userMsg = { role: "user", content: text };
+    const newMsgs = [..._uhMqMessages, userMsg].slice(-30);
+    _uhSetMqMessages(newMsgs);
+    _uhSetMqInput("");
+    _uhSetMqLoading(true);
+
+    const SYSTEM_PROMPT = `Você é a Munique A.I., assistente virtual da agência ${_uhAgencyName}. Está conversando com ${_uhFirstName}, da equipe da agência. Ajude com criação de conteúdo, copywriting, legendas, ideias de post, roteiros, estratégias de marketing digital e organização do dia-a-dia. Responda em português do Brasil, de forma direta, prática e amigável. Use emojis com moderação. Seja CONCISA por padrão — respostas curtas (1-3 parágrafos máx); só detalhe quando pedido.`;
+
+    const apiMsgs = newMsgs.map(m => ({ role: m.role, content: m.content }));
+
+    const callClaude = async (k) => {
+      const r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": k, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1200, system: SYSTEM_PROMPT, messages: apiMsgs })
+      });
+      const d = await r.json();
+      if (d?.error) throw new Error(d.error.message || "Erro Claude");
+      return d?.content?.[0]?.text || "";
+    };
+    const callOpenAI = async (k) => {
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${k}` },
+        body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 1200, messages: [{ role: "system", content: SYSTEM_PROMPT }, ...apiMsgs] })
+      });
+      const d = await r.json();
+      if (d?.error) throw new Error(d.error.message || "Erro OpenAI");
+      return d?.choices?.[0]?.message?.content || "";
+    };
+    const callGemini = async (k) => {
+      const geminiMsgs = newMsgs.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }));
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${k}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ system_instruction: { parts: [{ text: SYSTEM_PROMPT }] }, contents: geminiMsgs, generationConfig: { maxOutputTokens: 1200 } })
+      });
+      const d = await r.json();
+      if (d?.error) throw new Error(d.error.message || "Erro Gemini");
+      return d?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    };
+
+    // Try provider preferido primeiro, depois fallback nos outros
+    const tryOrder = [];
+    const allProviders = [
+      ["claude", claudeKey, callClaude],
+      ["openai", openaiKey, callOpenAI],
+      ["gemini", geminiKey, callGemini],
+    ];
+    const preferred = allProviders.find(([p]) => p === provider);
+    if (preferred && preferred[1]) tryOrder.push(preferred);
+    allProviders.forEach(p => { if (p[1] && !tryOrder.includes(p)) tryOrder.push(p); });
+
+    let aiText = "";
+    let lastErr = "";
+    for (const [pName, pKey, pFn] of tryOrder) {
+      try {
+        aiText = await pFn(pKey);
+        if (aiText) break;
+      } catch (e) {
+        lastErr = e.message || String(e);
+        console.warn(`[Munique V2] ${pName} failed:`, lastErr);
+      }
+    }
+
+    if (aiText) {
+      _uhSetMqMessages([...newMsgs, { role: "assistant", content: aiText }].slice(-30));
+    } else {
+      _uhSetMqError(lastErr || "Falha ao conectar com a IA. Tenta de novo?");
+    }
+    _uhSetMqLoading(false);
+  };
+
   // Apply V2 gradient background to body so it covers entire screen
   // (parent app container may limit width, so we paint the body itself)
   useEffect(() => {
@@ -5563,50 +5693,154 @@ function HomePageV2(props) {
                 </button>
               </div>
               <div style={{ padding: "10px 20px 4px", fontSize: 11, fontWeight: 600, color: "#8B8F92", display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#BBF246", boxShadow: "0 0 6px rgba(187,242,70,0.7)" }}></div>
-                Online · 3 sugestões
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: _uhMqLoading ? "#F59E0B" : "#BBF246", boxShadow: _uhMqLoading ? "0 0 6px rgba(245,158,11,0.7)" : "0 0 6px rgba(187,242,70,0.7)", transition: "background .2s" }}></div>
+                {_uhMqLoading ? "Munique tá pensando..." : (_uhMqMessages.length > 0 ? `${_uhMqMessages.length} ${_uhMqMessages.length === 1 ? "mensagem" : "mensagens"}` : "Online · pronto pra conversar")}
+                {_uhMqMessages.length > 0 && !_uhMqLoading && (
+                  <button
+                    onClick={_uhMqResetChat}
+                    title="Limpar conversa"
+                    style={{ marginLeft: "auto", background: "transparent", border: "none", color: "#8B8F92", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", padding: "2px 6px", borderRadius: 6, display: "flex", alignItems: "center", gap: 4 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; e.currentTarget.style.color = "#192126"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#8B8F92"; }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
+                    Limpar
+                  </button>
+                )}
               </div>
 
-              {/* BODY — chat bubbles */}
-              <div style={{ padding: "14px 20px", flex: 1, overflow: "auto", maxHeight: 380, display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ display: "flex", gap: 8, animation: "_uhMqBubbleIn .35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>M</div>
-                  <div style={{ background: "#F4F4F5", borderRadius: 14, padding: "10px 13px", fontSize: 12.5, color: "#192126", maxWidth: "78%", lineHeight: 1.4 }}>
-                    Bom dia, {_uhFirstName}! 👋 Vi que você tem <b>7 demandas aguardando aprovação</b>. Posso te ajudar a priorizar?
+              {/* BODY — chat bubbles (Fase 5B: dinâmico) */}
+              <div ref={_uhMqScrollRef} style={{ padding: "14px 20px", flex: 1, overflow: "auto", maxHeight: 380, display: "flex", flexDirection: "column", gap: 10 }}>
+                {_uhMqMessages.length === 0 ? (
+                  <>
+                    {/* Empty state — welcome + sugestões */}
+                    <div style={{ display: "flex", gap: 8, animation: "_uhMqBubbleIn .35s cubic-bezier(0.34,1.56,0.64,1) both" }}>
+                      <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>M</div>
+                      <div style={{ background: "#F4F4F5", borderRadius: 14, padding: "10px 13px", fontSize: 12.5, color: "#192126", maxWidth: "78%", lineHeight: 1.45 }}>
+                        Oi, {_uhFirstName}! 👋 Sou a Munique. Posso te ajudar com ideias de post, copy, roteiro, estratégia, análise de concorrente... O que precisa hoje?
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4, marginLeft: 34, animation: "_uhMqBubbleIn .4s cubic-bezier(0.34,1.56,0.64,1) .15s both" }}>
+                      {[
+                        "Me dá 5 ideias de post pra essa semana",
+                        "Escreve uma legenda criativa pra promoção",
+                        "Analisa um concorrente do meu cliente",
+                      ].map((s, i) => (
+                        <button key={i}
+                          onClick={() => _uhMqSend(s)}
+                          disabled={_uhMqLoading}
+                          style={{
+                            background: "rgba(255,255,255,0.7)",
+                            border: "1px solid rgba(0,0,0,0.08)",
+                            borderRadius: 999,
+                            padding: "6px 12px",
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            color: "#192126",
+                            cursor: _uhMqLoading ? "not-allowed" : "pointer",
+                            fontFamily: "inherit",
+                            transition: "all .15s",
+                            opacity: _uhMqLoading ? 0.5 : 1,
+                          }}
+                          onMouseEnter={(e) => { if (!_uhMqLoading) { e.currentTarget.style.background = "#BBF246"; e.currentTarget.style.borderColor = "#BBF246"; } }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.7)"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.08)"; }}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  _uhMqMessages.map((msg, idx) => {
+                    const isUser = msg.role === "user";
+                    return (
+                      <div key={idx} style={{
+                        display: "flex",
+                        gap: 8,
+                        justifyContent: isUser ? "flex-end" : "flex-start",
+                        animation: idx === _uhMqMessages.length - 1 ? "_uhMqBubbleIn .35s cubic-bezier(0.34,1.56,0.64,1) both" : undefined,
+                      }}>
+                        {!isUser && (
+                          <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>M</div>
+                        )}
+                        <div style={{
+                          background: isUser ? "#BBF246" : "#F4F4F5",
+                          borderRadius: 14,
+                          padding: "10px 13px",
+                          fontSize: 12.5,
+                          color: isUser ? "#0D0D0D" : "#192126",
+                          maxWidth: "78%",
+                          lineHeight: 1.45,
+                          fontWeight: isUser ? 500 : 400,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}>{msg.content}</div>
+                      </div>
+                    );
+                  })
+                )}
+                {/* typing indicator — só quando loading */}
+                {_uhMqLoading && (
+                  <div style={{ display: "flex", gap: 8, animation: "_uhMqBubbleIn .3s ease both" }}>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>M</div>
+                    <div style={{ background: "#F4F4F5", borderRadius: 14, padding: "10px 13px", display: "flex", gap: 4, alignItems: "center" }}>
+                      {[0, 0.2, 0.4].map((d, i) => (
+                        <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#8B8F92", animation: `_uhMqBounce 1.3s ease-in-out ${d}s infinite` }}></div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", animation: "_uhMqBubbleIn .35s cubic-bezier(0.34,1.56,0.64,1) .1s both" }}>
-                  <div style={{ background: "#BBF246", borderRadius: 14, padding: "10px 13px", fontSize: 12.5, color: "#0D0D0D", maxWidth: "78%", lineHeight: 1.4, fontWeight: 500 }}>
-                    Bora. Quais são as mais urgentes?
+                )}
+                {_uhMqError && !_uhMqLoading && (
+                  <div style={{ display: "flex", gap: 8, animation: "_uhMqBubbleIn .3s ease both" }}>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#FEE2E2", color: "#B91C1C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>!</div>
+                    <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 14, padding: "10px 13px", fontSize: 12, color: "#B91C1C", maxWidth: "78%", lineHeight: 1.45 }}>{_uhMqError}</div>
                   </div>
-                </div>
-                <div style={{ display: "flex", gap: 8, animation: "_uhMqBubbleIn .35s cubic-bezier(0.34,1.56,0.64,1) .2s both" }}>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>M</div>
-                  <div style={{ background: "#F4F4F5", borderRadius: 14, padding: "10px 13px", fontSize: 12.5, color: "#192126", maxWidth: "78%", lineHeight: 1.4 }}>
-                    3 são do <b>Café Luís</b> (cookie red velvet tá excelente), 2 da <b>Boutique XYZ</b> e 2 do <b>Studio Z</b>. Começo pela do Café Luís?
-                  </div>
-                </div>
-                {/* typing indicator */}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>M</div>
-                  <div style={{ background: "#F4F4F5", borderRadius: 14, padding: "10px 13px", display: "flex", gap: 4, alignItems: "center" }}>
-                    {[0, 0.2, 0.4].map((d, i) => (
-                      <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#8B8F92", animation: `_uhMqBounce 1.3s ease-in-out ${d}s infinite` }}></div>
-                    ))}
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* INPUT FOOTER */}
+              {/* INPUT FOOTER (Fase 5B: funcional) */}
               <div style={{ padding: "12px 16px 16px", borderTop: "1px solid rgba(0,0,0,0.06)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "6px 6px 6px 16px" }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "#FFFFFF",
+                  border: `1px solid ${_uhMqLoading ? "rgba(187,242,70,0.5)" : "rgba(0,0,0,0.08)"}`,
+                  borderRadius: 999,
+                  padding: "6px 6px 6px 16px",
+                  transition: "border-color .2s",
+                }}>
                   <input
+                    ref={_uhMqInputRef}
                     type="text"
-                    placeholder="Pergunta algo pra Munique..."
-                    style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "inherit", fontSize: 13, color: "#192126", minWidth: 0 }}
+                    value={_uhMqInput}
+                    onChange={(e) => _uhSetMqInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); _uhMqSend(); } }}
+                    disabled={_uhMqLoading || _uhMqAiKeys === null}
+                    placeholder={_uhMqAiKeys === null ? "Carregando..." : (_uhMqLoading ? "Munique tá digitando..." : "Pergunta algo pra Munique...")}
+                    autoComplete="off"
+                    style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "inherit", fontSize: 13, color: "#192126", minWidth: 0, opacity: _uhMqLoading ? 0.6 : 1 }}
                   />
-                  <button style={{ width: 32, height: 32, borderRadius: "50%", background: "#BBF246", border: "none", color: "#0D0D0D", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0, boxShadow: "0 2px 8px rgba(187,242,70,0.4)" }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <button
+                    onClick={() => _uhMqSend()}
+                    disabled={_uhMqLoading || !_uhMqInput.trim()}
+                    title="Enviar"
+                    style={{
+                      width: 32, height: 32, borderRadius: "50%",
+                      background: "#BBF246", border: "none", color: "#0D0D0D",
+                      cursor: (_uhMqLoading || !_uhMqInput.trim()) ? "not-allowed" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: 0, flexShrink: 0,
+                      boxShadow: "0 2px 8px rgba(187,242,70,0.4)",
+                      opacity: (_uhMqLoading || !_uhMqInput.trim()) ? 0.5 : 1,
+                      transition: "opacity .2s, transform .15s",
+                    }}
+                  >
+                    {_uhMqLoading ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "_uhMqSpin 0.8s linear infinite" }}><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    )}
                   </button>
                 </div>
               </div>
@@ -5842,6 +6076,10 @@ function HomePageV2(props) {
         @keyframes _uhMqBounce {
           0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
           40% { transform: translateY(-4px); opacity: 1; }
+        }
+        @keyframes _uhMqSpin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
         @keyframes _uhPinOpen {
           0% { transform: scale(0.85) translateX(-12px); opacity: 0; }
