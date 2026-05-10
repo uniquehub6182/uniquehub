@@ -4806,6 +4806,11 @@ function HomePageV2(props) {
   // Briefing playing state (Fase 2 polimento — animações)
   const [_uhBriefPlaying, _uhSetBriefPlaying] = useState(false);
 
+  // Quick cards system state (Fase 4 polimento — 3 estados + expand inline)
+  const [_uhActiveApp, _uhSetActiveApp] = useState(null);
+  const [_uhPinnedApp, _uhSetPinnedApp] = useState(null);
+  const [_uhFading, _uhSetFading] = useState(false);
+
   // Apply V2 gradient background to body so it covers entire screen
   // (parent app container may limit width, so we paint the body itself)
   useEffect(() => {
@@ -5179,37 +5184,64 @@ function HomePageV2(props) {
               icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
             { key: "munique", label: "Munique A.I.", count: "M", isMunique: true, onClick: () => goTab && goTab("chat"),
               icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg> },
-          ].map((q) => (
+          ].map((q) => {
+            const isActive = q.key === _uhActiveApp;
+            const isPinned = q.key === _uhPinnedApp;
+            const handleClick = () => {
+              if (isPinned) { _uhSetPinnedApp(null); return; }
+              if (isActive) { _uhSetActiveApp(null); return; }
+              if (_uhActiveApp && _uhActiveApp !== q.key) {
+                _uhSetFading(true);
+                setTimeout(() => { _uhSetActiveApp(q.key); _uhSetFading(false); }, 180);
+              } else {
+                _uhSetActiveApp(q.key);
+              }
+            };
+            const cardBg = isPinned ? "#BBF246" : isActive ? "#0D0D0D" : "rgba(255,255,255,0.82)";
+            const cardBorder = isPinned ? "#A8DF33" : isActive ? "#0D0D0D" : "rgba(255,255,255,0.7)";
+            const iconBg = isPinned ? "#0D0D0D" : isActive ? "#BBF246" : "#FFFFFF";
+            const iconStroke = isPinned ? "#BBF246" : isActive ? "#0D0D0D" : "#0D0D0D";
+            const labelColor = isPinned ? "#0D0D0D" : isActive ? "#FFFFFF" : "#4A4A4A";
+            const labelWeight = isPinned ? 800 : 600;
+            return (
             <div
               key={q.key}
-              onClick={q.onClick}
+              onClick={handleClick}
               style={{
-                background: "rgba(255,255,255,0.82)",
-                border: "1px solid rgba(255,255,255,0.7)",
+                background: cardBg,
+                border: `1px solid ${cardBorder}`,
                 borderRadius: 24,
                 padding: "18px 12px 14px",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-                boxShadow: _UH_SHADOW,
+                boxShadow: isPinned ? "0 8px 24px rgba(168,223,51,0.4), 0 16px 40px rgba(0,0,0,0.08)" : isActive ? "0 8px 24px rgba(0,0,0,0.15), 0 16px 40px rgba(0,0,0,0.1)" : _UH_SHADOW,
                 cursor: "pointer",
-                transition: "transform .2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow .2s",
+                transition: "background .3s, border-color .3s, box-shadow .3s, transform .2s cubic-bezier(0.34, 1.56, 0.64, 1)",
                 position: "relative",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = _UH_SHADOW; }}
+              onMouseEnter={(e) => { if (!isActive && !isPinned) { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08)"; } }}
+              onMouseLeave={(e) => { if (!isActive && !isPinned) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = _UH_SHADOW; } }}
             >
+              {isPinned && (
+                <div style={{ position: "absolute", top: 8, right: 8, width: 18, height: 18, borderRadius: "50%", background: "#0D0D0D", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(0,0,0,0.25)" }}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5M9 10.76V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4.76l2.5 3.74-1 1.5h-9l-1-1.5L9 10.76z"/></svg>
+                </div>
+              )}
+              {isActive && (
+                <div style={{ position: "absolute", bottom: -6, left: "50%", marginLeft: -3, width: 6, height: 6, borderRadius: "50%", background: "#BBF246", boxShadow: "0 0 10px rgba(187,242,70,0.8)" }}></div>
+              )}
               <div style={{
                 width: 56, height: 56, borderRadius: "50%",
-                background: "#FFFFFF",
-                boxShadow: "inset 2px 2px 5px rgba(255,255,255,0.9), inset -3px -3px 6px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)",
+                background: iconBg,
+                boxShadow: isActive ? "0 0 0 0 rgba(187,242,70,0.4), 0 4px 14px rgba(187,242,70,0.4)" : isPinned ? "inset 2px 2px 5px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.2)" : "inset 2px 2px 5px rgba(255,255,255,0.9), inset -3px -3px 6px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all .3s",
               }}>
-                {q.icon}
+                {React.cloneElement(q.icon, { stroke: iconStroke })}
               </div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#4A4A4A", textAlign: "center" }}>{q.label}</div>
+              <div style={{ fontSize: 12, fontWeight: labelWeight, color: labelColor, textAlign: "center", transition: "color .3s" }}>{q.label}</div>
               <div style={{
-                background: q.isMunique ? "#0D0D0D" : "#F0FAD5",
-                color: q.isMunique ? "#BBF246" : "#0D0D0D",
+                background: q.isMunique ? (isActive ? "#BBF246" : "#0D0D0D") : (isActive ? "#BBF246" : isPinned ? "#0D0D0D" : "#F0FAD5"),
+                color: q.isMunique ? (isActive ? "#0D0D0D" : "#BBF246") : (isActive ? "#0D0D0D" : isPinned ? "#BBF246" : "#0D0D0D"),
                 fontSize: 11, fontWeight: 800,
                 padding: "3px 10px",
                 borderRadius: 999,
@@ -5217,9 +5249,11 @@ function HomePageV2(props) {
                 letterSpacing: "-0.01em",
                 minWidth: 26,
                 textAlign: "center",
+                transition: "background .3s, color .3s",
               }}>{q.count}</div>
             </div>
-          ))}
+            );
+          })}
         </div>
         {/* Edit button (slot tracejado do preview) */}
         <div style={{
@@ -5237,6 +5271,171 @@ function HomePageV2(props) {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m7.08 7.08 4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m7.08-7.08 4.24-4.24"/></svg>
         </div>
       </div>
+
+      {/* PAINEL EXPANDIDO INLINE — quando um quick está active */}
+      {_uhActiveApp && (() => {
+        const appConfigs = {
+          conteudo: { name: "Conteúdo", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>, nav: () => goTab && goTab("content") },
+          comentarios: { name: "Coment. IA", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>, nav: () => goSub && goSub("commentsai") },
+          aprovacoes: { name: "Aprovações", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><circle cx="12" cy="12" r="9"/><polyline points="9 12 11 14 15 10"/></svg>, nav: () => goSub && goSub("approvals") },
+          agenda: { name: "Agenda", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>, nav: () => goSub && goSub("calendar") },
+          munique: { name: "Munique A.I.", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42"/></svg>, nav: () => goTab && goTab("chat") },
+        };
+        const cfg = appConfigs[_uhActiveApp] || appConfigs.conteudo;
+        return (
+          <div style={{
+            marginBottom: 24,
+            background: "rgba(255,255,255,0.85)",
+            border: "1px solid rgba(255,255,255,0.7)",
+            borderRadius: 28,
+            padding: "20px 24px 24px",
+            boxShadow: _UH_SHADOW,
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            opacity: _uhFading ? 0 : 1,
+            transform: _uhFading ? "translateY(6px)" : "translateY(0)",
+            transition: "opacity .25s ease, transform .25s ease",
+          }}>
+            {/* HEAD */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, paddingBottom: 14, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 10, background: "#F0FAD5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {cfg.icon}
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em" }}>{cfg.name}</div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); _uhSetPinnedApp(_uhActiveApp); _uhSetActiveApp(null); }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "1px solid #A8DF33", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5M9 10.76V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4.76l2.5 3.74-1 1.5h-9l-1-1.5L9 10.76z"/></svg>
+                  Fixar ao lado
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); cfg.nav(); }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "#192126", background: "transparent", border: "1px solid rgba(0,0,0,0.12)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}
+                >
+                  Abrir página
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); _uhSetActiveApp(null); }}
+                  style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(0,0,0,0.06)", border: "none", color: "#192126", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* BODY — mock bodies por app */}
+            <div>
+              {_uhActiveApp === "conteudo" && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+                  {[
+                    { title: "Ideia", count: 12, color: "#A8DF33", items: ["Reel sobre dicas de Inverno", "Carrossel: case Café Luís", "Vídeo apresentando Boutique"] },
+                    { title: "Produção", count: 15, color: "#F59E0B", items: ["Foto produto Studio Z", "Vídeo Boutique outono", "Carrossel Padaria 5 receitas"] },
+                    { title: "Aprovar", count: 7, color: "#0EA5E9", items: ["Post Café Luís: cookie", "Reel Padaria: pão integral", "Carrossel Dental Care"] },
+                  ].map((col, i) => (
+                    <div key={i} style={{ background: "rgba(255,255,255,0.7)", borderRadius: 14, padding: 14, border: "1px solid rgba(255,255,255,0.7)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: col.color }}></div>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: "#192126", textTransform: "uppercase", letterSpacing: "0.04em" }}>{col.title}</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", marginLeft: "auto" }}>{col.count}</div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {col.items.map((it, j) => (
+                          <div key={j} style={{ background: "#FFFFFF", borderRadius: 10, padding: "8px 10px", fontSize: 11.5, fontWeight: 500, color: "#192126", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>{it}</div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {_uhActiveApp === "comentarios" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    { who: "Café Luís", what: "Adoro vocês! Quando vai ter mais cookie red velvet?", time: "2h" },
+                    { who: "Boutique XYZ", what: "Esse vestido vem em P? E o preço?", time: "4h" },
+                    { who: "Studio Z", what: "Posso agendar uma sessão pra sábado?", time: "5h" },
+                    { who: "Padaria do João", what: "Quero saber sobre encomendas pra festa", time: "1d" },
+                    { who: "Dental Care", what: "Vocês fazem clareamento?", time: "1d" },
+                  ].map((c, i) => (
+                    <div key={i} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#F0FAD5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#0D0D0D", flexShrink: 0 }}>{c.who[0]}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#192126" }}>{c.who}</div>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: "#8B8F92" }}>{c.time}</div>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: "#4A4A4A" }}>{c.what}</div>
+                      </div>
+                      <button style={{ fontSize: 10, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "5px 10px", borderRadius: 999, cursor: "pointer", flexShrink: 0 }}>Responder</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {_uhActiveApp === "aprovacoes" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    { client: "Café Luís", post: "Post cookie red velvet", type: "Carrossel", since: "3h" },
+                    { client: "Boutique XYZ", post: "Vestido outono coleção 2026", type: "Reel", since: "5h" },
+                    { client: "Studio Z", post: "Sessão ensaio fotográfico", type: "Foto", since: "1d" },
+                    { client: "Padaria do João", post: "5 receitas de pão integral", type: "Carrossel", since: "1d" },
+                  ].map((a, i) => (
+                    <div key={i} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#192126" }}>{a.post}</div>
+                        <div style={{ fontSize: 11, color: "#8B8F92", marginTop: 2 }}>{a.client} · {a.type} · há {a.since}</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button style={{ fontSize: 10, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "6px 12px", borderRadius: 999, cursor: "pointer" }}>Aprovar</button>
+                        <button style={{ fontSize: 10, fontWeight: 700, color: "#192126", background: "transparent", border: "1px solid rgba(0,0,0,0.12)", padding: "6px 12px", borderRadius: 999, cursor: "pointer" }}>Editar</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {_uhActiveApp === "agenda" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[
+                    { date: "Hoje · 14:00", title: "Reunião com Café Luís", where: "Online" },
+                    { date: "Amanhã · 10:00", title: "Briefing campanha Boutique", where: "Presencial" },
+                    { date: "Qua · 15:30", title: "Apresentação resultados Studio Z", where: "Online" },
+                    { date: "Sex · 09:00", title: "Sessão de fotos Padaria", where: "Estúdio" },
+                  ].map((e, i) => (
+                    <div key={i} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", gap: 12, alignItems: "center" }}>
+                      <div style={{ width: 56, height: 48, borderRadius: 10, background: "#F0FAD5", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase" }}>{e.date.split(" · ")[0]}</div>
+                        <div style={{ fontSize: 12, fontWeight: 800, color: "#0D0D0D" }}>{e.date.split(" · ")[1]}</div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126" }}>{e.title}</div>
+                        <div style={{ fontSize: 11, color: "#8B8F92", marginTop: 2 }}>{e.where}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {_uhActiveApp === "munique" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflow: "auto" }}>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>M</div>
+                    <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "10px 14px", fontSize: 13, color: "#192126", maxWidth: "70%" }}>Oi, {_uhFirstName}! Tô vendo que você tem <b>7 demandas aguardando aprovação</b>. Quer que eu revise rapidinho pra você?</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                    <div style={{ background: "#BBF246", borderRadius: 14, padding: "10px 14px", fontSize: 13, color: "#0D0D0D", maxWidth: "70%" }}>Vai sim, prioriza as do Café Luís</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>M</div>
+                    <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "10px 14px", fontSize: 13, color: "#192126", maxWidth: "70%" }}>Achei <b>3 posts do Café Luís</b> esperando aprovação. Tem um carrossel de cookie red velvet que tá bonito demais. Quer ver?</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Voltar pra v1 (pequeno, no rodapé do conteúdo desenvolvido) */}
       <div style={{ marginTop: 40, textAlign: "center", opacity: 0.6 }}>
