@@ -5111,25 +5111,16 @@ REGRAS DE ESTILO:
   const _uhFmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const _uhMonthsShort = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
-  // Helper: pega items de events + demands com data parseada
-  const _uhAllItems = useMemo(() => {
-    const events = _uhEvents.map(e => {
+  // Helper: events parseados (NÃO inclui demands — compromissos são apenas eventos reais)
+  const _uhEventsParsed = useMemo(() => {
+    return _uhEvents.map(e => {
       const dStr = e.date || (e.year != null ? `${e.year}-${String((e.month || 0) + 1).padStart(2, "0")}-${String(e.day || 1).padStart(2, "0")}` : null);
       if (!dStr) return null;
       const d = new Date(dStr + "T" + (e.time || "09:00") + ":00");
       if (isNaN(d.getTime())) return null;
       return { id: "evt-" + e.id, title: e.title || "Evento", time: e.time || null, type: e.type || "event", client: e.client_name || null, _dt: d, _kind: "event" };
     }).filter(Boolean);
-    const demands = (Array.isArray(props.demands) ? props.demands : []).map(dm => {
-      const dt = dm?.scheduling?.date || dm?.scheduleDate || dm?.scheduled_date;
-      if (!dt) return null;
-      const d = new Date(dt);
-      if (isNaN(d.getTime())) return null;
-      const t = dm?.scheduling?.time || dm?.scheduleTime || null;
-      return { id: "dm-" + (dm.id || Math.random()), title: dm.task || dm.title || "Demanda", time: t, type: "demand", client: dm.clientName || dm.client || null, _dt: d, _kind: "demand" };
-    }).filter(Boolean);
-    return [...events, ...demands];
-  }, [_uhEvents, props.demands]);
+  }, [_uhEvents]);
 
   // Semana exibida (depende de _uhWeekOffset). Começa no DOMINGO.
   const _uhWeekStart = useMemo(() => {
@@ -5149,7 +5140,7 @@ REGRAS DE ESTILO:
       const d = new Date(_uhWeekStart);
       d.setDate(_uhWeekStart.getDate() + i);
       const dateStr = _uhFmtDate(d);
-      const items = _uhAllItems
+      const items = _uhEventsParsed
         .filter(it => _uhFmtDate(it._dt) === dateStr)
         .sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
       result.push({
@@ -5162,7 +5153,7 @@ REGRAS DE ESTILO:
       });
     }
     return result;
-  }, [_uhWeekStart, _uhAllItems]);
+  }, [_uhWeekStart, _uhEventsParsed]);
 
   const _uhWeekRangeLabel = useMemo(() => {
     if (!_uhWeekStrip.length) return "";
@@ -5250,14 +5241,57 @@ REGRAS DE ESTILO:
       ys.push(Math.max(0, v));
     }
 
+    // Pipeline (demandas no range, breakdown por estágio)
+    const stagesDef = [
+      { k: "brief", l: "Brief", c: "#C5C7C9", matches: ["brief", "briefing"] },
+      { k: "copy", l: "Copy", c: "#F59E0B", matches: ["copy", "copywriting"] },
+      { k: "design", l: "Design", c: "#8B5CF6", matches: ["design", "designing", "production", "producao", "produção"] },
+      { k: "review", l: "Revisão", c: "#06B6D4", matches: ["review", "revisao", "revisão"] },
+      { k: "client", l: "Cliente", c: "#EF4444", matches: ["client", "approval", "aguardando_aprovacao", "aguardando aprovação"] },
+      { k: "scheduled", l: "Agendado", c: "#0EA5E9", matches: ["scheduled", "agendado"] },
+      { k: "published", l: "Publicado", c: "#BBF246", matches: ["published", "done", "publicado", "concluido", "concluído"] },
+    ];
+    const pipelineCounts = stagesDef.map(s => ({ ...s, count: inR.filter(dm => s.matches.includes(lc(dm.status))).length }));
+
+    // Clientes
+    const clients = Array.isArray(props.clients) ? props.clients : [];
+    const totalClients = clients.length;
+    const activeClients = clients.filter(c => { const st = lc(c.status); return st === "ativo" || st === "active" || st === ""; }).length;
+    const byPlan = clients.reduce((a, c) => { const p = c.plan || c.plan_name || "outro"; a[p] = (a[p] || 0) + 1; return a; }, {});
+
+    // Aprovações pendentes (todas, sem filtro de range — ações urgentes)
+    const pending = demands.filter(dm => ["client", "approval", "aguardando_aprovacao", "aguardando aprovação"].includes(lc(dm.status)));
+    const pendingByClient = pending.reduce((a, dm) => { const c = dm.clientName || dm.client || "—"; a[c] = (a[c] || 0) + 1; return a; }, {});
+
     return {
       totalInR, publishedCount, inProdCount,
-      buckets,                    // raw daily counts
-      sparkSamples: ys,           // 60 smooth samples
-      reachTotal,
+      buckets, sparkSamples: ys, reachTotal,
+      pipelineCounts,
+      totalClients, activeClients, byPlan,
+      pendingCount: pending.length, pendingByClient,
       rangeStart, rangeEnd, rangeDays,
     };
-  }, [props.demands, _uhSummaryRange]);
+  }, [props.demands, props.clients, _uhSummaryRange]);
+
+  // ─── Fase 6: picker de widgets do Resumo ───
+  const _uhSumWidgetStorageKey = `uh_sum_widgets_v2_${user?.id || "anon"}`;
+  const [_uhSumWidgetSlots, _uhSetSumWidgetSlots] = useState(["producao", "publicacoes", "alcance"]);
+  const [_uhSumPickerOpen, _uhSetSumPickerOpen] = useState(false);
+  const [_uhSumPickerSel, _uhSetSumPickerSel] = useState([]);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(_uhSumWidgetStorageKey);
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr) && arr.length === 3) _uhSetSumWidgetSlots(arr);
+      }
+    } catch {}
+    // eslint-disable-next-line
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem(_uhSumWidgetStorageKey, JSON.stringify(_uhSumWidgetSlots)); } catch {}
+    // eslint-disable-next-line
+  }, [_uhSumWidgetSlots]);
 
   // Quick action counters (Fase 4)
   const _uhQuickCounts = useMemo(() => {
@@ -6160,19 +6194,18 @@ REGRAS DE ESTILO:
         </div>
       </div>
 
-      {/* ════════ FASE 6 — Resumo (3 widgets: producao / publicacoes / alcance) ════════ */}
+      {/* ════════ FASE 6 — Resumo (3 widgets configuráveis via picker) ════════ */}
       <div>
         {/* Summary row */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "12px 0 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", color: "#192126" }}>Resumo</div>
-            <button title="Editar widgets do resumo (em breve)" onClick={() => { /* TODO: picker de widgets */ }} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.6)", border: "1px dashed rgba(0,0,0,0.12)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#8B8F92", transition: "transform .2s cubic-bezier(0.34,1.56,0.64,1), background .2s, border-color .2s, color .2s", fontFamily: "inherit", padding: 0 }}
+            <button title="Editar widgets do resumo" onClick={() => { _uhSetSumPickerSel([..._uhSumWidgetSlots]); _uhSetSumPickerOpen(true); }} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.6)", border: "1px dashed rgba(0,0,0,0.12)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#8B8F92", transition: "transform .2s cubic-bezier(0.34,1.56,0.64,1), background .2s, border-color .2s, color .2s", fontFamily: "inherit", padding: 0 }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = "#99D124"; e.currentTarget.style.color = "#3B7300"; e.currentTarget.style.background = "rgba(187,242,70,0.18)"; e.currentTarget.style.transform = "rotate(45deg)"; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(0,0,0,0.12)"; e.currentTarget.style.color = "#8B8F92"; e.currentTarget.style.background = "rgba(255,255,255,0.6)"; e.currentTarget.style.transform = "rotate(0deg)"; }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
           </div>
-          {/* Tabs */}
           <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.72)", borderRadius: 999, padding: 4, boxShadow: _UH_SHADOW, border: "1px solid rgba(255,255,255,0.7)" }}>
             {[{ k: "hoje", l: "Hoje" }, { k: "semana", l: "Semana" }, { k: "mes", l: "Mês" }].map(opt => {
               const active = _uhSummaryRange === opt.k;
@@ -6191,132 +6224,290 @@ REGRAS DE ESTILO:
           </div>
         </div>
 
-        {/* Summary grid: 1.15fr 1fr 0.6fr */}
+        {/* Summary grid: render dinâmico baseado em _uhSumWidgetSlots */}
         <div style={{ display: "grid", gridTemplateColumns: "1.15fr 1fr 0.6fr", gap: 16 }}>
+          {_uhSumWidgetSlots.map((wKey, slotIdx) => {
+            const stats = _uhSummaryStats;
+            const rl = _uhRangeLabel;
+            const isDark = wKey === "alcance";
+            const isWhite = wKey === "publicacoes";
+            const cardStyle = {
+              borderRadius: 26,
+              padding: "22px 24px",
+              boxShadow: _UH_SHADOW,
+              minHeight: 170,
+              border: isDark ? "none" : "1px solid rgba(255,255,255,0.7)",
+              background: isDark ? "#0D0D0D" : (isWhite ? "#FFFFFF" : "rgba(255,255,255,0.55)"),
+              color: isDark ? "#FFFFFF" : "#192126",
+              backdropFilter: isDark || isWhite ? undefined : "blur(14px)",
+              WebkitBackdropFilter: isDark || isWhite ? undefined : "blur(14px)",
+              position: isDark ? "relative" : undefined,
+              overflow: isDark ? "hidden" : undefined,
+              display: isDark ? "flex" : undefined,
+              flexDirection: isDark ? "column" : undefined,
+              justifyContent: isDark ? "space-between" : undefined,
+            };
 
-          {/* ╔══ SLOT 0: PRODUCAO (gauge dual-arc) ══╗ */}
-          <div style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 26, padding: "22px 24px", boxShadow: _UH_SHADOW, minHeight: 170 }}>
-            {(() => {
-              const total = _uhSummaryStats.totalInR || 1;
-              const inProd = _uhSummaryStats.inProdCount;
-              const pub = _uhSummaryStats.publishedCount;
-              const pubPct = total > 0 ? (pub / total) * 100 : 0;
-              const prodPct = total > 0 ? (inProd / total) * 100 : 0;
-              const C = 2 * Math.PI * 40;
-              const arcProd = (prodPct / 100) * C;
-              const arcPub = (pubPct / 100) * C;
-              return (
-                <div style={{ display: "flex", alignItems: "center", gap: 22, height: "100%" }}>
-                  <div style={{ width: 140, height: 140, position: "relative", flexShrink: 0 }}>
-                    <svg viewBox="0 0 100 100" style={{ width: "100%", height: "100%", transform: "rotate(-135deg)" }}>
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#EFEFEF" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${C} ${C}`} />
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#0D0D0D" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${arcProd} ${C}`} style={{ transition: "stroke-dasharray .9s cubic-bezier(0.25,1.4,0.5,1)" }} />
-                      <circle cx="50" cy="50" r="40" fill="none" stroke="#BBF246" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${arcPub} ${C}`} strokeDashoffset={-arcProd} style={{ transition: "stroke-dasharray .9s cubic-bezier(0.25,1.4,0.5,1), stroke-dashoffset .9s cubic-bezier(0.25,1.4,0.5,1)" }} />
-                    </svg>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#0D0D0D", flexShrink: 0 }}></div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Em produção {_uhRangeLabel}</div>
-                        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>{inProd} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
+            return (
+              <div key={wKey + "-" + slotIdx} style={cardStyle}>
+                {wKey === "producao" && (() => {
+                  const total = stats.totalInR || 1;
+                  const inProd = stats.inProdCount;
+                  const pub = stats.publishedCount;
+                  const C = 2 * Math.PI * 40;
+                  const arcProd = ((total > 0 ? inProd / total : 0)) * C;
+                  const arcPub = ((total > 0 ? pub / total : 0)) * C;
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 22, height: "100%" }}>
+                      <div style={{ width: 140, height: 140, position: "relative", flexShrink: 0 }}>
+                        <svg viewBox="0 0 100 100" style={{ width: "100%", height: "100%", transform: "rotate(-135deg)" }}>
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="#EFEFEF" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${C} ${C}`} />
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="#0D0D0D" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${arcProd} ${C}`} style={{ transition: "stroke-dasharray .9s cubic-bezier(0.25,1.4,0.5,1)" }} />
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="#BBF246" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${arcPub} ${C}`} strokeDashoffset={-arcProd} style={{ transition: "stroke-dasharray .9s cubic-bezier(0.25,1.4,0.5,1), stroke-dashoffset .9s cubic-bezier(0.25,1.4,0.5,1)" }} />
+                        </svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#0D0D0D", flexShrink: 0 }}></div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Em produção {rl}</div>
+                            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>{inProd} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#BBF246", flexShrink: 0 }}></div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600 }}>Publicadas</div>
+                            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>{pub} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#BBF246", flexShrink: 0 }}></div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600 }}>Publicadas</div>
-                        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>{pub} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
+                  );
+                })()}
+
+                {wKey === "publicacoes" && (() => {
+                  const total = stats.publishedCount;
+                  const NBARS = 10;
+                  const step = Math.max(1, Math.floor(stats.buckets.length / NBARS));
+                  const bars = [];
+                  for (let i = 0; i < stats.buckets.length && bars.length < NBARS; i += step) {
+                    const chunk = stats.buckets.slice(i, i + step).reduce((a, b) => a + b, 0);
+                    bars.push(chunk);
+                  }
+                  while (bars.length < NBARS) bars.push(0);
+                  const max = Math.max(...bars, 1);
+                  return (
+                    <>
+                      <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600 }}>Publicações {rl}</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 4 }}>{total} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 90, marginTop: 14 }}>
+                        {bars.map((v, i) => {
+                          const h = Math.max(6, (v / max) * 100);
+                          const isLast = i === bars.length - 1;
+                          return <div key={i} style={{ flex: 1, borderRadius: 999, background: isLast && v > 0 ? "#BBF246" : (v > 0 ? "#0D0D0D" : "#DADADA"), height: h + "%", transition: "height .75s cubic-bezier(0.34,1.56,0.64,1)" }}></div>;
+                        })}
                       </div>
+                    </>
+                  );
+                })()}
+
+                {wKey === "alcance" && (() => {
+                  const reach = stats.reachTotal;
+                  const kval = reach >= 1000 ? (reach / 1000).toFixed(1) + "k" : String(reach);
+                  const ys = stats.sparkSamples;
+                  const max = Math.max(...ys, 1);
+                  const N = ys.length;
+                  const coords = ys.map((v, i) => [(i / (N - 1)) * 95 + 2.5, 45 - (v / max) * 36]);
+                  const linePath = "M " + coords.map(c => `${c[0].toFixed(2)} ${c[1].toFixed(2)}`).join(" L ");
+                  const firstX = coords[0][0].toFixed(2);
+                  const lastX = coords[coords.length - 1][0].toFixed(2);
+                  const areaPath = linePath + ` L ${lastX} 50 L ${firstX} 50 Z`;
+                  const dotLeftPct = (parseFloat(lastX) / 100) * 100;
+                  const dotTopPct = (parseFloat(coords[coords.length - 1][1]) / 50) * 100;
+                  return (
+                    <>
+                      <div style={{ position: "absolute", top: "-40%", right: "-20%", width: "60%", height: "80%", background: "radial-gradient(circle, rgba(187,242,70,0.12), transparent 70%)", pointerEvents: "none" }}></div>
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                        <svg viewBox="0 0 100 50" preserveAspectRatio="none" style={{ width: "100%", height: 80, overflow: "visible" }}>
+                          <path d={areaPath} fill="rgba(187,242,70,0.12)" stroke="none" vectorEffect="non-scaling-stroke" />
+                          <path d={linePath} fill="none" stroke="#BBF246" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                        </svg>
+                        <div style={{ position: "absolute", left: dotLeftPct + "%", top: dotTopPct + "%", width: 10, height: 10, borderRadius: "50%", background: "#BBF246", transform: "translate(-50%, -50%)", pointerEvents: "none", animation: "_uhReachDotPulse 1.8s ease-in-out infinite" }}></div>
+                      </div>
+                      <div style={{ position: "relative", zIndex: 1 }}>
+                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>Alcance {rl}</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 2 }}>{kval}</div>
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {wKey === "pipeline" && (() => {
+                  const total = stats.totalInR || 1;
+                  return (
+                    <>
+                      <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600 }}>Pipeline {rl}</div>
+                      <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 4 }}>{stats.totalInR} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
+                      <div style={{ display: "flex", height: 28, borderRadius: 8, overflow: "hidden", marginTop: 14, background: "rgba(0,0,0,0.04)" }}>
+                        {stats.pipelineCounts.map(s => {
+                          const flex = (s.count / total) * 100;
+                          return <div key={s.k} title={`${s.l}: ${s.count}`} style={{ flexGrow: flex, flexBasis: 0, background: s.c, minWidth: flex > 0 ? 2 : 0, transition: "flex-grow .7s cubic-bezier(0.4,0,0.2,1)" }}></div>;
+                        })}
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 10px", marginTop: 10, fontSize: 10 }}>
+                        {stats.pipelineCounts.map(s => (
+                          <span key={s.k} style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: s.count > 0 ? 1 : 0.35 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></span>
+                            <span style={{ fontWeight: 600, color: "#8B8F92" }}>{s.l}</span>
+                            <b style={{ color: "#192126" }}>{s.count}</b>
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {wKey === "clientes" && (() => {
+                  const planEntries = Object.entries(stats.byPlan).sort((a, b) => b[1] - a[1]).slice(0, 4);
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "100%" }}>
+                      <div>
+                        <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600 }}>Clientes</div>
+                        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-0.03em", marginTop: 4 }}>
+                          {stats.activeClients}<span style={{ fontSize: 16, color: "#8B8F92", fontWeight: 500 }}> / {stats.totalClients}</span>
+                        </div>
+                        <div style={{ fontSize: 11, color: "#2F4F06", fontWeight: 800, marginTop: 6, background: "#F0FAD5", padding: "3px 10px", borderRadius: 999, display: "inline-block" }}>
+                          {stats.activeClients} ativos
+                        </div>
+                      </div>
+                      {planEntries.length > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 10 }}>
+                          {planEntries.map(([p, n]) => (
+                            <div key={p} style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                              <span style={{ color: "#8B8F92", fontWeight: 600, textTransform: "capitalize" }}>{p}</span>
+                              <span style={{ fontWeight: 800 }}>{n}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
+                  );
+                })()}
 
-          {/* ╔══ SLOT 1: PUBLICACOES (bars) ══╗ */}
-          <div style={{ background: "#FFFFFF", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 26, padding: "22px 24px", boxShadow: _UH_SHADOW, minHeight: 170 }}>
-            {(() => {
-              const total = _uhSummaryStats.publishedCount;
-              const buckets = _uhSummaryStats.buckets;
-              const NBARS = 10;
-              const step = Math.max(1, Math.floor(buckets.length / NBARS));
-              const bars = [];
-              for (let i = 0; i < buckets.length && bars.length < NBARS; i += step) {
-                const chunk = buckets.slice(i, i + step).reduce((a, b) => a + b, 0);
-                bars.push(chunk);
-              }
-              while (bars.length < NBARS) bars.push(0);
-              const max = Math.max(...bars, 1);
-              return (
-                <>
-                  <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600 }}>Publicações {_uhRangeLabel}</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 4 }}>{total} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 90, marginTop: 14 }}>
-                    {bars.map((v, i) => {
-                      const h = Math.max(6, (v / max) * 100);
-                      const isLast = i === bars.length - 1;
-                      const isAccent = isLast && v > 0;
-                      return (
-                        <div key={i} style={{ flex: 1, borderRadius: 999, background: isAccent ? "#BBF246" : (v > 0 ? "#0D0D0D" : "#DADADA"), height: h + "%", transition: "height .75s cubic-bezier(0.34,1.56,0.64,1)" }}></div>
-                      );
-                    })}
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-
-          {/* ╔══ SLOT 2: ALCANCE (DARK card + sparkline + dot) ══╗ */}
-          <div style={{ background: "#0D0D0D", color: "#FFFFFF", borderRadius: 26, padding: "22px 24px", boxShadow: _UH_SHADOW, minHeight: 170, display: "flex", flexDirection: "column", justifyContent: "space-between", border: "none", position: "relative", overflow: "hidden" }}>
-            {/* Radial gradient lime decorativo */}
-            <div style={{ position: "absolute", top: "-40%", right: "-20%", width: "60%", height: "80%", background: "radial-gradient(circle, rgba(187,242,70,0.12), transparent 70%)", pointerEvents: "none" }}></div>
-            {(() => {
-              const reach = _uhSummaryStats.reachTotal;
-              const kval = reach >= 1000 ? (reach / 1000).toFixed(1) + "k" : String(reach);
-              const ys = _uhSummaryStats.sparkSamples;
-              const max = Math.max(...ys, 1);
-              const N = ys.length;
-              const coords = ys.map((v, i) => [
-                (i / (N - 1)) * 95 + 2.5,
-                45 - (v / max) * 36
-              ]);
-              const linePath = "M " + coords.map(c => `${c[0].toFixed(2)} ${c[1].toFixed(2)}`).join(" L ");
-              const firstX = coords[0][0].toFixed(2);
-              const lastX = coords[coords.length - 1][0].toFixed(2);
-              const areaPath = linePath + ` L ${lastX} 50 L ${firstX} 50 Z`;
-              const dotLeftPct = (parseFloat(lastX) / 100) * 100;
-              const dotTopPct = (parseFloat(coords[coords.length - 1][1]) / 50) * 100;
-              return (
-                <>
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                    <svg viewBox="0 0 100 50" preserveAspectRatio="none" style={{ width: "100%", height: 80, overflow: "visible" }}>
-                      <path d={areaPath} fill="rgba(187,242,70,0.12)" stroke="none" vectorEffect="non-scaling-stroke" />
-                      <path d={linePath} fill="none" stroke="#BBF246" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-                    </svg>
-                    <div style={{
-                      position: "absolute",
-                      left: dotLeftPct + "%",
-                      top: dotTopPct + "%",
-                      width: 10, height: 10, borderRadius: "50%",
-                      background: "#BBF246",
-                      transform: "translate(-50%, -50%)",
-                      pointerEvents: "none",
-                      animation: "_uhReachDotPulse 1.8s ease-in-out infinite",
-                    }}></div>
-                  </div>
-                  <div style={{ position: "relative", zIndex: 1 }}>
-                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>Alcance {_uhRangeLabel}</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 2 }}>{kval}</div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-
+                {wKey === "aprovacoes" && (() => {
+                  const top = Object.entries(stats.pendingByClient).sort((a, b) => b[1] - a[1]).slice(0, 4);
+                  return (
+                    <>
+                      <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600 }}>Aguardando cliente</div>
+                      <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-0.03em", marginTop: 4 }}>{stats.pendingCount}</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 10, maxHeight: 95, overflow: "hidden" }}>
+                        {top.length > 0 ? top.map(([c, n]) => (
+                          <div key={c} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, background: "rgba(0,0,0,0.03)", padding: "5px 9px", borderRadius: 8 }}>
+                            <span style={{ fontWeight: 600, color: "#192126", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>{c}</span>
+                            <span style={{ fontWeight: 800, color: "#3B7300" }}>{n}</span>
+                          </div>
+                        )) : (
+                          <div style={{ fontSize: 11, color: "#8B8F92", textAlign: "center", padding: "20px 0" }}>Nada pendente 🎉</div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            );
+          })}
         </div>{/* close summary-grid */}
       </div>{/* close resumo section */}
+
+      {/* ════════ FASE 6 — Modal do picker de widgets ════════ */}
+      {_uhSumPickerOpen && (() => {
+        const WIDGETS_META = [
+          { k: "producao", name: "Produção vs Entrega", desc: "Gauge dual-ring de em produção e publicadas", ico: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A2A2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>) },
+          { k: "publicacoes", name: "Publicações", desc: "Barras de demandas publicadas no período", ico: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A2A2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>) },
+          { k: "alcance", name: "Alcance de posts", desc: "Sparkline estimada de alcance acumulado", ico: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A2A2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>) },
+          { k: "pipeline", name: "Pipeline de demandas", desc: "Barras empilhadas por estágio no período", ico: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A2A2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><rect x="6" y="12" width="3" height="6"/><rect x="11" y="8" width="3" height="10"/><rect x="16" y="4" width="3" height="14"/></svg>) },
+          { k: "clientes", name: "Clientes", desc: "Total + ativos + breakdown por plano", ico: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A2A2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>) },
+          { k: "aprovacoes", name: "Aprovações pendentes", desc: "Demandas aguardando cliente, por cliente", ico: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A2A2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>) },
+        ];
+        const sel = _uhSumPickerSel;
+        const canSave = sel.length === 3;
+        const toggle = (k) => {
+          const idx = sel.indexOf(k);
+          if (idx >= 0) _uhSetSumPickerSel(sel.filter((_, i) => i !== idx));
+          else if (sel.length < 3) _uhSetSumPickerSel([...sel, k]);
+        };
+        return (
+          <div onClick={() => _uhSetSumPickerOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(13,13,13,0.55)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "_uhFadeIn .25s ease-out" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: "#FFFFFF", borderRadius: 24, padding: 24, maxWidth: 680, width: "100%", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.3)", animation: "_uhPickerIn .35s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 6 }}>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em" }}>Editar widgets do resumo</div>
+                  <div style={{ fontSize: 12, color: "#8B8F92", marginTop: 4 }}>Escolha 3 widgets na ordem desejada (clique pra adicionar/remover)</div>
+                </div>
+                <button onClick={() => _uhSetSumPickerOpen(false)} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, marginTop: -2, color: "#8B8F92" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+              <div style={{ fontSize: 12, marginTop: 8, marginBottom: 14, color: "#192126" }}>
+                Selecionados: <b>{sel.length}</b> / 3 ·{" "}
+                {sel.map((k, i) => {
+                  const w = WIDGETS_META.find(x => x.k === k);
+                  return (
+                    <span key={k + "-" + i} style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 100, background: "#F0FAD5", color: "#2F4F06", fontSize: 10.5, fontWeight: 800, marginRight: 4 }}>
+                      {i + 1}. {w?.name || k}
+                    </span>
+                  );
+                })}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, overflowY: "auto", paddingRight: 4 }}>
+                {WIDGETS_META.map(w => {
+                  const order = sel.indexOf(w.k);
+                  const selected = order >= 0;
+                  return (
+                    <div key={w.k} onClick={() => toggle(w.k)} style={{
+                      position: "relative", cursor: "pointer",
+                      background: selected ? "#F0FAD5" : "rgba(0,0,0,0.03)",
+                      border: selected ? "1.5px solid #99D124" : "1.5px solid transparent",
+                      borderRadius: 14, padding: "14px 12px",
+                      display: "flex", flexDirection: "column", gap: 8,
+                      transition: "all .15s",
+                    }}>
+                      {selected && (
+                        <div style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800 }}>
+                          {order + 1}
+                        </div>
+                      )}
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {w.ico}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.01em" }}>{w.name}</div>
+                        <div style={{ fontSize: 10.5, color: "#8B8F92", marginTop: 2, lineHeight: 1.3 }}>{w.desc}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                <button onClick={() => _uhSetSumPickerOpen(false)} style={{ background: "transparent", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 999, padding: "9px 18px", fontSize: 13, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+                <button onClick={() => {
+                  if (!canSave) return;
+                  _uhSetSumWidgetSlots([...sel]);
+                  _uhSetSumPickerOpen(false);
+                }} disabled={!canSave} style={{
+                  background: canSave ? "#0D0D0D" : "rgba(0,0,0,0.15)",
+                  color: canSave ? "#BBF246" : "#FFFFFF",
+                  border: "none", borderRadius: 999, padding: "9px 22px",
+                  fontSize: 13, fontWeight: 800, fontFamily: "inherit",
+                  cursor: canSave ? "pointer" : "not-allowed",
+                  letterSpacing: "-0.01em",
+                }}>Salvar seleção</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Voltar pra v1 (pequeno, no rodapé do conteúdo desenvolvido) */}
       <div style={{ marginTop: 40, textAlign: "center", opacity: 0.6 }}>
