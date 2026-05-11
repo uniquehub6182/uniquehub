@@ -97,10 +97,14 @@ serve(async (req) => {
       if (d.error) throw new Error(d.error.message);
       cid = d.id;
     } else if (type === "STORIES") {
-      /* ── STORIES: each image is a separate story ── */
+      /* ── STORIES: each item is a separate story (image OR video) ── */
       const results: string[] = [];
       for (const url of urls) {
-        const p = new URLSearchParams({ access_token: at, image_url: url, media_type: "STORIES" });
+        const isVideo = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(url);
+        const params: Record<string, string> = { access_token: at, media_type: "STORIES" };
+        if (isVideo) params.video_url = url; else params.image_url = url;
+        console.log(`[IG Story] type=${isVideo ? "VIDEO" : "IMAGE"} url=${url.substring(0, 80)}`);
+        const p = new URLSearchParams(params);
         const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
         const d = await r.json();
         if (d.error) throw new Error(d.error.message);

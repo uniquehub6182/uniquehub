@@ -12911,7 +12911,9 @@ REGRAS TÉCNICAS:
     if (sd.includes("-")) { dt = new Date(`${sd}T${st}:00`); }
     else if (sd.includes("/")) { const [dd,mm] = sd.split("/"); const yr = new Date().getFullYear(); dt = new Date(`${yr}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}T${st}:00`); }
     else return false;
-    return !isNaN(dt) && dt < new Date();
+    // Grace period de 5min: cron roda a cada 60s, evita "Expirado" piscando enquanto publica
+    const GRACE_MS = 5 * 60 * 1000;
+    return !isNaN(dt) && (dt.getTime() + GRACE_MS) < Date.now();
   };
   const pendingCount = demands.filter(d => !["published","completed"].includes(d.stage)).length;
   /* ── Auto-publisher REMOVED — pg_cron handles all publishing server-side ── */

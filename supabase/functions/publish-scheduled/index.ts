@@ -18,6 +18,18 @@ async function getIGToken(sb: any, clientId: string) {
   let uid = "", at = "";
   const { data: s } = await sb.from("app_settings").select("value").eq("key", `ig_token_${clientId}`).single();
   if (s?.value) { try { const tk = JSON.parse(s.value); uid = tk.ig_user_id || ""; at = tk.access_token || ""; } catch {} }
+
+  // SAFETY: IGA tokens (Instagram Login API) cannot publish via Graph API.
+  // If we got an IGA token, discard it and fall back to FB Page Token from meta_token_*.
+  if (at.startsWith("IGA")) {
+    console.warn(`[getIGToken] Detected IGA token (read-only) — falling back to FB Page Token`);
+    at = "";
+  }
+  if (!at) {
+    const { data: m } = await sb.from("app_settings").select("value").eq("key", `meta_token_${clientId}`).single();
+    if (m?.value) { try { const tk = JSON.parse(m.value); if (tk.page_token && tk.page_token.startsWith("EAA")) { at = tk.page_token; if (!uid) uid = tk.ig_user_id || ""; } } catch {} }
+  }
+
   if (!uid || !at) {
     const { data: st } = await sb.from("social_tokens").select("access_token,ig_user_id,page_id").eq("client_id", clientId).eq("platform", "meta").single();
     if (st?.access_token && st?.page_id) {
@@ -29,7 +41,8 @@ async function getIGToken(sb: any, clientId: string) {
       }
     }
   }
-  if (!uid || !at) throw new Error("Instagram não conectado — reconecte nas configurações");
+  if (!uid || !at) throw new Error("Instagram não conectado — reconecte nas configurações (preferencialmente via Facebook)");
+  if (at.startsWith("IGA")) throw new Error("Token Instagram só permite leitura — reconecte via Facebook pra publicar");
   return { uid, at };
 }
 
@@ -82,9 +95,18 @@ async function createIGContainer(sb: any, clientId: string, urls: string[], capt
     }
     return { container_id: null, ig_user_id: uid, type: "CAROUSEL", children: kids, caption };
   } else {
-    const p = new URLSearchParams({ access_token: at, image_url: proxied[0] });
-    if (type === "STORIES") p.append("media_type", "STORIES");
-    if (caption && type !== "STORIES") p.append("caption", caption);
+    const url = proxied[0];
+    const isVideo = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(url);
+    const params: Record<string, string> = { access_token: at };
+    if (type === "STORIES") {
+      params.media_type = "STORIES";
+      if (isVideo) params.video_url = url; else params.image_url = url;
+    } else {
+      params.image_url = url;
+      if (caption) params.caption = caption;
+    }
+    const p = new URLSearchParams(params);
+    console.log(`[IG ${type}] ${isVideo ? "VIDEO" : "IMAGE"} url=${url.substring(0,80)}`);
     const r = await fetch(`https://graph.facebook.com/v21.0/${uid}/media`, { method: "POST", body: p });
     const d = await r.json();
     if (d.error) throw new Error(`IG ${type} container: ${d.error.message}`);
@@ -154,6 +176,36 @@ async function publishFacebook(sb: any, clientId: string, imageUrls: string[], c
     await fetch(`https://graph.facebook.com/v21.0/${initData.video_id}`, { method: "POST", body: new URLSearchParams({ access_token: pageToken, published: "true" }) });
     return { success: true, media_id: initData.video_id };
   }
+
+  if (type === "STORIES") {
+    const url = proxied[0] || "";
+    const isVideo = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(url);
+    if (isVideo) {
+      console.log(`[FB Story Video] Init upload`);
+      const initRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_stories`, { method: "POST", body: new URLSearchParams({ upload_phase: "start", access_token: pageToken }) });
+      const initData = await initRes.json();
+      if (initData.error) throw new Error(`FB Story init: ${initData.error.message}`);
+      console.log(`[FB Story Video] Stream upload video_id=${initData.video_id}`);
+      const videoRes = await fetch(url);
+      if (!videoRes.ok) throw new Error(`Download failed: ${videoRes.status}`);
+      const fileSize = videoRes.headers.get("content-length") || "0";
+      const upRes = await fetch(initData.upload_url, { method: "POST", headers: { "Authorization": `OAuth ${pageToken}`, "offset": "0", "file_size": fileSize, "Content-Type": "application/octet-stream" }, body: videoRes.body });
+      const upData = await upRes.json();
+      if (upData.error) throw new Error(`FB Story upload: ${upData.error.message}`);
+      console.log(`[FB Story Video] Finish + publish video_id=${initData.video_id}`);
+      const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_stories`, { method: "POST", body: new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: initData.video_id, video_state: "PUBLISHED" }) });
+      const finishData = await finishRes.json();
+      if (finishData.error) throw new Error(`FB Story finish: ${finishData.error.message}`);
+      return { success: true, media_id: finishData.post_id || initData.video_id };
+    } else {
+      console.log(`[FB Story Photo] /photo_stories`);
+      const r = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photo_stories`, { method: "POST", body: new URLSearchParams({ access_token: pageToken, url }) });
+      const d = await r.json();
+      if (d.error) throw new Error(`FB Story photo: ${d.error.message}`);
+      return { success: true, media_id: d.id || d.post_id };
+    }
+  }
+
   const r = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photos`, { method: "POST", body: new URLSearchParams({ access_token: pageToken, message: caption || "", url: proxied[0] || "" }) });
   const d = await r.json();
   if (d.error) throw new Error(`FB photo: ${d.error.message}`);

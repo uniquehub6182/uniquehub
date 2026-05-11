@@ -121,15 +121,55 @@ serve(async (req) => {
       return json({ success: true, media_id: videoId, message: "Reels publicado no Facebook!" });
 
     } else if (type === "STORIES") {
-      /* ── STORIES ── */
+      /* ── STORIES (foto OU vídeo) ── */
       const results: { id: string }[] = [];
       for (const url of urls) {
-        const params = new URLSearchParams({ access_token: pageToken, url });
-        const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photo_stories`, { method: "POST", body: params });
-        const data = await res.json();
-        console.log(`[FB Story] Response:`, JSON.stringify(data).substring(0, 200));
-        if (data.error) throw new Error(data.error.message);
-        results.push({ id: data.id || data.post_id });
+        const isVideo = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(url);
+
+        if (isVideo) {
+          /* Video Story — fluxo de 3 etapas (espelha o /video_reels) */
+          console.log(`[FB Story Video] Step 1: Init upload for ${url.substring(0, 60)}`);
+          const initParams = new URLSearchParams({ upload_phase: "start", access_token: pageToken });
+          const initRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_stories`, { method: "POST", body: initParams });
+          const initData = await initRes.json();
+          if (initData.error) throw new Error(`Init: ${initData.error.message}`);
+          const videoId = initData.video_id;
+          const uploadUrl = initData.upload_url;
+          if (!videoId || !uploadUrl) throw new Error("Missing video_id/upload_url");
+
+          console.log(`[FB Story Video] Step 2: Streaming bytes (video_id=${videoId})`);
+          const videoRes = await fetch(url);
+          if (!videoRes.ok) throw new Error(`Download failed: ${videoRes.status}`);
+          const fileSize = videoRes.headers.get("content-length") || "0";
+          const uploadRes = await fetch(uploadUrl, {
+            method: "POST",
+            headers: {
+              "Authorization": `OAuth ${pageToken}`,
+              "offset": "0",
+              "file_size": fileSize,
+              "Content-Type": "application/octet-stream",
+            },
+            body: videoRes.body,
+          });
+          const uploadData = await uploadRes.json();
+          if (uploadData.error) throw new Error(`Upload: ${uploadData.error.message}`);
+
+          console.log(`[FB Story Video] Step 3: Finish + publish video_id=${videoId}`);
+          const finishParams = new URLSearchParams({ upload_phase: "finish", access_token: pageToken, video_id: videoId, video_state: "PUBLISHED" });
+          const finishRes = await fetch(`https://graph.facebook.com/v21.0/${pageId}/video_stories`, { method: "POST", body: finishParams });
+          const finishData = await finishRes.json();
+          if (finishData.error) throw new Error(`Finish: ${finishData.error.message}`);
+
+          results.push({ id: finishData.post_id || videoId });
+        } else {
+          /* Photo Story — fluxo original */
+          const params = new URLSearchParams({ access_token: pageToken, url });
+          const res = await fetch(`https://graph.facebook.com/v21.0/${pageId}/photo_stories`, { method: "POST", body: params });
+          const data = await res.json();
+          console.log(`[FB Story Photo] Response:`, JSON.stringify(data).substring(0, 200));
+          if (data.error) throw new Error(data.error.message);
+          results.push({ id: data.id || data.post_id });
+        }
       }
       return json({ success: true, count: results.length, post_ids: results.map(r => r.id), message: `${results.length} story(s) publicado(s)!` });
 
