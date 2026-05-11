@@ -5944,30 +5944,50 @@ REGRAS DE ESTILO:
                   { title: "Ideia", color: "#A8DF33", match: ["idea", "ideia"] },
                   { title: "Em produção", color: "#F59E0B", match: ["design", "designing", "production", "producao", "produção", "copy", "copywriting", "brief", "briefing"] },
                   { title: "Aguardando cliente", color: "#0EA5E9", match: ["client", "approval", "aguardando_aprovacao", "aguardando aprovação"] },
+                  { title: "Agendado", color: "#06B6D4", match: ["scheduled", "agendado"] },
                 ];
                 return (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+                  <div style={{ display: "flex", gap: 12, overflowX: "auto", overflowY: "hidden", padding: "2px 2px 10px", scrollSnapType: "x mandatory" }}>
                     {cols.map((col, i) => {
                       const items = demands.filter(d => col.match.includes(lc(d?.stage || d?.status)));
                       return (
-                        <div key={i} style={{ background: "rgba(255,255,255,0.7)", borderRadius: 14, padding: 14, border: "1px solid rgba(255,255,255,0.7)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: col.color }}></div>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: "#192126", textTransform: "uppercase", letterSpacing: "0.04em" }}>{col.title}</div>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", marginLeft: "auto" }}>{items.length}</div>
+                        <div key={i} style={{
+                          flex: "0 0 220px",
+                          display: "flex", flexDirection: "column", gap: 10,
+                          background: "rgba(255,255,255,0.82)",
+                          border: "1px solid rgba(255,255,255,0.7)",
+                          borderRadius: 24, padding: "14px 12px 12px",
+                          boxShadow: _UH_SHADOW,
+                          maxHeight: 320, overflow: "hidden",
+                          scrollSnapAlign: "start",
+                          transition: "transform .25s cubic-bezier(0.34,1.56,0.64,1)",
+                        }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 4px 4px", flexShrink: 0 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: col.color, boxShadow: `0 0 8px ${col.color}90`, flexShrink: 0 }}></div>
+                            <div style={{ fontSize: 12.5, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em", whiteSpace: "nowrap" }}>{col.title}</div>
+                            <div style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "2px 9px", borderRadius: 999, fontVariantNumeric: "tabular-nums" }}>{items.length}</div>
                           </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflow: "auto" }}>
+                          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", padding: 2, margin: -2 }}>
                             {items.length === 0 ? (
-                              <div style={{ fontSize: 11, color: "#A0A4A7", fontStyle: "italic", padding: "8px 4px" }}>vazio</div>
-                            ) : items.slice(0, 6).map((it, j) => (
-                              <div key={j} onClick={() => goTab && goTab("pipeline")} style={{ background: "#FFFFFF", borderRadius: 10, padding: "8px 10px", fontSize: 11.5, fontWeight: 500, color: "#192126", boxShadow: "0 1px 2px rgba(0,0,0,0.04)", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={it.task || it.title}>
-                                {it.task || it.title || "Sem título"}
-                                {(it.clientName || it.client) && <div style={{ fontSize: 9.5, color: "#8B8F92", marginTop: 2, fontWeight: 600 }}>{it.clientName || it.client}</div>}
+                              <div style={{ fontSize: 11, color: "#A0A4A7", fontStyle: "italic", padding: "8px 4px", textAlign: "center" }}>vazio</div>
+                            ) : items.slice(0, 8).map((it, j) => (
+                              <div key={j} onClick={() => goTab && goTab("pipeline")} style={{
+                                background: "#FFFFFF", borderRadius: 14, padding: "12px 14px",
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)",
+                                cursor: "pointer",
+                                transition: "transform .2s cubic-bezier(0.34,1.56,0.64,1), box-shadow .2s",
+                                flexShrink: 0,
+                              }}
+                                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05), 0 12px 28px rgba(0,0,0,0.08)"; }}
+                                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.05)"; }}
+                              >
+                                <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>{it.clientName || it.client || "—"}</div>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: "#192126", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{it.task || it.title || "Sem título"}</div>
                               </div>
                             ))}
-                            {items.length > 6 && (
-                              <button onClick={() => goTab && goTab("pipeline")} style={{ fontSize: 10.5, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", cursor: "pointer", padding: "4px 0", textAlign: "left" }}>+ {items.length - 6} no pipeline →</button>
-                            )}
                           </div>
                         </div>
                       );
@@ -5975,109 +5995,105 @@ REGRAS DE ESTILO:
                   </div>
                 );
               })()}
+
               {_uhActiveApp === "comentarios" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflow: "auto", paddingRight: 4 }}>
                   {_uhComments.length === 0 ? (
-                    <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 20, textAlign: "center", color: "#8B8F92", fontSize: 12, fontWeight: 600 }}>
+                    <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>
                       Sem comentários novos 🎉
-                      <div style={{ fontSize: 10.5, color: "#A0A4A7", fontWeight: 500, marginTop: 4 }}>Quando chegarem do Instagram/Facebook, aparecem aqui</div>
+                      <div style={{ fontSize: 10.5, color: "#A0A4A7", fontWeight: 500, marginTop: 6 }}>Quando chegarem do Instagram/Facebook, aparecem aqui</div>
                     </div>
-                  ) : _uhComments.slice(0, 6).map((c, i) => {
-                    const when = c.comment_timestamp ? new Date(c.comment_timestamp) : null;
+                  ) : _uhComments.slice(0, 8).map((co, i) => {
+                    const when = co.comment_timestamp ? new Date(co.comment_timestamp) : null;
                     const ago = when ? Math.round((Date.now() - when.getTime()) / 60000) : null;
-                    const agoStr = ago === null ? "" : ago < 60 ? `${ago}m` : ago < 1440 ? `${Math.round(ago/60)}h` : `${Math.round(ago/1440)}d`;
-                    const author = c.comment_author || "Usuário";
+                    const agoStr = ago === null ? "" : ago < 60 ? `${ago}m` : ago < 1440 ? `${Math.round(ago / 60)}h` : `${Math.round(ago / 1440)}d`;
+                    const author = co.comment_author || "Usuário";
                     return (
-                      <div key={c.id || i} onClick={() => goTab && goTab("comments")} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", gap: 12, alignItems: "flex-start", cursor: "pointer" }}>
-                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#F0FAD5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#0D0D0D", flexShrink: 0 }}>{author[0]?.toUpperCase() || "?"}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "#192126" }}>{author}</div>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: "#8B8F92" }}>{agoStr}</div>
-                          </div>
-                          <div style={{ fontSize: 12.5, color: "#4A4A4A", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{c.comment_text}</div>
+                      <div key={co.id || i} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "11px 14px", fontSize: 12.5 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                          <div style={{ fontWeight: 700, fontSize: 12, color: "#192126" }}>{author}{co.platform ? <span style={{ color: "#8B8F92", fontWeight: 500, marginLeft: 4, fontSize: 10.5 }}>@{co.platform}</span> : null}</div>
+                          {agoStr && <div style={{ fontSize: 10, fontWeight: 600, color: "#8B8F92" }}>{agoStr}</div>}
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); goTab && goTab("comments"); }} style={{ fontSize: 10, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "5px 10px", borderRadius: 999, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>Responder</button>
+                        <div style={{ color: "#3A3A3A", margin: "4px 0", lineHeight: 1.35 }}>{co.comment_text}</div>
+                        {co.suggested_reply && (
+                          <div style={{ marginTop: 6, padding: "7px 12px", background: "#F0FAD5", borderRadius: 10, fontSize: 11, color: "#2F4F06", fontWeight: 500, borderLeft: "3px solid #BBF246", lineHeight: 1.4 }}>
+                            <b style={{ color: "#1F3402", fontWeight: 800 }}>Sugestão IA:</b> {co.suggested_reply}
+                          </div>
+                        )}
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 }}>
+                          <button onClick={() => goTab && goTab("comments")} style={{ fontSize: 10, fontWeight: 800, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}>Responder</button>
+                        </div>
                       </div>
                     );
                   })}
-                  {_uhComments.length > 6 && (
-                    <button onClick={() => goTab && goTab("comments")} style={{ fontSize: 11, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer", textAlign: "center" }}>Ver todos os {_uhComments.length} comentários →</button>
+                  {_uhComments.length > 8 && (
+                    <button onClick={() => goTab && goTab("comments")} style={{ fontSize: 11, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer" }}>Ver todos os {_uhComments.length} →</button>
                   )}
                 </div>
               )}
+
               {_uhActiveApp === "aprovacoes" && (() => {
                 const demands = Array.isArray(props.demands) ? props.demands : [];
                 const lc = (s) => (s || "").toString().toLowerCase();
                 const pending = demands.filter(d => ["client", "approval", "aguardando_aprovacao", "aguardando aprovação"].includes(lc(d?.stage || d?.status)));
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {pending.length === 0 ? (
-                      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 20, textAlign: "center", color: "#8B8F92", fontSize: 12, fontWeight: 600 }}>
-                        Nada aguardando aprovação 🎉
-                      </div>
-                    ) : pending.slice(0, 6).map((a, i) => {
-                      const since = a.updated_at || a.updatedAt || a.created_at || a.createdAt;
-                      let agoStr = "";
-                      if (since) {
-                        const mins = Math.round((Date.now() - new Date(since).getTime()) / 60000);
-                        agoStr = mins < 60 ? `${mins}m` : mins < 1440 ? `${Math.round(mins/60)}h` : `${Math.round(mins/1440)}d`;
-                      }
-                      return (
-                        <div key={a.id || i} onClick={() => goTab && goTab("pipeline")} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", gap: 8 }}>
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.task || a.title || "Sem título"}</div>
-                            <div style={{ fontSize: 11, color: "#8B8F92", marginTop: 2 }}>{a.clientName || a.client || "—"}{a.format ? ` · ${a.format}` : ""}{agoStr ? ` · há ${agoStr}` : ""}</div>
-                          </div>
-                          <button onClick={(e) => { e.stopPropagation(); goTab && goTab("pipeline"); }} style={{ fontSize: 10, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Revisar</button>
+                const thumbs = [
+                  "linear-gradient(135deg, #CED3D6, #8E9396)",
+                  "linear-gradient(135deg, #BBF246, #A8DF33)",
+                  "linear-gradient(135deg, #333, #0D0D0D)",
+                  "linear-gradient(135deg, #F6C7B5, #E89B7D)",
+                ];
+                return pending.length === 0 ? (
+                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>
+                    Nada aguardando aprovação 🎉
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                    {pending.slice(0, 8).map((a, i) => (
+                      <div key={a.id || i} onClick={() => goTab && goTab("pipeline")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 10, display: "flex", flexDirection: "column", cursor: "pointer" }}>
+                        <div style={{ height: 76, borderRadius: 10, marginBottom: 8, background: thumbs[i % thumbs.length] }}></div>
+                        <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(a.clientName || a.client || "—")} · {(a.format || a.type || "POST").toUpperCase()}</div>
+                        <div style={{ fontSize: 10.5, fontWeight: 600, color: "#192126", lineHeight: 1.3, flex: 1, minHeight: 28, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{a.task || a.title || "Sem título"}</div>
+                        <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
+                          <div onClick={(e) => { e.stopPropagation(); goTab && goTab("pipeline"); }} style={{ flex: 1, padding: "5px 0", borderRadius: 7, fontSize: 9.5, fontWeight: 800, textAlign: "center", cursor: "pointer", background: "#BBF246", color: "#0D0D0D" }}>Aprovar</div>
+                          <div onClick={(e) => { e.stopPropagation(); goTab && goTab("pipeline"); }} style={{ flex: 1, padding: "5px 0", borderRadius: 7, fontSize: 9.5, fontWeight: 800, textAlign: "center", cursor: "pointer", background: "rgba(0,0,0,0.06)", color: "#192126" }}>Editar</div>
                         </div>
-                      );
-                    })}
-                    {pending.length > 6 && (
-                      <button onClick={() => goTab && goTab("pipeline")} style={{ fontSize: 11, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer", textAlign: "center" }}>Ver todas as {pending.length} aprovações →</button>
-                    )}
+                      </div>
+                    ))}
                   </div>
                 );
               })()}
+
               {_uhActiveApp === "agenda" && (() => {
                 const now = new Date(); now.setHours(0, 0, 0, 0);
-                const upcoming = _uhEventsParsed
-                  .filter(ev => ev._dt >= now)
-                  .sort((a, b) => a._dt - b._dt);
-                const monthsShort = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {upcoming.length === 0 ? (
-                      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 20, textAlign: "center", color: "#8B8F92", fontSize: 12, fontWeight: 600 }}>
-                        Sem eventos na agenda
-                      </div>
-                    ) : upcoming.slice(0, 6).map((e, i) => {
-                      const diffDays = Math.round((new Date(e._dt.getFullYear(), e._dt.getMonth(), e._dt.getDate()) - now) / 86400000);
-                      const dayLabel = diffDays === 0 ? "Hoje" : diffDays === 1 ? "Amanhã" : `${e._dt.getDate()} ${monthsShort[e._dt.getMonth()]}`;
+                const upcoming = _uhEventsParsed.filter(ev => ev._dt >= now).sort((a, b) => a._dt - b._dt);
+                const monthsShort = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+                return upcoming.length === 0 ? (
+                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>
+                    Sem eventos na agenda
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflow: "auto", paddingRight: 4 }}>
+                    {upcoming.slice(0, 8).map((e, i) => {
                       const timeStr = e.time ? e.time.slice(0, 5) : "—";
+                      const typeLabel = e.type === "meeting" ? "Reunião" : e.type === "recording" ? "Gravação" : e.type === "deadline" ? "Deadline" : e.type === "reminder" ? "Lembrete" : "Evento";
                       return (
-                        <div key={e.id || i} onClick={() => goTab && goTab("calendar")} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }}>
-                          <div style={{ width: 60, height: 48, borderRadius: 10, background: "#F0FAD5", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                            <div style={{ fontSize: 9, fontWeight: 800, color: "#3B7300", textTransform: "uppercase", letterSpacing: "0.05em" }}>{dayLabel}</div>
-                            <div style={{ fontSize: 12, fontWeight: 800, color: "#0D0D0D", marginTop: 1 }}>{timeStr}</div>
+                        <div key={e.id || i} onClick={() => goTab && goTab("calendar")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, fontSize: 12, cursor: "pointer" }}>
+                          <div style={{ background: "#0D0D0D", color: "#BBF246", borderRadius: 10, padding: "6px 10px", textAlign: "center", flexShrink: 0, minWidth: 44 }}>
+                            <b style={{ display: "block", fontSize: 14, fontWeight: 900, lineHeight: 1 }}>{e._dt.getDate()}</b>
+                            <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginTop: 1, display: "block" }}>{monthsShort[e._dt.getMonth()]}</span>
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</div>
-                            <div style={{ fontSize: 11, color: "#8B8F92", marginTop: 2 }}>
-                              {e.type === "meeting" ? "Reunião" : e.type === "recording" ? "Gravação" : e.type === "deadline" ? "Deadline" : e.type === "reminder" ? "Lembrete" : "Evento"}
-                              {e.client ? ` · ${e.client}` : ""}
-                            </div>
+                            <b style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</b>
+                            <span style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 500 }}>{timeStr} · {typeLabel}{e.client ? ` · ${e.client}` : ""}</span>
                           </div>
                         </div>
                       );
                     })}
-                    {upcoming.length > 6 && (
-                      <button onClick={() => goTab && goTab("calendar")} style={{ fontSize: 11, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer", textAlign: "center" }}>Ver agenda completa →</button>
-                    )}
                   </div>
                 );
               })()}
-              {_uhActiveApp === "munique" && (
+
+                            {_uhActiveApp === "munique" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflow: "auto" }}>
                   {_uhMqMessages.length === 0 ? (
                     <div style={{ display: "flex", gap: 10 }}>
