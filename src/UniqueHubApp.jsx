@@ -4806,6 +4806,44 @@ function HomePageV2(props) {
   // Briefing playing state (Fase 2 polimento — animações)
   const [_uhBriefPlaying, _uhSetBriefPlaying] = useState(false);
 
+  // Briefing TTS — usa Web Speech API com dados reais
+  const _uhPlayBrief = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      alert("Seu navegador não suporta síntese de voz");
+      return;
+    }
+    if (_uhBriefPlaying) {
+      window.speechSynthesis.cancel();
+      _uhSetBriefPlaying(false);
+      return;
+    }
+    const h = new Date().getHours();
+    const greet = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+    const parts = [`${greet}, ${_uhFirstName}.`];
+    parts.push(`Hoje é ${_uhDays[_uhNow.getDay()]}.`);
+    if (_uhPostsGoal > 0) {
+      parts.push(`Você está com ${_uhGoalPct}% da meta do mês: ${_uhPostsDone} de ${_uhPostsGoal} demandas entregues.`);
+    } else {
+      parts.push("Nenhuma demanda no pipeline desse mês ainda.");
+    }
+    if (_uhAttCount > 0) {
+      const summary = _uhAttItems.map(i => String(i.text || "").replace(/<[^>]+>/g, "")).join(". ");
+      parts.push(`Atenção: ${summary}.`);
+    } else {
+      parts.push("Tudo tranquilo nas pendências.");
+    }
+    const text = parts.join(" ");
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "pt-BR";
+    utter.rate = 1.05;
+    utter.pitch = 1;
+    utter.onstart = () => _uhSetBriefPlaying(true);
+    utter.onend = () => _uhSetBriefPlaying(false);
+    utter.onerror = () => _uhSetBriefPlaying(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  };
+
   // Quick cards system state (Fase 4 polimento — 3 estados + expand inline)
   const [_uhActiveApp, _uhSetActiveApp] = useState(null);
   const [_uhPinnedApp, _uhSetPinnedApp] = useState(null);
@@ -4835,9 +4873,22 @@ function HomePageV2(props) {
   const [_uhIdeas, _uhSetIdeas] = useState([]);
   const [_uhWeekOffset, _uhSetWeekOffset] = useState(0); // 0 = semana atual, -1 prev, +1 next
   const [_uhSummaryRange, _uhSetSummaryRange] = useState("semana"); // "hoje" | "semana" | "mes"
+  const [_uhComments, _uhSetComments] = useState([]);
   useEffect(() => {
     supaLoadEvents().then(d => _uhSetEvents(Array.isArray(d) ? d : []));
     supaLoadIdeas().then(d => _uhSetIdeas(Array.isArray(d) ? d : []));
+    // Carrega comments pendentes (não respondidos/dismissed) dos últimos 30 dias
+    if (supabase) {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      orgScope(supabase.from("comment_replies").select("*")
+        .gte("created_at", since)
+        .neq("status", "replied")
+        .neq("status", "dismissed"))
+        .order("comment_timestamp", { ascending: false })
+        .limit(20)
+        .then(({ data }) => _uhSetComments(Array.isArray(data) ? data : []))
+        .catch(() => _uhSetComments([]));
+    }
   }, []);
 
   // ─── Fase 5B: Munique IA chat funcional ───
@@ -5034,12 +5085,25 @@ REGRAS DE ESTILO:
   const _UH_SHADOW = "0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06), 0 24px 60px rgba(0,0,0,0.04)";
   const _UH_ICONBTN = { width: 44, height: 44, borderRadius: 14, background: "#FFFFFF", boxShadow: _UH_SHADOW, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", flexShrink: 0 };
 
-  // Metrics da Fase 3 — calculadas de demands (com fallback)
-  const _uhPostsGoal = 300;
-  const _uhPostsDone = useMemo(() => {
-    if (!Array.isArray(props.demands)) return 186;
+  // Metrics da Fase 3 — meta = total de demandas criadas/agendadas pro mês corrente
+  const _uhPostsGoal = useMemo(() => {
+    if (!Array.isArray(props.demands)) return 0;
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return props.demands.filter(d => {
+      if (!d) return false;
+      const dt = d.created_at || d.createdAt || d.scheduling?.date || d.scheduleDate;
+      if (!dt) return false;
+      const date = new Date(dt);
+      return !isNaN(date.getTime()) && date >= monthStart && date <= monthEnd;
+    }).length;
+  }, [props.demands]);
+  const _uhPostsDone = useMemo(() => {
+    if (!Array.isArray(props.demands)) return 0;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     return props.demands.filter(d => {
       if (!d) return false;
       const status = (d.status || "").toLowerCase();
@@ -5048,10 +5112,10 @@ REGRAS DE ESTILO:
       const dt = d.published_at || d.publishedAt || d.scheduling?.date || d.scheduleDate || d.updated_at || d.updatedAt || d.created_at || d.createdAt;
       if (!dt) return false;
       const date = new Date(dt);
-      return !isNaN(date.getTime()) && date >= monthStart;
+      return !isNaN(date.getTime()) && date >= monthStart && date <= monthEnd;
     }).length;
   }, [props.demands]);
-  const _uhGoalPct = Math.min(100, Math.round((_uhPostsDone / _uhPostsGoal) * 100));
+  const _uhGoalPct = _uhPostsGoal > 0 ? Math.min(100, Math.round((_uhPostsDone / _uhPostsGoal) * 100)) : 0;
 
   // Atenção: posts agendados nos próximos 7 dias
   const _uhAttItems = useMemo(() => {
@@ -5466,7 +5530,7 @@ REGRAS DE ESTILO:
       {/* BRIEFING DO DIA — com play state animado */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 4px 14px", marginBottom: 4, position: "relative" }}>
         <div
-          onClick={() => _uhSetBriefPlaying(p => !p)}
+          onClick={_uhPlayBrief}
           style={{
             width: 32, height: 32, borderRadius: "50%", background: "#BBF246",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -5492,7 +5556,7 @@ REGRAS DE ESTILO:
           <span style={{ fontFamily: "'JetBrains Mono',ui-monospace,monospace", fontSize: 11, fontWeight: 700, color: "#192126", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em", flexShrink: 0 }}>~45s</span>
           <span style={{ color: "rgba(0,0,0,0.18)", fontWeight: 600, flexShrink: 0 }}>·</span>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: _uhBriefPlaying ? "#0D0D0D" : "#8B8F92", transition: "color .25s" }}>
-            {_uhBriefPlaying ? "Tocando seu briefing — prioridade hoje: aprovações pendentes da semana e meta de entregas." : "Aperta play e eu te conto o que é prioridade agora."}
+            {_uhBriefPlaying ? "Tocando seu briefing — clique de novo pra pausar." : "Aperta play e eu te conto o que é prioridade agora."}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 2, height: 18, flexShrink: 0, opacity: _uhBriefPlaying ? 1 : 0.35, transition: "opacity .3s" }}>
@@ -5742,108 +5806,164 @@ REGRAS DE ESTILO:
               </div>
             </div>
 
-            {/* BODY — mock bodies por app */}
+            {/* BODY — bodies reais conectados aos dados */}
             <div>
-              {_uhActiveApp === "conteudo" && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
-                  {[
-                    { title: "Ideia", count: 12, color: "#A8DF33", items: ["Reel sobre dicas de Inverno", "Carrossel: case Café Luís", "Vídeo apresentando Boutique"] },
-                    { title: "Produção", count: 15, color: "#F59E0B", items: ["Foto produto Studio Z", "Vídeo Boutique outono", "Carrossel Padaria 5 receitas"] },
-                    { title: "Aprovar", count: 7, color: "#0EA5E9", items: ["Post Café Luís: cookie", "Reel Padaria: pão integral", "Carrossel Dental Care"] },
-                  ].map((col, i) => (
-                    <div key={i} style={{ background: "rgba(255,255,255,0.7)", borderRadius: 14, padding: 14, border: "1px solid rgba(255,255,255,0.7)" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: "50%", background: col.color }}></div>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: "#192126", textTransform: "uppercase", letterSpacing: "0.04em" }}>{col.title}</div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", marginLeft: "auto" }}>{col.count}</div>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {col.items.map((it, j) => (
-                          <div key={j} style={{ background: "#FFFFFF", borderRadius: 10, padding: "8px 10px", fontSize: 11.5, fontWeight: 500, color: "#192126", boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>{it}</div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {_uhActiveApp === "conteudo" && (() => {
+                const demands = Array.isArray(props.demands) ? props.demands : [];
+                const lc = (s) => (s || "").toString().toLowerCase();
+                const cols = [
+                  { title: "Ideia", color: "#A8DF33", match: ["idea", "ideia"] },
+                  { title: "Em produção", color: "#F59E0B", match: ["design", "designing", "production", "producao", "produção", "copy", "copywriting", "brief", "briefing"] },
+                  { title: "Aguardando cliente", color: "#0EA5E9", match: ["client", "approval", "aguardando_aprovacao", "aguardando aprovação"] },
+                ];
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+                    {cols.map((col, i) => {
+                      const items = demands.filter(d => col.match.includes(lc(d?.stage || d?.status)));
+                      return (
+                        <div key={i} style={{ background: "rgba(255,255,255,0.7)", borderRadius: 14, padding: 14, border: "1px solid rgba(255,255,255,0.7)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: col.color }}></div>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: "#192126", textTransform: "uppercase", letterSpacing: "0.04em" }}>{col.title}</div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", marginLeft: "auto" }}>{items.length}</div>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 200, overflow: "auto" }}>
+                            {items.length === 0 ? (
+                              <div style={{ fontSize: 11, color: "#A0A4A7", fontStyle: "italic", padding: "8px 4px" }}>vazio</div>
+                            ) : items.slice(0, 6).map((it, j) => (
+                              <div key={j} onClick={() => goTab && goTab("pipeline")} style={{ background: "#FFFFFF", borderRadius: 10, padding: "8px 10px", fontSize: 11.5, fontWeight: 500, color: "#192126", boxShadow: "0 1px 2px rgba(0,0,0,0.04)", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={it.task || it.title}>
+                                {it.task || it.title || "Sem título"}
+                                {(it.clientName || it.client) && <div style={{ fontSize: 9.5, color: "#8B8F92", marginTop: 2, fontWeight: 600 }}>{it.clientName || it.client}</div>}
+                              </div>
+                            ))}
+                            {items.length > 6 && (
+                              <button onClick={() => goTab && goTab("pipeline")} style={{ fontSize: 10.5, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", cursor: "pointer", padding: "4px 0", textAlign: "left" }}>+ {items.length - 6} no pipeline →</button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               {_uhActiveApp === "comentarios" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[
-                    { who: "Café Luís", what: "Adoro vocês! Quando vai ter mais cookie red velvet?", time: "2h" },
-                    { who: "Boutique XYZ", what: "Esse vestido vem em P? E o preço?", time: "4h" },
-                    { who: "Studio Z", what: "Posso agendar uma sessão pra sábado?", time: "5h" },
-                    { who: "Padaria do João", what: "Quero saber sobre encomendas pra festa", time: "1d" },
-                    { who: "Dental Care", what: "Vocês fazem clareamento?", time: "1d" },
-                  ].map((c, i) => (
-                    <div key={i} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", gap: 12, alignItems: "flex-start" }}>
-                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#F0FAD5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#0D0D0D", flexShrink: 0 }}>{c.who[0]}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#192126" }}>{c.who}</div>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: "#8B8F92" }}>{c.time}</div>
+                  {_uhComments.length === 0 ? (
+                    <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 20, textAlign: "center", color: "#8B8F92", fontSize: 12, fontWeight: 600 }}>
+                      Sem comentários novos 🎉
+                      <div style={{ fontSize: 10.5, color: "#A0A4A7", fontWeight: 500, marginTop: 4 }}>Quando chegarem do Instagram/Facebook, aparecem aqui</div>
+                    </div>
+                  ) : _uhComments.slice(0, 6).map((c, i) => {
+                    const when = c.comment_timestamp ? new Date(c.comment_timestamp) : null;
+                    const ago = when ? Math.round((Date.now() - when.getTime()) / 60000) : null;
+                    const agoStr = ago === null ? "" : ago < 60 ? `${ago}m` : ago < 1440 ? `${Math.round(ago/60)}h` : `${Math.round(ago/1440)}d`;
+                    const author = c.comment_author || "Usuário";
+                    return (
+                      <div key={c.id || i} onClick={() => goTab && goTab("comments")} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", gap: 12, alignItems: "flex-start", cursor: "pointer" }}>
+                        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#F0FAD5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#0D0D0D", flexShrink: 0 }}>{author[0]?.toUpperCase() || "?"}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#192126" }}>{author}</div>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: "#8B8F92" }}>{agoStr}</div>
+                          </div>
+                          <div style={{ fontSize: 12.5, color: "#4A4A4A", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{c.comment_text}</div>
                         </div>
-                        <div style={{ fontSize: 12.5, color: "#4A4A4A" }}>{c.what}</div>
+                        <button onClick={(e) => { e.stopPropagation(); goTab && goTab("comments"); }} style={{ fontSize: 10, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "5px 10px", borderRadius: 999, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>Responder</button>
                       </div>
-                      <button style={{ fontSize: 10, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "5px 10px", borderRadius: 999, cursor: "pointer", flexShrink: 0 }}>Responder</button>
-                    </div>
-                  ))}
+                    );
+                  })}
+                  {_uhComments.length > 6 && (
+                    <button onClick={() => goTab && goTab("comments")} style={{ fontSize: 11, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer", textAlign: "center" }}>Ver todos os {_uhComments.length} comentários →</button>
+                  )}
                 </div>
               )}
-              {_uhActiveApp === "aprovacoes" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[
-                    { client: "Café Luís", post: "Post cookie red velvet", type: "Carrossel", since: "3h" },
-                    { client: "Boutique XYZ", post: "Vestido outono coleção 2026", type: "Reel", since: "5h" },
-                    { client: "Studio Z", post: "Sessão ensaio fotográfico", type: "Foto", since: "1d" },
-                    { client: "Padaria do João", post: "5 receitas de pão integral", type: "Carrossel", since: "1d" },
-                  ].map((a, i) => (
-                    <div key={i} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#192126" }}>{a.post}</div>
-                        <div style={{ fontSize: 11, color: "#8B8F92", marginTop: 2 }}>{a.client} · {a.type} · há {a.since}</div>
+              {_uhActiveApp === "aprovacoes" && (() => {
+                const demands = Array.isArray(props.demands) ? props.demands : [];
+                const lc = (s) => (s || "").toString().toLowerCase();
+                const pending = demands.filter(d => ["client", "approval", "aguardando_aprovacao", "aguardando aprovação"].includes(lc(d?.stage || d?.status)));
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {pending.length === 0 ? (
+                      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 20, textAlign: "center", color: "#8B8F92", fontSize: 12, fontWeight: 600 }}>
+                        Nada aguardando aprovação 🎉
                       </div>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <button style={{ fontSize: 10, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "6px 12px", borderRadius: 999, cursor: "pointer" }}>Aprovar</button>
-                        <button style={{ fontSize: 10, fontWeight: 700, color: "#192126", background: "transparent", border: "1px solid rgba(0,0,0,0.12)", padding: "6px 12px", borderRadius: 999, cursor: "pointer" }}>Editar</button>
+                    ) : pending.slice(0, 6).map((a, i) => {
+                      const since = a.updated_at || a.updatedAt || a.created_at || a.createdAt;
+                      let agoStr = "";
+                      if (since) {
+                        const mins = Math.round((Date.now() - new Date(since).getTime()) / 60000);
+                        agoStr = mins < 60 ? `${mins}m` : mins < 1440 ? `${Math.round(mins/60)}h` : `${Math.round(mins/1440)}d`;
+                      }
+                      return (
+                        <div key={a.id || i} onClick={() => goTab && goTab("pipeline")} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", gap: 8 }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.task || a.title || "Sem título"}</div>
+                            <div style={{ fontSize: 11, color: "#8B8F92", marginTop: 2 }}>{a.clientName || a.client || "—"}{a.format ? ` · ${a.format}` : ""}{agoStr ? ` · há ${agoStr}` : ""}</div>
+                          </div>
+                          <button onClick={(e) => { e.stopPropagation(); goTab && goTab("pipeline"); }} style={{ fontSize: 10, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Revisar</button>
+                        </div>
+                      );
+                    })}
+                    {pending.length > 6 && (
+                      <button onClick={() => goTab && goTab("pipeline")} style={{ fontSize: 11, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer", textAlign: "center" }}>Ver todas as {pending.length} aprovações →</button>
+                    )}
+                  </div>
+                );
+              })()}
+              {_uhActiveApp === "agenda" && (() => {
+                const now = new Date(); now.setHours(0, 0, 0, 0);
+                const upcoming = _uhEventsParsed
+                  .filter(ev => ev._dt >= now)
+                  .sort((a, b) => a._dt - b._dt);
+                const monthsShort = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {upcoming.length === 0 ? (
+                      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 20, textAlign: "center", color: "#8B8F92", fontSize: 12, fontWeight: 600 }}>
+                        Sem eventos na agenda
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {_uhActiveApp === "agenda" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[
-                    { date: "Hoje · 14:00", title: "Reunião com Café Luís", where: "Online" },
-                    { date: "Amanhã · 10:00", title: "Briefing campanha Boutique", where: "Presencial" },
-                    { date: "Qua · 15:30", title: "Apresentação resultados Studio Z", where: "Online" },
-                    { date: "Sex · 09:00", title: "Sessão de fotos Padaria", where: "Estúdio" },
-                  ].map((e, i) => (
-                    <div key={i} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", gap: 12, alignItems: "center" }}>
-                      <div style={{ width: 56, height: 48, borderRadius: 10, background: "#F0FAD5", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase" }}>{e.date.split(" · ")[0]}</div>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: "#0D0D0D" }}>{e.date.split(" · ")[1]}</div>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126" }}>{e.title}</div>
-                        <div style={{ fontSize: 11, color: "#8B8F92", marginTop: 2 }}>{e.where}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ) : upcoming.slice(0, 6).map((e, i) => {
+                      const diffDays = Math.round((new Date(e._dt.getFullYear(), e._dt.getMonth(), e._dt.getDate()) - now) / 86400000);
+                      const dayLabel = diffDays === 0 ? "Hoje" : diffDays === 1 ? "Amanhã" : `${e._dt.getDate()} ${monthsShort[e._dt.getMonth()]}`;
+                      const timeStr = e.time ? e.time.slice(0, 5) : "—";
+                      return (
+                        <div key={e.id || i} onClick={() => goTab && goTab("calendar")} style={{ background: "rgba(255,255,255,0.85)", borderRadius: 12, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.7)", display: "flex", gap: 12, alignItems: "center", cursor: "pointer" }}>
+                          <div style={{ width: 60, height: 48, borderRadius: 10, background: "#F0FAD5", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <div style={{ fontSize: 9, fontWeight: 800, color: "#3B7300", textTransform: "uppercase", letterSpacing: "0.05em" }}>{dayLabel}</div>
+                            <div style={{ fontSize: 12, fontWeight: 800, color: "#0D0D0D", marginTop: 1 }}>{timeStr}</div>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</div>
+                            <div style={{ fontSize: 11, color: "#8B8F92", marginTop: 2 }}>
+                              {e.type === "meeting" ? "Reunião" : e.type === "recording" ? "Gravação" : e.type === "deadline" ? "Deadline" : e.type === "reminder" ? "Lembrete" : "Evento"}
+                              {e.client ? ` · ${e.client}` : ""}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {upcoming.length > 6 && (
+                      <button onClick={() => goTab && goTab("calendar")} style={{ fontSize: 11, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", padding: "8px 0", cursor: "pointer", textAlign: "center" }}>Ver agenda completa →</button>
+                    )}
+                  </div>
+                );
+              })()}
               {_uhActiveApp === "munique" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflow: "auto" }}>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>M</div>
-                    <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "10px 14px", fontSize: 13, color: "#192126", maxWidth: "70%" }}>Oi, {_uhFirstName}! Tô vendo que você tem <b>7 demandas aguardando aprovação</b>. Quer que eu revise rapidinho pra você?</div>
-                  </div>
-                  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                    <div style={{ background: "#BBF246", borderRadius: 14, padding: "10px 14px", fontSize: 13, color: "#0D0D0D", maxWidth: "70%" }}>Vai sim, prioriza as do Café Luís</div>
-                  </div>
-                  <div style={{ display: "flex", gap: 10 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>M</div>
-                    <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "10px 14px", fontSize: 13, color: "#192126", maxWidth: "70%" }}>Achei <b>3 posts do Café Luís</b> esperando aprovação. Tem um carrossel de cookie red velvet que tá bonito demais. Quer ver?</div>
-                  </div>
+                  {_uhMqMessages.length === 0 ? (
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>M</div>
+                      <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "10px 14px", fontSize: 13, color: "#192126", maxWidth: "70%" }}>Oi, {_uhFirstName}! Tô aqui no painel ao lado pra conversar — manda perguntas, ideias ou peça resumo do dia.</div>
+                    </div>
+                  ) : _uhMqMessages.slice(-6).map((msg, i) => {
+                    const isUser = msg.role === "user";
+                    return (
+                      <div key={i} style={{ display: "flex", gap: 10, justifyContent: isUser ? "flex-end" : "flex-start" }}>
+                        {!isUser && <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>M</div>}
+                        <div style={{ background: isUser ? "#BBF246" : "rgba(255,255,255,0.9)", borderRadius: 14, padding: "10px 14px", fontSize: 13, color: isUser ? "#0D0D0D" : "#192126", maxWidth: "70%", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{msg.content}</div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
