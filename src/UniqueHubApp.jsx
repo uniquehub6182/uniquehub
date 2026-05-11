@@ -5175,7 +5175,8 @@ REGRAS DE ESTILO:
     return `${start.getDate()} ${_uhMonthsShort[start.getMonth()]} a ${end.getDate()} ${_uhMonthsShort[end.getMonth()]}`;
   }, [_uhWeekStrip]);
 
-  // ─── Summary (3 cards) — depende de _uhSummaryRange ───
+  // ─── Summary (3 cards: producao/publicacoes/alcance) — depende de _uhSummaryRange ───
+  const _uhRangeLabel = _uhSummaryRange === "hoje" ? "hoje" : _uhSummaryRange === "mes" ? "no mês" : "na semana";
   const _uhSummaryStats = useMemo(() => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     let rangeStart, rangeEnd, rangeDays;
@@ -5186,9 +5187,8 @@ REGRAS DE ESTILO:
     } else if (_uhSummaryRange === "mes") {
       rangeStart = new Date(today.getFullYear(), today.getMonth(), 1);
       rangeEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
-      rangeDays = rangeEnd.getDate();
+      rangeDays = Math.round((rangeEnd - rangeStart) / 86400000) + 1;
     } else {
-      // semana corrente (DOM..SAB)
       rangeStart = new Date(today);
       rangeStart.setDate(today.getDate() - today.getDay());
       rangeEnd = new Date(rangeStart);
@@ -5197,77 +5197,67 @@ REGRAS DE ESTILO:
       rangeDays = 7;
     }
 
-    const upcoming = _uhAllItems
-      .filter(it => it._dt >= today && it._dt <= rangeEnd)
-      .sort((a, b) => a._dt - b._dt);
-
-    // Publicações no range
     const demands = Array.isArray(props.demands) ? props.demands : [];
-    const publishedInRange = demands.filter(dm => {
-      const s = (dm?.status || "").toLowerCase();
-      if (!["published", "done", "publicado", "concluido", "concluído"].includes(s)) return false;
-      const dt = dm?.published_at || dm?.publishedAt || dm?.scheduling?.date || dm?.scheduleDate || dm?.updated_at || dm?.updatedAt;
+    const lc = (s) => (s || "").toString().toLowerCase();
+    const isPub = (s) => ["published", "done", "publicado", "scheduled", "agendado", "concluido", "concluído"].includes(lc(s));
+    const isProd = (s) => ["design", "designing", "copy", "brief", "briefing", "production", "producao", "produção", "review", "revisao", "revisão"].includes(lc(s));
+    const inDateRange = (dm) => {
+      const dt = dm?.created_at || dm?.createdAt || dm?.scheduling?.date || dm?.scheduleDate;
       if (!dt) return false;
+      try { const d = new Date(dt); return d >= rangeStart && d <= rangeEnd; } catch { return false; }
+    };
+
+    const inR = demands.filter(inDateRange);
+    const totalInR = inR.length;
+    const publishedCount = inR.filter(dm => isPub(dm.status)).length;
+    const inProdCount = inR.filter(dm => isProd(dm.status)).length;
+
+    // Bucketize por dia no range pra bars + sparkline (até N buckets)
+    const N = Math.min(rangeDays, _uhSummaryRange === "mes" ? 30 : rangeDays);
+    const buckets = new Array(N).fill(0);
+    inR.filter(dm => isPub(dm.status)).forEach(dm => {
+      const dt = dm?.scheduling?.date || dm?.scheduleDate || dm?.created_at || dm?.createdAt;
+      if (!dt) return;
       try {
-        const parsed = new Date(dt);
-        if (isNaN(parsed.getTime())) return false;
-        return parsed >= rangeStart && parsed <= rangeEnd;
-      } catch { return false; }
+        const d = new Date(dt);
+        const dayIdx = Math.floor((d - rangeStart) / 86400000);
+        if (dayIdx >= 0 && dayIdx < N) buckets[dayIdx]++;
+      } catch {}
     });
 
-    // Série diária pra gráfico de alcance (sempre 7 pontos = últimos 7 dias do range)
-    const seriesDays = Math.min(rangeDays, 7);
-    const seriesEnd = rangeEnd;
-    const series = [];
-    for (let i = seriesDays - 1; i >= 0; i--) {
-      const d = new Date(seriesEnd);
-      d.setDate(seriesEnd.getDate() - i);
-      d.setHours(0, 0, 0, 0);
-      const dStr = _uhFmtDate(d);
-      const count = demands.filter(dm => {
-        const s = (dm?.status || "").toLowerCase();
-        if (!["published", "done", "publicado", "concluido", "concluído"].includes(s)) return false;
-        const dt = dm?.published_at || dm?.publishedAt || dm?.scheduling?.date || dm?.scheduleDate || dm?.updated_at || dm?.updatedAt;
-        if (!dt) return false;
-        try {
-          const parsed = new Date(dt);
-          if (isNaN(parsed.getTime())) return false;
-          return _uhFmtDate(parsed) === dStr;
-        } catch { return false; }
-      }).length;
-      series.push({ date: d, dateStr: dStr, count, label: ["D", "S", "T", "Q", "Q", "S", "S"][d.getDay()] });
+    // "Alcance" estimado: published * 850 (modelo simples + estável, sem random)
+    const reachTotal = publishedCount * 850;
+
+    // Resample buckets pra 60 pontos via Catmull-Rom pra sparkline suave
+    const SAMPLES = 60;
+    const src = buckets.length > 1 ? buckets : [0, 0];
+    const ys = [];
+    for (let i = 0; i < SAMPLES; i++) {
+      const g = (i / (SAMPLES - 1)) * (src.length - 1);
+      const lo = Math.floor(g);
+      const t = g - lo;
+      const p0 = src[Math.max(0, lo - 1)];
+      const p1 = src[lo];
+      const p2 = src[Math.min(src.length - 1, lo + 1)];
+      const p3 = src[Math.min(src.length - 1, lo + 2)];
+      const t2 = t * t, t3 = t2 * t;
+      const v = 0.5 * (
+        (2 * p1) +
+        (-p0 + p2) * t +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * t3
+      );
+      ys.push(Math.max(0, v));
     }
 
-    // Prev period — pra calcular delta %
-    const prevStart = new Date(rangeStart);
-    prevStart.setDate(prevStart.getDate() - rangeDays);
-    const prevEnd = new Date(rangeEnd);
-    prevEnd.setDate(prevEnd.getDate() - rangeDays);
-    const prevPublished = demands.filter(dm => {
-      const s = (dm?.status || "").toLowerCase();
-      if (!["published", "done", "publicado", "concluido", "concluído"].includes(s)) return false;
-      const dt = dm?.published_at || dm?.publishedAt || dm?.scheduling?.date || dm?.scheduleDate || dm?.updated_at || dm?.updatedAt;
-      if (!dt) return false;
-      try {
-        const parsed = new Date(dt);
-        return parsed >= prevStart && parsed <= prevEnd;
-      } catch { return false; }
-    }).length;
-
-    const reach = publishedInRange.length;
-    const delta = prevPublished > 0 ? Math.round(((reach - prevPublished) / prevPublished) * 100) : (reach > 0 ? 100 : 0);
-
     return {
-      upcomingCount: upcoming.length,
-      upcoming: upcoming.slice(0, 4),
-      ideasCount: _uhIdeas.length,
-      topIdeas: [..._uhIdeas].sort((a, b) => (b.votes || 0) - (a.votes || 0)).slice(0, 4),
-      reach,
-      reachDelta: delta,
-      reachSeries: series,
+      totalInR, publishedCount, inProdCount,
+      buckets,                    // raw daily counts
+      sparkSamples: ys,           // 60 smooth samples
+      reachTotal,
       rangeStart, rangeEnd, rangeDays,
     };
-  }, [_uhAllItems, _uhIdeas, props.demands, _uhSummaryRange]);
+  }, [props.demands, _uhSummaryRange]);
 
   // Quick action counters (Fase 4)
   const _uhQuickCounts = useMemo(() => {
@@ -6064,268 +6054,268 @@ REGRAS DE ESTILO:
         </div>{/* close .main-panel */}
       </div>{/* close grid 2 cols */}
 
-      {/* ════════ FASE 6 — Compromissos da semana (spec do preview) ════════ */}
-      <div style={{
-        background: "rgba(255,255,255,0.55)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        border: "1px solid rgba(255,255,255,0.7)",
-        borderRadius: 28,
-        padding: "22px 24px 18px",
-        boxShadow: _UH_SHADOW,
-        marginTop: 24,
-      }}>
+      {/* ════════ FASE 6 — Compromissos da semana (fiel ao preview) ════════ */}
+      <div style={{ margin: "32px 0 22px" }}>
+        {/* Head */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <h3 style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em", color: "#192126" }}>Compromissos da semana</h3>
-            <p style={{ fontSize: 11, color: "#8B8F92", marginTop: 2, fontWeight: 500 }}>
-              <b style={{ color: "#192126" }}>{_uhWeekStrip.reduce((s, dd) => s + dd.total, 0)}</b> {_uhWeekStrip.reduce((s, dd) => s + dd.total, 0) === 1 ? "item" : "itens"} entre {_uhWeekRangeLabel}
-            </p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 2, background: "rgba(0,0,0,0.04)", borderRadius: 999, padding: 3 }}>
-              <button onClick={() => _uhSetWeekOffset(o => o - 1)} title="Semana anterior" style={{ width: 28, height: 28, borderRadius: "50%", background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, color: "#192126", transition: "background .15s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.7)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-              </button>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: "#192126", padding: "0 8px", minWidth: 100, textAlign: "center", letterSpacing: "-0.01em" }}>{_uhWeekRangeLabel}</span>
-              <button onClick={() => _uhSetWeekOffset(o => o + 1)} title="Próxima semana" style={{ width: 28, height: 28, borderRadius: "50%", background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, color: "#192126", transition: "background .15s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.7)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-              </button>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", color: "#192126" }}>Compromissos da semana</div>
+            <div style={{ fontSize: 12.5, color: "#8B8F92", fontWeight: 600 }}>
+              <b style={{ color: "#192126" }}>{_uhWeekStrip.reduce((acc, dd) => acc + dd.total, 0)}</b> {_uhWeekStrip.reduce((acc, dd) => acc + dd.total, 0) === 1 ? "item" : "itens"}
             </div>
+          </div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <button onClick={() => _uhSetWeekOffset(o => o - 1)} title="Semana anterior" style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.7)", boxShadow: _UH_SHADOW, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#192126", transition: "background .15s", fontFamily: "inherit", padding: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.05)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.6)"; }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", padding: "0 12px", minWidth: 130, textAlign: "center", letterSpacing: "-0.01em" }}>{_uhWeekRangeLabel}</div>
+            <button onClick={() => _uhSetWeekOffset(o => o + 1)} title="Próxima semana" style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.7)", boxShadow: _UH_SHADOW, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#192126", transition: "background .15s", fontFamily: "inherit", padding: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.05)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.6)"; }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
             {_uhWeekOffset !== 0 && (
-              <button onClick={() => _uhSetWeekOffset(0)} style={{ background: "#0D0D0D", border: "none", color: "#FFFFFF", borderRadius: 999, padding: "6px 13px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", letterSpacing: "-0.01em" }}>
-                Hoje
+              <button onClick={() => _uhSetWeekOffset(0)} title="Voltar pra semana atual" style={{ height: 34, padding: "0 16px", borderRadius: 999, background: "#F0FAD5", border: "1px solid rgba(255,255,255,0.7)", boxShadow: _UH_SHADOW, color: "#3B7300", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", letterSpacing: "0.2px", textTransform: "lowercase" }}>
+                hoje
               </button>
             )}
-            <button onClick={() => goTab && goTab("calendar")} style={{ background: "transparent", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "6px 13px", fontSize: 11.5, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit", transition: "background .15s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-              Ver calendário →
-            </button>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
-          {_uhWeekStrip.map((day, i) => (
-            <div key={i}
-              onClick={() => goTab && goTab("calendar")}
-              style={{
-                background: "#FFFFFF",
-                color: "#192126",
-                borderRadius: 16,
-                padding: 0,
-                cursor: "pointer",
-                border: day.isToday ? "2px solid #BBF246" : "1px solid rgba(0,0,0,0.05)",
-                boxShadow: day.isToday ? "0 8px 20px rgba(187,242,70,0.25), 0 2px 6px rgba(0,0,0,0.04)" : "0 1px 2px rgba(0,0,0,0.03)",
-                transition: "transform .2s, box-shadow .2s",
-                overflow: "hidden",
-                minHeight: 130,
-                display: "flex",
-                flexDirection: "column",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; if (!day.isToday) e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = day.isToday ? "0 8px 20px rgba(187,242,70,0.25), 0 2px 6px rgba(0,0,0,0.04)" : "0 1px 2px rgba(0,0,0,0.03)"; }}
-            >
-              {/* Header do day card */}
-              <div style={{ padding: "10px 10px 8px", borderBottom: "1px solid rgba(0,0,0,0.05)", textAlign: "center", position: "relative" }}>
-                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em", color: day.isWeekend ? "#A0A4A7" : "#8B8F92" }}>{day.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, marginTop: 1 }}>{day.day}</div>
-                {day.isToday && (
-                  <div style={{ position: "absolute", top: 4, right: 4, background: "#BBF246", color: "#0D0D0D", fontSize: 8, fontWeight: 800, padding: "2px 6px", borderRadius: 999, letterSpacing: "0.02em" }}>HOJE</div>
-                )}
-              </div>
-              {/* Body: lista de eventos ou "livre" */}
-              <div style={{ padding: "8px 8px 10px", flex: 1, display: "flex", flexDirection: "column", gap: 4 }}>
-                {day.items.length === 0 ? (
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10.5, color: "#A0A4A7", fontWeight: 600, fontStyle: "italic" }}>livre</div>
-                ) : (
-                  <>
-                    {day.items.slice(0, 2).map((it, idx) => (
-                      <div key={idx} style={{
-                        fontSize: 10, fontWeight: 700,
-                        color: it._kind === "event" ? "#3B7300" : "#192126",
-                        background: it._kind === "event" ? "#F0FAD5" : "rgba(0,0,0,0.05)",
-                        borderRadius: 6, padding: "3px 5px",
-                        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                        lineHeight: 1.25,
-                      }} title={it.title + (it.time ? " · " + it.time : "")}>
-                        {it.time && <span style={{ opacity: 0.6, marginRight: 3 }}>{it.time.slice(0, 5)}</span>}
-                        {it.title}
+        {/* Grid 7 dias */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 10 }}>
+          {_uhWeekStrip.map((day, i) => {
+            const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
+            const isPast = day.dateStr < todayStr && !day.isToday;
+            const cardBg = day.isToday ? "#BBF246" : (isPast ? "rgba(255,255,255,0.75)" : (day.isWeekend ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.75)"));
+            const inkOnCard = day.isToday ? "#0D0D0D" : "#192126";
+            return (
+              <div key={i}
+                onClick={() => goTab && goTab("calendar")}
+                style={{
+                  minHeight: 170,
+                  background: cardBg,
+                  border: day.isToday ? "1px solid #99D124" : "1px solid transparent",
+                  borderRadius: 16,
+                  padding: "12px 11px",
+                  display: "flex", flexDirection: "column", gap: 8,
+                  cursor: "pointer",
+                  transition: "transform .25s cubic-bezier(0.34,1.56,0.64,1), background .2s, box-shadow .2s",
+                  boxShadow: day.isToday ? "0 4px 14px rgba(187,242,70,0.4)" : "none",
+                  opacity: isPast ? 0.48 : 1,
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = "translateY(-3px)";
+                  if (!day.isToday) { e.currentTarget.style.background = "#FFFFFF"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(0,0,0,0.08)"; }
+                  if (isPast) e.currentTarget.style.opacity = "1";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  if (!day.isToday) { e.currentTarget.style.background = cardBg; e.currentTarget.style.boxShadow = "none"; }
+                  if (isPast) e.currentTarget.style.opacity = "0.48";
+                }}
+              >
+                {/* HEAD */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, paddingBottom: 8, borderBottom: day.isToday ? "1px solid rgba(13,13,13,0.12)" : "1px solid rgba(0,0,0,0.06)" }}>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: day.isToday ? "rgba(13,13,13,0.75)" : "#8B8F92", textTransform: "uppercase", letterSpacing: "0.8px" }}>{day.label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: inkOnCard, lineHeight: 1, marginTop: 1 }}>{day.day}</div>
+                  </div>
+                  {day.isToday ? (
+                    <span style={{ fontSize: 8.5, fontWeight: 800, background: "#0D0D0D", color: "#BBF246", padding: "2px 7px", borderRadius: 100, textTransform: "uppercase", letterSpacing: "0.5px" }}>hoje</span>
+                  ) : day.total > 0 ? (
+                    <span style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", background: "rgba(0,0,0,0.05)", padding: "2px 6px", borderRadius: 100 }}>{day.total}</span>
+                  ) : null}
+                </div>
+                {/* EVENTS or EMPTY */}
+                {day.items.length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5, flex: 1, minHeight: 0, overflow: "hidden" }}>
+                    {day.items.map((ev, idx) => (
+                      <div key={idx} title={ev.title}
+                        style={{
+                          background: day.isToday ? "rgba(255,255,255,0.92)" : "#FFFFFF",
+                          borderRadius: 9,
+                          padding: "6px 8px 6px 9px",
+                          display: "flex", flexDirection: "column", gap: 1,
+                          borderLeft: day.isToday ? "3px solid #0D0D0D" : "3px solid #BBF246",
+                          cursor: "pointer",
+                          transition: "transform .15s, background .15s",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = "translateX(2px)"; e.currentTarget.style.background = "rgba(255,255,255,0.95)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = "translateX(0)"; e.currentTarget.style.background = day.isToday ? "rgba(255,255,255,0.92)" : "#FFFFFF"; }}
+                      >
+                        {ev.time && <div style={{ fontSize: 10, fontWeight: 800, color: "#192126", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em", fontFamily: "ui-monospace, 'JetBrains Mono', monospace" }}>{ev.time.slice(0, 5)}</div>}
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#192126", lineHeight: 1.2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{ev.title}</div>
+                        {ev.client && <div style={{ fontSize: 9, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.client}</div>}
                       </div>
                     ))}
-                    {day.items.length > 2 && (
-                      <div style={{ fontSize: 9.5, fontWeight: 700, color: "#8B8F92", padding: "1px 5px" }}>+{day.items.length - 2} mais</div>
-                    )}
-                  </>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 10, color: day.isToday ? "rgba(13,13,13,0.6)" : "#8B8F92", textAlign: "center", padding: "18px 0", fontWeight: 500, opacity: 0.7 }}>{isPast ? "—" : "livre"}</div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* ════════ FASE 6 — Resumo (3 cards, com toggle) ════════ */}
-      <div style={{ marginTop: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, padding: "0 4px" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em", color: "#192126" }}>Resumo</h3>
-          <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(0,0,0,0.06)", borderRadius: 999, padding: 3, gap: 2, backdropFilter: "blur(8px)" }}>
+      {/* ════════ FASE 6 — Resumo (3 widgets: producao / publicacoes / alcance) ════════ */}
+      <div>
+        {/* Summary row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "12px 0 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.025em", color: "#192126" }}>Resumo</div>
+            <button title="Editar widgets do resumo (em breve)" onClick={() => { /* TODO: picker de widgets */ }} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.6)", border: "1px dashed rgba(0,0,0,0.12)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#8B8F92", transition: "transform .2s cubic-bezier(0.34,1.56,0.64,1), background .2s, border-color .2s, color .2s", fontFamily: "inherit", padding: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "#99D124"; e.currentTarget.style.color = "#3B7300"; e.currentTarget.style.background = "rgba(187,242,70,0.18)"; e.currentTarget.style.transform = "rotate(45deg)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(0,0,0,0.12)"; e.currentTarget.style.color = "#8B8F92"; e.currentTarget.style.background = "rgba(255,255,255,0.6)"; e.currentTarget.style.transform = "rotate(0deg)"; }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
+          </div>
+          {/* Tabs */}
+          <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.72)", borderRadius: 999, padding: 4, boxShadow: _UH_SHADOW, border: "1px solid rgba(255,255,255,0.7)" }}>
             {[{ k: "hoje", l: "Hoje" }, { k: "semana", l: "Semana" }, { k: "mes", l: "Mês" }].map(opt => {
               const active = _uhSummaryRange === opt.k;
               return (
                 <button key={opt.k} onClick={() => _uhSetSummaryRange(opt.k)} style={{
-                  background: active ? "#0D0D0D" : "transparent",
-                  color: active ? "#FFFFFF" : "#8B8F92",
-                  border: "none", borderRadius: 999, padding: "5px 14px",
-                  fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-                  letterSpacing: "-0.01em", transition: "all .15s",
+                  padding: "8px 18px", borderRadius: 999,
+                  fontSize: 13, fontWeight: 600,
+                  background: active ? "#FFFFFF" : "transparent",
+                  color: active ? "#192126" : "#8B8F92",
+                  boxShadow: active ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+                  border: "none", cursor: "pointer", fontFamily: "inherit",
+                  transition: "all .15s",
                 }}>{opt.l}</button>
               );
             })}
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+        {/* Summary grid: 1.15fr 1fr 0.6fr */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.15fr 1fr 0.6fr", gap: 16 }}>
 
-          {/* CARD 1 — Próximos compromissos */}
-          <div style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 28, padding: "22px 24px", boxShadow: _UH_SHADOW, minHeight: 240, display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-              <div>
-                <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.04em", color: "#192126", lineHeight: 1 }}>{_uhSummaryStats.upcomingCount}</div>
-                <p style={{ fontSize: 11.5, color: "#8B8F92", marginTop: 4, fontWeight: 600 }}>{_uhSummaryStats.upcomingCount === 1 ? "compromisso" : "compromissos"} {_uhSummaryRange === "hoje" ? "hoje" : _uhSummaryRange === "mes" ? "esse mês" : "essa semana"}</p>
-              </div>
-              <div style={{ width: 36, height: 36, borderRadius: 12, background: "#F0FAD5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D7C00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              </div>
-            </div>
-            {_uhSummaryStats.upcoming.length === 0 ? (
-              <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 8 }}>
-                <p style={{ fontSize: 11.5, color: "#A0A4A7", fontWeight: 600 }}>Nada agendado nesse período</p>
-              </div>
-            ) : (
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-                {_uhSummaryStats.upcoming.map((item, i) => {
-                  const today = new Date(); today.setHours(0, 0, 0, 0);
-                  const itemDay = new Date(item._dt); itemDay.setHours(0, 0, 0, 0);
-                  const diffDays = Math.round((itemDay - today) / 86400000);
-                  const dayLabel = diffDays === 0 ? "Hoje" : diffDays === 1 ? "Amanhã" : item._dt.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric" }).replace(".", "");
-                  return (
-                    <li key={item.id || i} onClick={() => goTab && goTab(item._kind === "demand" ? "pipeline" : "calendar")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", cursor: "pointer", borderBottom: i < _uhSummaryStats.upcoming.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 38, flexShrink: 0 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: diffDays === 0 ? "#0D7C00" : "#8B8F92", textTransform: "uppercase", letterSpacing: "0.05em" }}>{dayLabel}</div>
-                        {item.time && <div style={{ fontSize: 11, fontWeight: 800, color: "#192126", marginTop: 1, fontVariantNumeric: "tabular-nums" }}>{item.time.slice(0, 5)}</div>}
-                      </div>
-                      <div style={{ width: 1, alignSelf: "stretch", background: "rgba(0,0,0,0.08)" }}></div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>
-                        {item.client && <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 500, marginTop: 1 }}>{item.client}</div>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          {/* CARD 2 — Ideias */}
-          <div style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 28, padding: "22px 24px", boxShadow: _UH_SHADOW, minHeight: 240, display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14 }}>
-              <div>
-                <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: "-0.04em", color: "#192126", lineHeight: 1 }}>{_uhSummaryStats.ideasCount}</div>
-                <p style={{ fontSize: 11.5, color: "#8B8F92", marginTop: 4, fontWeight: 600 }}>{_uhSummaryStats.ideasCount === 1 ? "ideia" : "ideias"} no Banco</p>
-              </div>
-              <div style={{ width: 36, height: 36, borderRadius: 12, background: "#FFF7DB", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"/></svg>
-              </div>
-            </div>
-            {_uhSummaryStats.topIdeas.length === 0 ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 8 }}>
-                <p style={{ fontSize: 11.5, color: "#A0A4A7", fontWeight: 600 }}>Nenhuma ideia ainda</p>
-                <p style={{ fontSize: 10.5, color: "#A0A4A7", marginTop: 4 }}>Adicione no <span onClick={() => goTab && goTab("ideas")} style={{ color: "#0D0D0D", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Banco de Ideias</span></p>
-              </div>
-            ) : (
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-                {_uhSummaryStats.topIdeas.map((idea, i) => (
-                  <li key={idea.id || i} onClick={() => goTab && goTab("ideas")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", cursor: "pointer", borderBottom: i < _uhSummaryStats.topIdeas.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{idea.title || "Sem título"}</div>
-                      <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 500, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{idea.client_name || "Geral"}{idea.author ? ` · ${idea.author}` : ""}</div>
-                    </div>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "#B45309", fontWeight: 800, fontSize: 11.5, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>
-                      <span style={{ fontSize: 12 }}>🔥</span>
-                      {idea.votes || 0}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* CARD 3 — Alcance (DARK) */}
-          <div style={{ background: "#0D0D0D", border: "1px solid #0D0D0D", borderRadius: 28, padding: "22px 24px 0", boxShadow: _UH_SHADOW, minHeight: 240, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
-              <div>
-                <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.55)", fontWeight: 600, marginBottom: 4 }}>Alcance · {_uhSummaryRange === "hoje" ? "hoje" : _uhSummaryRange === "mes" ? "esse mês" : "essa semana"}</p>
-                <div style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-0.04em", color: "#FFFFFF", lineHeight: 1 }}>
-                  {_uhSummaryStats.reach >= 1000 ? (_uhSummaryStats.reach / 1000).toFixed(1) + "k" : _uhSummaryStats.reach}
-                </div>
-                {_uhSummaryStats.reach > 0 ? (
-                  <div style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 4, color: _uhSummaryStats.reachDelta >= 0 ? "#BBF246" : "#FCA5A5", fontSize: 11, fontWeight: 700 }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ transform: _uhSummaryStats.reachDelta >= 0 ? "none" : "rotate(180deg)" }}><polyline points="18 15 12 9 6 15"/></svg>
-                    {Math.abs(_uhSummaryStats.reachDelta)}% vs período anterior
+          {/* ╔══ SLOT 0: PRODUCAO (gauge dual-arc) ══╗ */}
+          <div style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 26, padding: "22px 24px", boxShadow: _UH_SHADOW, minHeight: 170 }}>
+            {(() => {
+              const total = _uhSummaryStats.totalInR || 1;
+              const inProd = _uhSummaryStats.inProdCount;
+              const pub = _uhSummaryStats.publishedCount;
+              const pubPct = total > 0 ? (pub / total) * 100 : 0;
+              const prodPct = total > 0 ? (inProd / total) * 100 : 0;
+              const C = 2 * Math.PI * 40;
+              const arcProd = (prodPct / 100) * C;
+              const arcPub = (pubPct / 100) * C;
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: 22, height: "100%" }}>
+                  <div style={{ width: 140, height: 140, position: "relative", flexShrink: 0 }}>
+                    <svg viewBox="0 0 100 100" style={{ width: "100%", height: "100%", transform: "rotate(-135deg)" }}>
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="#EFEFEF" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${C} ${C}`} />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="#0D0D0D" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${arcProd} ${C}`} style={{ transition: "stroke-dasharray .9s cubic-bezier(0.25,1.4,0.5,1)" }} />
+                      <circle cx="50" cy="50" r="40" fill="none" stroke="#BBF246" strokeWidth="14" strokeLinecap="round" strokeDasharray={`${arcPub} ${C}`} strokeDashoffset={-arcProd} style={{ transition: "stroke-dasharray .9s cubic-bezier(0.25,1.4,0.5,1), stroke-dashoffset .9s cubic-bezier(0.25,1.4,0.5,1)" }} />
+                    </svg>
                   </div>
-                ) : (
-                  <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.4)", marginTop: 6, fontWeight: 500 }}>Sem publicações ainda</p>
-                )}
-              </div>
-              <div style={{ width: 36, height: 36, borderRadius: 12, background: "rgba(187,242,70,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-              </div>
-            </div>
-            {/* SVG chart na metade inferior */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", marginTop: 12, marginLeft: -24, marginRight: -24 }}>
-              {(() => {
-                const W = 300, H = 100, padTop = 6, padBot = 22, padX = 4;
-                const innerH = H - padTop - padBot;
-                const innerW = W - padX * 2;
-                const series = _uhSummaryStats.reachSeries;
-                const maxV = Math.max(1, ...series.map(d => d.count));
-                const n = series.length;
-                const points = series.map((d, i) => {
-                  const x = padX + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
-                  const y = padTop + innerH - (d.count / maxV) * innerH;
-                  return [x, y];
-                });
-                const linePath = points.length ? "M" + points.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L") : "";
-                const areaPath = points.length ? `M${points[0][0]},${padTop + innerH} L` + points.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L") + ` L${points[points.length - 1][0]},${padTop + innerH} Z` : "";
-                const todayStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
-                return (
-                  <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: "100%", height: 110, display: "block" }}>
-                    <defs>
-                      <linearGradient id="_uhReachDarkGrad" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#BBF246" stopOpacity="0.45" />
-                        <stop offset="100%" stopColor="#BBF246" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    {areaPath && <path d={areaPath} fill="url(#_uhReachDarkGrad)" />}
-                    {linePath && <path d={linePath} fill="none" stroke="#BBF246" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
-                    {points.map((p, i) => (
-                      <circle key={i} cx={p[0]} cy={p[1]} r={series[i].count > 0 ? 3 : 1.5} fill={series[i].count > 0 ? "#BBF246" : "rgba(255,255,255,0.2)"} stroke="#0D0D0D" strokeWidth="2" />
-                    ))}
-                    {series.map((d, i) => (
-                      <text key={i} x={padX + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW)} y={H - 6} textAnchor="middle" fontSize="8.5" fontWeight="700" fill={d.dateStr === todayStr ? "#BBF246" : "rgba(255,255,255,0.45)"} fontFamily="inherit">
-                        {d.label}
-                      </text>
-                    ))}
-                  </svg>
-                );
-              })()}
-            </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#0D0D0D", flexShrink: 0 }}></div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Em produção {_uhRangeLabel}</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>{inProd} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#BBF246", flexShrink: 0 }}></div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600 }}>Publicadas</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em" }}>{pub} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
-        </div>{/* close grid 3 cards Resumo */}
+          {/* ╔══ SLOT 1: PUBLICACOES (bars) ══╗ */}
+          <div style={{ background: "#FFFFFF", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 26, padding: "22px 24px", boxShadow: _UH_SHADOW, minHeight: 170 }}>
+            {(() => {
+              const total = _uhSummaryStats.publishedCount;
+              const buckets = _uhSummaryStats.buckets;
+              const NBARS = 10;
+              const step = Math.max(1, Math.floor(buckets.length / NBARS));
+              const bars = [];
+              for (let i = 0; i < buckets.length && bars.length < NBARS; i += step) {
+                const chunk = buckets.slice(i, i + step).reduce((a, b) => a + b, 0);
+                bars.push(chunk);
+              }
+              while (bars.length < NBARS) bars.push(0);
+              const max = Math.max(...bars, 1);
+              return (
+                <>
+                  <div style={{ fontSize: 12, color: "#8B8F92", fontWeight: 600 }}>Publicações {_uhRangeLabel}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 4 }}>{total} <span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500 }}>demandas</span></div>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 90, marginTop: 14 }}>
+                    {bars.map((v, i) => {
+                      const h = Math.max(6, (v / max) * 100);
+                      const isLast = i === bars.length - 1;
+                      const isAccent = isLast && v > 0;
+                      return (
+                        <div key={i} style={{ flex: 1, borderRadius: 999, background: isAccent ? "#BBF246" : (v > 0 ? "#0D0D0D" : "#DADADA"), height: h + "%", transition: "height .75s cubic-bezier(0.34,1.56,0.64,1)" }}></div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+          {/* ╔══ SLOT 2: ALCANCE (DARK card + sparkline + dot) ══╗ */}
+          <div style={{ background: "#0D0D0D", color: "#FFFFFF", borderRadius: 26, padding: "22px 24px", boxShadow: _UH_SHADOW, minHeight: 170, display: "flex", flexDirection: "column", justifyContent: "space-between", border: "none", position: "relative", overflow: "hidden" }}>
+            {/* Radial gradient lime decorativo */}
+            <div style={{ position: "absolute", top: "-40%", right: "-20%", width: "60%", height: "80%", background: "radial-gradient(circle, rgba(187,242,70,0.12), transparent 70%)", pointerEvents: "none" }}></div>
+            {(() => {
+              const reach = _uhSummaryStats.reachTotal;
+              const kval = reach >= 1000 ? (reach / 1000).toFixed(1) + "k" : String(reach);
+              const ys = _uhSummaryStats.sparkSamples;
+              const max = Math.max(...ys, 1);
+              const N = ys.length;
+              const coords = ys.map((v, i) => [
+                (i / (N - 1)) * 95 + 2.5,
+                45 - (v / max) * 36
+              ]);
+              const linePath = "M " + coords.map(c => `${c[0].toFixed(2)} ${c[1].toFixed(2)}`).join(" L ");
+              const firstX = coords[0][0].toFixed(2);
+              const lastX = coords[coords.length - 1][0].toFixed(2);
+              const areaPath = linePath + ` L ${lastX} 50 L ${firstX} 50 Z`;
+              const dotLeftPct = (parseFloat(lastX) / 100) * 100;
+              const dotTopPct = (parseFloat(coords[coords.length - 1][1]) / 50) * 100;
+              return (
+                <>
+                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                    <svg viewBox="0 0 100 50" preserveAspectRatio="none" style={{ width: "100%", height: 80, overflow: "visible" }}>
+                      <path d={areaPath} fill="rgba(187,242,70,0.12)" stroke="none" vectorEffect="non-scaling-stroke" />
+                      <path d={linePath} fill="none" stroke="#BBF246" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                    </svg>
+                    <div style={{
+                      position: "absolute",
+                      left: dotLeftPct + "%",
+                      top: dotTopPct + "%",
+                      width: 10, height: 10, borderRadius: "50%",
+                      background: "#BBF246",
+                      transform: "translate(-50%, -50%)",
+                      pointerEvents: "none",
+                      animation: "_uhReachDotPulse 1.8s ease-in-out infinite",
+                    }}></div>
+                  </div>
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>Alcance {_uhRangeLabel}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 2 }}>{kval}</div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+        </div>{/* close summary-grid */}
       </div>{/* close resumo section */}
 
       {/* Voltar pra v1 (pequeno, no rodapé do conteúdo desenvolvido) */}
@@ -6559,6 +6549,22 @@ REGRAS DE ESTILO:
         @keyframes _uhMqSpin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        @keyframes _uhReachDotPulse {
+          0%, 100% {
+            box-shadow:
+              0 0 0 3px rgba(187,242,70,0.25),
+              0 0 12px rgba(187,242,70,0.9),
+              0 0 24px rgba(187,242,70,0.4);
+            transform: translate(-50%, -50%) scale(1);
+          }
+          50% {
+            box-shadow:
+              0 0 0 7px rgba(187,242,70,0.08),
+              0 0 18px rgba(187,242,70,1),
+              0 0 36px rgba(187,242,70,0.3);
+            transform: translate(-50%, -50%) scale(1.12);
+          }
         }
         @keyframes _uhPinOpen {
           0% { transform: scale(0.85) translateX(-12px); opacity: 0; }
