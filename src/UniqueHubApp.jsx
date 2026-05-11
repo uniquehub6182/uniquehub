@@ -4830,6 +4830,14 @@ function HomePageV2(props) {
     try { localStorage.setItem("uh_quick_apps_v2", JSON.stringify(_uhQuickAppKeys)); } catch {}
   }, [_uhQuickAppKeys]);
 
+  // ─── Fase 6: Compromissos da semana + Resumo (events + ideas) ───
+  const [_uhEvents, _uhSetEvents] = useState([]);
+  const [_uhIdeas, _uhSetIdeas] = useState([]);
+  useEffect(() => {
+    supaLoadEvents().then(d => _uhSetEvents(Array.isArray(d) ? d : []));
+    supaLoadIdeas().then(d => _uhSetIdeas(Array.isArray(d) ? d : []));
+  }, []);
+
   // ─── Fase 5B: Munique IA chat funcional ───
   const _uhMqStorageKey = `uh_munique_v2_chat_${user?.id || "anon"}`;
   const [_uhMqMessages, _uhSetMqMessages] = useState([]);
@@ -5096,6 +5104,101 @@ REGRAS DE ESTILO:
       published: demands.filter(d => isStatus(d, ["published", "done", "publicado", "concluido", "concluído"])).length,
     };
   }, [props.demands, props.clients, props.team]);
+
+  // ─── Fase 6: derivados — week strip, upcoming, top ideas, alcance ───
+  const _uhWeekStrip = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayLabels = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+    const demands = Array.isArray(props.demands) ? props.demands : [];
+    const result = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const evtCount = _uhEvents.filter(e => {
+        const eDate = e.date || (e.year != null ? `${e.year}-${String((e.month || 0) + 1).padStart(2, "0")}-${String(e.day || 1).padStart(2, "0")}` : null);
+        return eDate === dateStr;
+      }).length;
+      const demCount = demands.filter(dm => {
+        const dt = dm?.scheduling?.date || dm?.scheduleDate || dm?.scheduled_date;
+        if (!dt) return false;
+        try {
+          const parsed = new Date(dt);
+          if (isNaN(parsed.getTime())) return false;
+          const parsedStr = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+          return parsedStr === dateStr;
+        } catch { return false; }
+      }).length;
+      result.push({
+        date: d, dateStr,
+        label: dayLabels[d.getDay()],
+        day: d.getDate(),
+        isToday: i === 0,
+        isWeekend: d.getDay() === 0 || d.getDay() === 6,
+        total: evtCount + demCount,
+        eventCount: evtCount,
+        demandCount: demCount,
+      });
+    }
+    return result;
+  }, [_uhEvents, props.demands]);
+
+  const _uhUpcoming = useMemo(() => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const in7days = new Date(today); in7days.setDate(today.getDate() + 7);
+    const events = _uhEvents.map(e => {
+      const dStr = e.date || (e.year != null ? `${e.year}-${String((e.month || 0) + 1).padStart(2, "0")}-${String(e.day || 1).padStart(2, "0")}` : null);
+      if (!dStr) return null;
+      const d = new Date(dStr + "T" + (e.time || "09:00") + ":00");
+      if (isNaN(d.getTime())) return null;
+      return { id: "evt-" + e.id, title: e.title || "Evento", time: e.time || null, type: e.type || "event", client: e.client_name || null, _dt: d, _kind: "event" };
+    }).filter(Boolean);
+    const demands = (Array.isArray(props.demands) ? props.demands : []).map(dm => {
+      const dt = dm?.scheduling?.date || dm?.scheduleDate || dm?.scheduled_date;
+      if (!dt) return null;
+      const d = new Date(dt);
+      if (isNaN(d.getTime())) return null;
+      const t = dm?.scheduling?.time || dm?.scheduleTime || null;
+      return { id: "dm-" + (dm.id || Math.random()), title: dm.task || dm.title || "Demanda", time: t, type: "demand", client: dm.clientName || dm.client || null, _dt: d, _kind: "demand" };
+    }).filter(Boolean);
+    return [...events, ...demands]
+      .filter(it => it._dt >= today && it._dt <= in7days)
+      .sort((a, b) => a._dt - b._dt)
+      .slice(0, 5);
+  }, [_uhEvents, props.demands]);
+
+  const _uhTopIdeas = useMemo(() => {
+    return [..._uhIdeas]
+      .sort((a, b) => (b.votes || 0) - (a.votes || 0))
+      .slice(0, 5);
+  }, [_uhIdeas]);
+
+  const _uhReachData = useMemo(() => {
+    const demands = Array.isArray(props.demands) ? props.demands : [];
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const result = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const count = demands.filter(dm => {
+        const s = (dm?.status || "").toLowerCase();
+        if (!["published", "done", "publicado", "concluido", "concluído"].includes(s)) return false;
+        const dt = dm?.published_at || dm?.publishedAt || dm?.scheduling?.date || dm?.scheduleDate || dm?.updated_at || dm?.updatedAt;
+        if (!dt) return false;
+        try {
+          const parsed = new Date(dt);
+          if (isNaN(parsed.getTime())) return false;
+          const parsedStr = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+          return parsedStr === dateStr;
+        } catch { return false; }
+      }).length;
+      result.push({ date: d, dateStr, count, label: ["D", "S", "T", "Q", "Q", "S", "S"][d.getDay()] });
+    }
+    return result;
+  }, [props.demands]);
+  const _uhReachTotal = useMemo(() => _uhReachData.reduce((s, x) => s + x.count, 0), [_uhReachData]);
 
   // Quick action counters (Fase 4)
   const _uhQuickCounts = useMemo(() => {
@@ -5892,10 +5995,204 @@ REGRAS DE ESTILO:
         </div>{/* close .main-panel */}
       </div>{/* close grid 2 cols */}
 
+      {/* ════════ FASE 6 — Compromissos da semana ════════ */}
+      <div style={{
+        background: "rgba(255,255,255,0.55)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        border: "1px solid rgba(255,255,255,0.7)",
+        borderRadius: 28,
+        padding: "22px 24px",
+        boxShadow: _UH_SHADOW,
+        marginTop: 24,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div>
+            <h3 style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em", color: "#192126" }}>Compromissos da semana</h3>
+            <p style={{ fontSize: 11, color: "#8B8F92", marginTop: 2, fontWeight: 500 }}>
+              Próximos 7 dias · <b style={{ color: "#192126" }}>{_uhWeekStrip.reduce((s, dd) => s + dd.total, 0)}</b> no total
+            </p>
+          </div>
+          <button onClick={() => goTab && goTab("calendar")} style={{ background: "transparent", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "6px 14px", fontSize: 11.5, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit", transition: "background .15s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+            Ver calendário →
+          </button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+          {_uhWeekStrip.map((day, i) => (
+            <div key={i}
+              onClick={() => goTab && goTab("calendar")}
+              style={{
+                background: day.isToday ? "#0D0D0D" : (day.isWeekend ? "rgba(255,255,255,0.45)" : "#FFFFFF"),
+                color: day.isToday ? "#FFFFFF" : "#192126",
+                borderRadius: 16,
+                padding: "14px 8px 12px",
+                textAlign: "center",
+                cursor: "pointer",
+                border: day.isToday ? "1px solid #0D0D0D" : "1px solid rgba(0,0,0,0.05)",
+                boxShadow: day.isToday ? "0 6px 18px rgba(0,0,0,0.25)" : "0 1px 2px rgba(0,0,0,0.03)",
+                transition: "transform .2s, box-shadow .2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; if (!day.isToday) e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.08)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = day.isToday ? "0 6px 18px rgba(0,0,0,0.25)" : "0 1px 2px rgba(0,0,0,0.03)"; }}
+            >
+              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em", opacity: day.isToday ? 0.7 : 0.5 }}>{day.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, marginTop: 2, letterSpacing: "-0.03em", lineHeight: 1 }}>{day.day}</div>
+              {day.total > 0 ? (
+                <div style={{
+                  marginTop: 9, display: "inline-flex", alignItems: "center", gap: 4,
+                  background: day.isToday ? "#BBF246" : "#F0FAD5",
+                  color: day.isToday ? "#0D0D0D" : "#3B7300",
+                  borderRadius: 999, padding: "3px 8px", fontSize: 10, fontWeight: 800, letterSpacing: "-0.01em",
+                }}>
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: "#0D7C00" }}></div>
+                  {day.total}
+                </div>
+              ) : (
+                <div style={{ marginTop: 9, fontSize: 10, color: day.isToday ? "rgba(255,255,255,0.4)" : "#C5C9CC", fontWeight: 600 }}>—</div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ════════ FASE 6 — Resumo (3 cards) ════════ */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 16 }}>
+
+        {/* CARD 1 — Próximos compromissos */}
+        <div style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 28, padding: "20px 22px", boxShadow: _UH_SHADOW, minHeight: 260, display: "flex", flexDirection: "column" }}>
+          <div style={{ marginBottom: 14 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em" }}>Próximos compromissos</h3>
+            <p style={{ fontSize: 11, color: "#8B8F92", marginTop: 2, fontWeight: 500 }}>Eventos e demandas agendadas</p>
+          </div>
+          {_uhUpcoming.length === 0 ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 16 }}>
+              <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.35 }}>📅</div>
+              <p style={{ fontSize: 12.5, color: "#8B8F92", fontWeight: 700 }}>Nada nos próximos 7 dias</p>
+              <p style={{ fontSize: 11, color: "#A0A4A7", marginTop: 4 }}>Agende algo na <span onClick={() => goTab && goTab("calendar")} style={{ color: "#0D0D0D", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>agenda</span> pra começar</p>
+            </div>
+          ) : (
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 7, flex: 1 }}>
+              {_uhUpcoming.map((item, i) => {
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const itemDay = new Date(item._dt); itemDay.setHours(0, 0, 0, 0);
+                const diffDays = Math.round((itemDay - today) / 86400000);
+                const dayLabel = diffDays === 0 ? "Hoje" : diffDays === 1 ? "Amanhã" : item._dt.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric" }).replace(".", "");
+                const timeStr = item.time || "";
+                return (
+                  <li key={item.id || i} onClick={() => goTab && goTab(item._kind === "demand" ? "pipeline" : "calendar")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 12, background: "rgba(255,255,255,0.6)", border: "1px solid rgba(0,0,0,0.04)", cursor: "pointer", transition: "background .15s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.95)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.6)"; }}
+                  >
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: item._kind === "event" ? "#BBF246" : "#0D0D0D", flexShrink: 0 }}></div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>
+                      <div style={{ fontSize: 10.5, color: "#8B8F92", marginTop: 1, fontWeight: 500 }}>
+                        {dayLabel}{timeStr ? ` · ${timeStr}` : ""}{item.client ? ` · ${item.client}` : ""}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* CARD 2 — Ideias 🔥 */}
+        <div style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 28, padding: "20px 22px", boxShadow: _UH_SHADOW, minHeight: 260, display: "flex", flexDirection: "column" }}>
+          <div style={{ marginBottom: 14 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em" }}>Ideias 🔥</h3>
+            <p style={{ fontSize: 11, color: "#8B8F92", marginTop: 2, fontWeight: 500 }}>Top do Banco de Ideias</p>
+          </div>
+          {_uhTopIdeas.length === 0 ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 16 }}>
+              <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.35 }}>💡</div>
+              <p style={{ fontSize: 12.5, color: "#8B8F92", fontWeight: 700 }}>Nenhuma ideia cadastrada</p>
+              <p style={{ fontSize: 11, color: "#A0A4A7", marginTop: 4 }}>Adicione no <span onClick={() => goTab && goTab("ideas")} style={{ color: "#0D0D0D", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Banco de Ideias</span></p>
+            </div>
+          ) : (
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 7, flex: 1 }}>
+              {_uhTopIdeas.map((idea, i) => (
+                <li key={idea.id || i} onClick={() => goTab && goTab("ideas")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", borderRadius: 12, background: "rgba(255,255,255,0.6)", border: "1px solid rgba(0,0,0,0.04)", cursor: "pointer", transition: "background .15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.95)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.6)"; }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{idea.title || "Sem título"}</div>
+                    <div style={{ fontSize: 10.5, color: "#8B8F92", marginTop: 1, fontWeight: 500 }}>
+                      {idea.client_name || "Geral"}{idea.author ? ` · ${idea.author}` : ""}
+                    </div>
+                  </div>
+                  {(idea.votes || 0) > 0 && (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#F0FAD5", color: "#3B7300", borderRadius: 999, padding: "3px 8px", fontSize: 10.5, fontWeight: 800, flexShrink: 0 }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                      {idea.votes}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* CARD 3 — Alcance */}
+        <div style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 28, padding: "20px 22px", boxShadow: _UH_SHADOW, minHeight: 260, display: "flex", flexDirection: "column" }}>
+          <div style={{ marginBottom: 14 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em" }}>Alcance · últimos 7 dias</h3>
+            <p style={{ fontSize: 11, color: "#8B8F92", marginTop: 2, fontWeight: 500 }}>
+              <b style={{ color: "#192126" }}>{_uhReachTotal}</b> publicaç{_uhReachTotal === 1 ? "ão" : "ões"} no período
+            </p>
+          </div>
+          {_uhReachTotal === 0 ? (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: 16 }}>
+              <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.35 }}>📈</div>
+              <p style={{ fontSize: 12.5, color: "#8B8F92", fontWeight: 700 }}>Sem publicações ainda</p>
+              <p style={{ fontSize: 11, color: "#A0A4A7", marginTop: 4 }}>Publica algo pra ver os números</p>
+            </div>
+          ) : (() => {
+            // SVG chart 280×100 viewBox, area + line
+            const W = 280, H = 90, padTop = 8, padBot = 18;
+            const innerH = H - padTop - padBot;
+            const maxV = Math.max(1, ..._uhReachData.map(d => d.count));
+            const points = _uhReachData.map((d, i) => {
+              const x = (i / 6) * W;
+              const y = padTop + innerH - (d.count / maxV) * innerH;
+              return [x, y];
+            });
+            const linePath = "M" + points.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L");
+            const areaPath = `M0,${padTop + innerH} L` + points.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L") + ` L${W},${padTop + innerH} Z`;
+            return (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+                <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: "100%", height: 120, display: "block" }}>
+                  <defs>
+                    <linearGradient id="_uhReachGrad" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#BBF246" stopOpacity="0.5" />
+                      <stop offset="100%" stopColor="#BBF246" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path d={areaPath} fill="url(#_uhReachGrad)" />
+                  <path d={linePath} fill="none" stroke="#0D7C00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  {points.map((p, i) => (
+                    <circle key={i} cx={p[0]} cy={p[1]} r={_uhReachData[i].count > 0 ? 3 : 1.5} fill={_uhReachData[i].count > 0 ? "#0D7C00" : "#C5C9CC"} stroke="#FFFFFF" strokeWidth="1.5" />
+                  ))}
+                  {_uhReachData.map((d, i) => (
+                    <text key={i} x={(i / 6) * W} y={H - 4} textAnchor="middle" fontSize="8.5" fontWeight="700" fill={d.dateStr === new Date().toISOString().split("T")[0] ? "#0D0D0D" : "#8B8F92"} fontFamily="inherit">
+                      {d.label}
+                    </text>
+                  ))}
+                </svg>
+              </div>
+            );
+          })()}
+        </div>
+
+      </div>{/* close grid 3 cards Resumo */}
+
       {/* Voltar pra v1 (pequeno, no rodapé do conteúdo desenvolvido) */}
       <div style={{ marginTop: 40, textAlign: "center", opacity: 0.6 }}>
         <a href="?home=v1" style={{ fontSize: 11, fontWeight: 600, color: "#8B8F92", textDecoration: "none", borderBottom: "1px dashed #8B8F92", paddingBottom: 1 }}>← voltar pra HomePage atual</a>
-        <span style={{ fontSize: 10, color: "#A0A4A7", marginLeft: 12 }}>Próximas: 4. Quick actions · 5. Munique IA · 6. Compromissos</span>
+        <span style={{ fontSize: 10, color: "#A0A4A7", marginLeft: 12 }}>Próximas: Fase 7 · Bottom nav unificado</span>
       </div>
 
       {/* PICKER MODAL — escolher quais 5 apps aparecem como quicks (Fase 4B) */}
