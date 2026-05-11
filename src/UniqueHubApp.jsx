@@ -4982,8 +4982,85 @@ function HomePageV2(props) {
   const [_uhEvents, _uhSetEvents] = useState([]);
   const [_uhIdeas, _uhSetIdeas] = useState([]);
   const [_uhWeekOffset, _uhSetWeekOffset] = useState(0); // 0 = semana atual, -1 prev, +1 next
-  const [_uhSummaryRange, _uhSetSummaryRange] = useState("semana"); // "hoje" | "semana" | "mes"
+  const [_uhSummaryRange, _uhSetSummaryRange] = useState("mes"); // "hoje" | "semana" | "mes"
   const [_uhComments, _uhSetComments] = useState([]);
+  const [_uhReplyOpenId, _uhSetReplyOpenId] = useState(null);
+  const [_uhReplyDraft, _uhSetReplyDraft] = useState("");
+  const [_uhReplySending, _uhSetReplySending] = useState(false);
+  const [_uhActionToast, _uhSetActionToast] = useState("");
+  useEffect(() => {
+    if (!_uhActionToast) return;
+    const t = setTimeout(() => _uhSetActionToast(""), 3000);
+    return () => clearTimeout(t);
+  }, [_uhActionToast]);
+
+  // Aprovar uma demand inline: avança de stage=client → scheduled (ou published se já tem scheduling)
+  const _uhApproveDemand = async (dm) => {
+    if (!dm || !supabase) return;
+    const supaId = dm.supaId || dm.id;
+    if (!supaId) return;
+    const hasSchedule = !!(dm.scheduling?.date);
+    const nextStage = hasSchedule ? "scheduled" : "design"; // sem agenda volta pra design pra fluxo correto
+    try {
+      const { error } = await supaUpdateDemand(supaId, { stage: nextStage });
+      if (error) throw error;
+      if (typeof props.setDemands === "function") {
+        props.setDemands(prev => prev.map(d => (d.supaId || d.id) === supaId ? { ...d, stage: nextStage } : d));
+      }
+      _uhSetActionToast(`✓ Aprovado · "${(dm.task || dm.title || "demanda").slice(0, 40)}"`);
+    } catch (e) {
+      _uhSetActionToast(`Erro ao aprovar: ${e.message || e}`);
+    }
+  };
+
+  // Rejeitar (volta pra design pra ajuste)
+  const _uhRejectDemand = async (dm) => {
+    if (!dm || !supabase) return;
+    const supaId = dm.supaId || dm.id;
+    if (!supaId) return;
+    try {
+      const { error } = await supaUpdateDemand(supaId, { stage: "design" });
+      if (error) throw error;
+      if (typeof props.setDemands === "function") {
+        props.setDemands(prev => prev.map(d => (d.supaId || d.id) === supaId ? { ...d, stage: "design" } : d));
+      }
+      _uhSetActionToast(`↩ Voltou pra design · "${(dm.task || dm.title || "demanda").slice(0, 40)}"`);
+    } catch (e) {
+      _uhSetActionToast(`Erro: ${e.message || e}`);
+    }
+  };
+
+  // Enviar resposta a comentário (marca replied + salva approved_reply)
+  const _uhSendCommentReply = async (commentId) => {
+    if (!supabase || !commentId || !_uhReplyDraft.trim()) return;
+    _uhSetReplySending(true);
+    try {
+      const { error } = await supabase.from("comment_replies")
+        .update({ status: "replied", approved_reply: _uhReplyDraft.trim(), replied_at: new Date().toISOString() })
+        .eq("id", commentId);
+      if (error) throw error;
+      _uhSetComments(prev => prev.filter(x => x.id !== commentId));
+      _uhSetReplyOpenId(null);
+      _uhSetReplyDraft("");
+      _uhSetActionToast("✓ Resposta enviada");
+    } catch (e) {
+      _uhSetActionToast(`Erro: ${e.message || e}`);
+    }
+    _uhSetReplySending(false);
+  };
+
+  // Marcar comentário como dismissed (sem resposta)
+  const _uhDismissComment = async (commentId) => {
+    if (!supabase || !commentId) return;
+    try {
+      const { error } = await supabase.from("comment_replies").update({ status: "dismissed" }).eq("id", commentId);
+      if (error) throw error;
+      _uhSetComments(prev => prev.filter(x => x.id !== commentId));
+      _uhSetActionToast("Comentário descartado");
+    } catch (e) {
+      _uhSetActionToast(`Erro: ${e.message || e}`);
+    }
+  };
   useEffect(() => {
     supaLoadEvents().then(d => _uhSetEvents(Array.isArray(d) ? d : []));
     supaLoadIdeas().then(d => _uhSetIdeas(Array.isArray(d) ? d : []));
@@ -5374,14 +5451,21 @@ REGRAS DE ESTILO:
 
     const inR = demands.filter(inDateRange);
     const totalInR = inR.length;
-    const publishedCount = inR.filter(dm => isPub(dm.status)).length;
+    // Publicações: filtra por published_at (quando foi publicado) — não pelo created_at
+    const publishedInRange = (dm) => {
+      if (!isPub(dm.status)) return false;
+      const dt = dm?.published_at || dm?.publishedAt || dm?.scheduling?.date || dm?.scheduleDate || dm?.updated_at || dm?.updatedAt;
+      if (!dt) return false;
+      try { const d = new Date(dt); return d >= rangeStart && d <= rangeEnd; } catch { return false; }
+    };
+    const publishedCount = demands.filter(publishedInRange).length;
     const inProdCount = inR.filter(dm => isProd(dm.status)).length;
 
     // Bucketize por dia no range pra bars + sparkline (até N buckets)
     const N = Math.min(rangeDays, _uhSummaryRange === "mes" ? 30 : rangeDays);
     const buckets = new Array(N).fill(0);
-    inR.filter(dm => isPub(dm.status)).forEach(dm => {
-      const dt = dm?.scheduling?.date || dm?.scheduleDate || dm?.created_at || dm?.createdAt;
+    demands.filter(publishedInRange).forEach(dm => {
+      const dt = dm?.published_at || dm?.publishedAt || dm?.scheduling?.date || dm?.scheduleDate || dm?.updated_at;
       if (!dt) return;
       try {
         const d = new Date(dt);
@@ -6016,13 +6100,30 @@ REGRAS DE ESTILO:
                         </div>
                         <div style={{ color: "#3A3A3A", margin: "4px 0", lineHeight: 1.35 }}>{co.comment_text}</div>
                         {co.suggested_reply && (
-                          <div style={{ marginTop: 6, padding: "7px 12px", background: "#F0FAD5", borderRadius: 10, fontSize: 11, color: "#2F4F06", fontWeight: 500, borderLeft: "3px solid #BBF246", lineHeight: 1.4 }}>
+                          <div onClick={() => { if (_uhReplyOpenId !== co.id) { _uhSetReplyOpenId(co.id); _uhSetReplyDraft(co.suggested_reply); } }} style={{ marginTop: 6, padding: "7px 12px", background: "#F0FAD5", borderRadius: 10, fontSize: 11, color: "#2F4F06", fontWeight: 500, borderLeft: "3px solid #BBF246", lineHeight: 1.4, cursor: "pointer" }} title="Click pra usar essa sugestão como resposta">
                             <b style={{ color: "#1F3402", fontWeight: 800 }}>Sugestão IA:</b> {co.suggested_reply}
                           </div>
                         )}
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 }}>
-                          <button onClick={() => goTab && goTab("comments")} style={{ fontSize: 10, fontWeight: 800, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}>Responder</button>
-                        </div>
+                        {_uhReplyOpenId === co.id ? (
+                          <div style={{ marginTop: 8 }}>
+                            <textarea
+                              value={_uhReplyDraft}
+                              onChange={(e) => _uhSetReplyDraft(e.target.value)}
+                              autoFocus
+                              placeholder="Escreva a resposta..."
+                              style={{ width: "100%", minHeight: 60, padding: "8px 10px", border: "1px solid rgba(0,0,0,0.12)", borderRadius: 10, fontSize: 12, fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box" }}
+                            />
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 6 }}>
+                              <button onClick={() => { _uhSetReplyOpenId(null); _uhSetReplyDraft(""); }} disabled={_uhReplySending} style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", background: "transparent", border: "1px solid rgba(0,0,0,0.1)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+                              <button onClick={() => _uhSendCommentReply(co.id)} disabled={_uhReplySending || !_uhReplyDraft.trim()} style={{ fontSize: 10, fontWeight: 800, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "6px 14px", borderRadius: 999, cursor: _uhReplySending ? "wait" : "pointer", fontFamily: "inherit", opacity: (_uhReplySending || !_uhReplyDraft.trim()) ? 0.6 : 1 }}>{_uhReplySending ? "Enviando..." : "Enviar"}</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, marginTop: 8 }}>
+                            <button onClick={() => _uhDismissComment(co.id)} style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", background: "transparent", border: "1px solid rgba(0,0,0,0.1)", padding: "5px 11px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}>Ignorar</button>
+                            <button onClick={() => { _uhSetReplyOpenId(co.id); _uhSetReplyDraft(co.suggested_reply || ""); }} style={{ fontSize: 10, fontWeight: 800, color: "#0D0D0D", background: "#BBF246", border: "none", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}>Responder</button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -6054,8 +6155,8 @@ REGRAS DE ESTILO:
                         <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{(a.clientName || a.client || "—")} · {(a.format || a.type || "POST").toUpperCase()}</div>
                         <div style={{ fontSize: 10.5, fontWeight: 600, color: "#192126", lineHeight: 1.3, flex: 1, minHeight: 28, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{a.task || a.title || "Sem título"}</div>
                         <div style={{ display: "flex", gap: 4, marginTop: 8 }}>
-                          <div onClick={(e) => { e.stopPropagation(); goTab && goTab("pipeline"); }} style={{ flex: 1, padding: "5px 0", borderRadius: 7, fontSize: 9.5, fontWeight: 800, textAlign: "center", cursor: "pointer", background: "#BBF246", color: "#0D0D0D" }}>Aprovar</div>
-                          <div onClick={(e) => { e.stopPropagation(); goTab && goTab("pipeline"); }} style={{ flex: 1, padding: "5px 0", borderRadius: 7, fontSize: 9.5, fontWeight: 800, textAlign: "center", cursor: "pointer", background: "rgba(0,0,0,0.06)", color: "#192126" }}>Editar</div>
+                          <div onClick={(e) => { e.stopPropagation(); _uhApproveDemand(a); }} style={{ flex: 1, padding: "5px 0", borderRadius: 7, fontSize: 9.5, fontWeight: 800, textAlign: "center", cursor: "pointer", background: "#BBF246", color: "#0D0D0D", transition: "transform .15s" }} onMouseEnter={(e)=>{e.currentTarget.style.transform='scale(1.05)'}} onMouseLeave={(e)=>{e.currentTarget.style.transform='scale(1)'}}>Aprovar</div>
+                          <div onClick={(e) => { e.stopPropagation(); _uhRejectDemand(a); }} style={{ flex: 1, padding: "5px 0", borderRadius: 7, fontSize: 9.5, fontWeight: 800, textAlign: "center", cursor: "pointer", background: "rgba(0,0,0,0.06)", color: "#192126", transition: "background .15s" }} onMouseEnter={(e)=>{e.currentTarget.style.background='rgba(239,68,68,0.15)'; e.currentTarget.style.color='#B91C1C'}} onMouseLeave={(e)=>{e.currentTarget.style.background='rgba(0,0,0,0.06)'; e.currentTarget.style.color='#192126'}}>Rejeitar</div>
                         </div>
                       </div>
                     ))}
@@ -6774,6 +6875,13 @@ REGRAS DE ESTILO:
         );
       })()}
 
+      {/* Toast de ações inline */}
+      {_uhActionToast && (
+        <div style={{ position: "fixed", bottom: 90, left: "50%", transform: "translateX(-50%)", background: "#0D0D0D", color: "#FFFFFF", padding: "12px 22px", borderRadius: 100, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 32px rgba(0,0,0,0.35)", zIndex: 2000, animation: "_uhToastSlide .25s cubic-bezier(0.34,1.56,0.64,1) both", letterSpacing: "-0.01em" }}>
+          {_uhActionToast}
+        </div>
+      )}
+
       {/* Voltar pra v1 (pequeno, no rodapé do conteúdo desenvolvido) */}
       <div style={{ marginTop: 40, textAlign: "center", opacity: 0.6 }}>
         <a href="?home=v1" style={{ fontSize: 11, fontWeight: 600, color: "#8B8F92", textDecoration: "none", borderBottom: "1px dashed #8B8F92", paddingBottom: 1 }}>← voltar pra HomePage atual</a>
@@ -7005,6 +7113,10 @@ REGRAS DE ESTILO:
         @keyframes _uhMqSpin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        @keyframes _uhToastSlide {
+          0% { opacity: 0; transform: translate(-50%, 20px); }
+          100% { opacity: 1; transform: translate(-50%, 0); }
         }
         @keyframes _uhReachDotPulse {
           0%, 100% {
