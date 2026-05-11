@@ -4893,7 +4893,31 @@ function HomePageV2(props) {
     _uhSetMqInput("");
     _uhSetMqLoading(true);
 
-    const SYSTEM_PROMPT = `Você é a Munique A.I., assistente virtual da agência ${_uhAgencyName}. Está conversando com ${_uhFirstName}, da equipe da agência. Ajude com criação de conteúdo, copywriting, legendas, ideias de post, roteiros, estratégias de marketing digital e organização do dia-a-dia. Responda em português do Brasil, de forma direta, prática e amigável. Use emojis com moderação. Seja CONCISA por padrão — respostas curtas (1-3 parágrafos máx); só detalhe quando pedido.`;
+    const _uhMqAttSummary = _uhAttItems
+      .map(i => "- " + String(i.text || "").replace(/<[^>]+>/g, ""))
+      .join("\n");
+    const SYSTEM_PROMPT = `Você é a Munique A.I., assistente inteligente da plataforma UniqueHub — um SaaS brasileiro de gestão pra agências de marketing digital. A plataforma tem pipeline Kanban de demandas (Briefing → Produção → Aprovação Interna → Cliente → Agendado → Publicado), agendamento automático de Instagram/Facebook, portal pra clientes com gamificação (Growth Score), Match4Biz (networking B2B), biblioteca de arquivos, geração de conteúdo com IA e relatórios.
+
+VOCÊ ESTÁ FALANDO COM: ${_uhFirstName} (${user?.role || "equipe"}), da agência "${_uhAgencyName}".
+DATA: ${_uhDateStr} (hoje é ${_uhDays[_uhNow.getDay()]}-feira) — agora são ${_uhTime.h}:${_uhTime.m}.
+
+CONTEXTO REAL DA AGÊNCIA NESTE MOMENTO:
+- ${_uhMqContext.clientsCount} cliente(s) ativo(s)${_uhMqContext.teamCount ? " · " + _uhMqContext.teamCount + " colaborador(es) na equipe" : ""}
+- ${_uhMqContext.totalActive} demanda(s) em andamento (${_uhMqContext.pendingApproval} aguardando aprovação do cliente, ${_uhMqContext.inReview} em revisão interna, ${_uhMqContext.inProduction} em produção, ${_uhMqContext.scheduled} agendada(s))
+- ${_uhPostsDone}/${_uhPostsGoal} posts publicados esse mês (${_uhGoalPct}% da meta)${_uhMqAttSummary ? "\n\nALERTAS:\n" + _uhMqAttSummary : ""}
+
+ESPECIALIDADE PRINCIPAL: marketing digital, copywriting, legendas pra Instagram/Facebook/TikTok, ideias de post, roteiros (Reels/Stories), estratégia, análise de concorrente, planejamento editorial e gestão do dia-a-dia de agência.
+
+MAS você TAMBÉM é uma IA conversacional completa — ajude com QUALQUER assunto que ${_uhFirstName} trouxer (programação, traduções, pesquisa, brainstorm pessoal, dúvidas técnicas, decisões, etc). Não restrinja seu escopo a marketing nem recuse perguntas só porque não são da área.
+
+REGRAS DE ESTILO:
+- Português do Brasil sempre
+- Direta, prática, amigável (sem bajular nem ficar dando volta)
+- Emojis com moderação (no máx 1-2 por resposta)
+- CONCISA por padrão (1-3 parágrafos). Detalhe só se ${_uhFirstName} pedir.
+- Vá direto ao ponto: sem "Olá!", sem "Que pergunta interessante!"
+- Use os dados reais do contexto acima quando relevante. Ex: se perguntarem "como tô indo?" → responda com os números acima. Se perguntarem "o que fazer hoje?" → priorize pelos alertas e pendências.
+- Se você não souber algo factual, diga "não tenho certeza" em vez de inventar.`;
 
     const apiMsgs = newMsgs.map(m => ({ role: m.role, content: m.content }));
 
@@ -5053,6 +5077,25 @@ function HomePageV2(props) {
     return items;
   }, [props.demands]);
   const _uhAttCount = _uhAttItems.length;
+
+  // ─── Fase 5B: contexto real injetado no system prompt da Munique ───
+  const _uhMqContext = useMemo(() => {
+    const demands = Array.isArray(props.demands) ? props.demands : [];
+    const clients = Array.isArray(props.clients) ? props.clients : [];
+    const team = Array.isArray(props.team) ? props.team : [];
+    const lc = (s) => (s || "").toString().toLowerCase();
+    const isStatus = (d, arr) => arr.includes(lc(d?.status));
+    return {
+      clientsCount: clients.length,
+      teamCount: team.length,
+      pendingApproval: demands.filter(d => isStatus(d, ["client", "approval", "aguardando_aprovacao", "aguardando aprovação"])).length,
+      inReview: demands.filter(d => isStatus(d, ["review", "revisao", "revisão"])).length,
+      inProduction: demands.filter(d => isStatus(d, ["production", "producao", "produção", "designing"])).length,
+      scheduled: demands.filter(d => isStatus(d, ["scheduled", "agendado"])).length,
+      totalActive: demands.filter(d => !isStatus(d, ["published", "done", "publicado", "concluido", "concluído"])).length,
+      published: demands.filter(d => isStatus(d, ["published", "done", "publicado", "concluido", "concluído"])).length,
+    };
+  }, [props.demands, props.clients, props.team]);
 
   // Quick action counters (Fase 4)
   const _uhQuickCounts = useMemo(() => {
