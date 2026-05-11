@@ -4988,6 +4988,21 @@ function HomePageV2(props) {
   const [_uhReplyDraft, _uhSetReplyDraft] = useState("");
   const [_uhReplySending, _uhSetReplySending] = useState(false);
   const [_uhActionToast, _uhSetActionToast] = useState("");
+  const [_uhNews, _uhSetNews] = useState(null); // null = nao carregado
+  const [_uhLibFiles, _uhSetLibFiles] = useState(null);
+  // Lazy load quando abre o body do app correspondente
+  useEffect(() => {
+    if (_uhActiveApp === "noticias" && _uhNews === null && supabase) {
+      orgScope(supabase.from("news").select("*")).order("pinned", { ascending: false }).order("created_at", { ascending: false }).limit(8)
+        .then(({ data }) => _uhSetNews(Array.isArray(data) ? data : []))
+        .catch(() => _uhSetNews([]));
+    }
+    if (_uhActiveApp === "biblioteca" && _uhLibFiles === null && supabase) {
+      orgScope(supabase.from("library_files").select("*")).eq("is_folder", false).order("created_at", { ascending: false }).limit(12)
+        .then(({ data }) => _uhSetLibFiles(Array.isArray(data) ? data : []))
+        .catch(() => _uhSetLibFiles([]));
+    }
+  }, [_uhActiveApp]);
   useEffect(() => {
     if (!_uhActionToast) return;
     const t = setTimeout(() => _uhSetActionToast(""), 3000);
@@ -5971,6 +5986,15 @@ REGRAS DE ESTILO:
           aprovacoes: { name: "Aprovações", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><circle cx="12" cy="12" r="9"/><polyline points="9 12 11 14 15 10"/></svg>, nav: () => goSub && goSub("approvals") },
           agenda: { name: "Agenda", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>, nav: () => goSub && goSub("calendar") },
           munique: { name: "Munique A.I.", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42"/></svg>, nav: () => goTab && goTab("chat") },
+          clientes: { name: "Clientes", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>, nav: () => goTab && goTab("clients") },
+          ideias: { name: "Ideias", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M12 2a7 7 0 0 0-4 12.7v2.3h8v-2.3A7 7 0 0 0 12 2z"/><path d="M9 18h6M10 22h4"/></svg>, nav: () => goSub && goSub("ideas") },
+          biblioteca: { name: "Biblioteca", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>, nav: () => goSub && goSub("library") },
+          noticias: { name: "Comunicados", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M3 11l18-8v18l-18-8z"/></svg>, nav: () => goSub && goSub("news") },
+          notas: { name: "Notas", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>, nav: () => goSub && goSub("notes") },
+          metricas: { name: "Métricas", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, nav: () => goSub && goSub("metrics") },
+          relatorios: { name: "Relatórios", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>, nav: () => goSub && goSub("reports") },
+          equipe: { name: "Equipe", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>, nav: () => goSub && goSub("team") },
+          financeiro: { name: "Financeiro", icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>, nav: () => goSub && goSub("financial") },
         };
         const cfg = appConfigs[_uhActiveApp] || appConfigs.conteudo;
         return (
@@ -6194,7 +6218,249 @@ REGRAS DE ESTILO:
                 );
               })()}
 
-                            {_uhActiveApp === "munique" && (
+                            {_uhActiveApp === "clientes" && (() => {
+                const clients = Array.isArray(props.clients) ? props.clients : [];
+                const sorted = [...clients].sort((a, b) => (b.monthly_value || 0) - (a.monthly_value || 0));
+                return clients.length === 0 ? (
+                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Nenhum cliente cadastrado</div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, maxHeight: 320, overflow: "auto" }}>
+                    {sorted.slice(0, 9).map((cli, i) => {
+                      const initial = (cli.name || "?")[0].toUpperCase();
+                      const mv = Number(cli.monthly_value) || 0;
+                      return (
+                        <div key={cli.id || i} onClick={() => goTab && goTab("clients")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "14px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", transition: "transform .15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
+                        >
+                          <div style={{ width: 38, height: 38, borderRadius: "50%", background: "linear-gradient(135deg, #BBF246, #A8DF33)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: "#0D0D0D", flexShrink: 0 }}>{initial}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cli.name || "Sem nome"}</div>
+                            <div style={{ fontSize: 10, color: "#8B8F92", fontWeight: 600, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {cli.plan || "—"}{mv > 0 ? ` · R$ ${mv.toLocaleString("pt-BR")}` : ""}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {_uhActiveApp === "ideias" && (() => {
+                const top = [..._uhIdeas].sort((a, b) => (b.votes || 0) - (a.votes || 0));
+                return top.length === 0 ? (
+                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>
+                    Banco de Ideias vazio<div style={{ fontSize: 10.5, color: "#A0A4A7", marginTop: 6 }}>Cadastra a primeira pra começar</div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflow: "auto" }}>
+                    {top.slice(0, 8).map((idea, i) => (
+                      <div key={idea.id || i} onClick={() => goSub && goSub("ideas")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 10, background: "#FFF7DB", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" strokeWidth="2"><path d="M12 2a7 7 0 0 0-4 12.7c.5.4 1 1 1 1.3v2h6v-2c0-.3.5-.9 1-1.3A7 7 0 0 0 12 2z"/><path d="M9 18h6M10 22h4"/></svg>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{idea.title || "Sem título"}</div>
+                          <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 500, marginTop: 1 }}>{idea.client_name || "Geral"}{idea.author ? ` · ${idea.author}` : ""}</div>
+                        </div>
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "#B45309", fontWeight: 800, fontSize: 11.5, flexShrink: 0 }}>🔥 {idea.votes || 0}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {_uhActiveApp === "biblioteca" && (() => {
+                if (_uhLibFiles === null) return <div style={{ textAlign: "center", padding: 24, color: "#8B8F92", fontSize: 12 }}>Carregando…</div>;
+                return _uhLibFiles.length === 0 ? (
+                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Biblioteca vazia</div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, maxHeight: 320, overflow: "auto" }}>
+                    {_uhLibFiles.slice(0, 12).map((f, i) => {
+                      const isImg = (f.mime_type || "").startsWith("image/");
+                      const isVid = (f.mime_type || "").startsWith("video/");
+                      return (
+                        <div key={f.id || i} onClick={() => goSub && goSub("library")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 12, padding: 8, cursor: "pointer", display: "flex", flexDirection: "column", gap: 6 }}>
+                          <div style={{ aspectRatio: "1 / 1", borderRadius: 8, background: isImg ? "#F4F4F5" : "linear-gradient(135deg, #0D0D0D, #333)", backgroundImage: isImg && f.url ? `url(${f.url})` : "none", backgroundSize: "cover", backgroundPosition: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            {!isImg && (
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isVid ? "#BBF246" : "#FFFFFF"} strokeWidth="2"><path d={isVid ? "M23 7l-7 5 7 5V7z M1 5h15v14H1z" : "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"}/></svg>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 9.5, fontWeight: 600, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name || "arquivo"}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {_uhActiveApp === "noticias" && (() => {
+                if (_uhNews === null) return <div style={{ textAlign: "center", padding: 24, color: "#8B8F92", fontSize: 12 }}>Carregando…</div>;
+                return _uhNews.length === 0 ? (
+                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Sem comunicados</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflow: "auto" }}>
+                    {_uhNews.slice(0, 6).map((n, i) => {
+                      const when = n.created_at ? new Date(n.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "";
+                      return (
+                        <div key={n.id || i} onClick={() => goSub && goSub("news")} style={{ background: n.pinned ? "linear-gradient(135deg, rgba(187,242,70,0.18), rgba(255,255,255,0.9))" : "rgba(255,255,255,0.9)", borderRadius: 14, padding: "12px 14px", cursor: "pointer", borderLeft: n.pinned ? "3px solid #BBF246" : "3px solid transparent" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4, gap: 8 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 800, color: "#192126", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.pinned ? "📌 " : ""}{n.title || "Sem título"}</div>
+                            <div style={{ fontSize: 10, color: "#8B8F92", fontWeight: 600, flexShrink: 0 }}>{when}</div>
+                          </div>
+                          <div style={{ fontSize: 11.5, color: "#3A3A3A", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{n.summary || n.body || ""}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {_uhActiveApp === "notas" && (() => {
+                let notes = [];
+                try { const raw = localStorage.getItem("uh_notes_list"); if (raw) notes = JSON.parse(raw) || []; } catch {}
+                return notes.length === 0 ? (
+                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>
+                    Bloco de Notas vazio
+                    <div style={{ fontSize: 10.5, color: "#A0A4A7", marginTop: 6 }}>Cria a primeira em <span onClick={() => goSub && goSub("notes")} style={{ color: "#0D0D0D", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Notas</span></div>
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, maxHeight: 320, overflow: "auto" }}>
+                    {notes.slice(0, 9).map((n, i) => (
+                      <div key={n.id || i} onClick={() => goSub && goSub("notes")} style={{ background: "rgba(255,247,219,0.9)", borderRadius: 12, padding: 12, cursor: "pointer", minHeight: 90, display: "flex", flexDirection: "column" }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 800, color: "#192126", marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title || "Sem título"}</div>
+                        <div style={{ fontSize: 10.5, color: "#5A4A1A", lineHeight: 1.3, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" }}>{n.body || n.content || ""}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {_uhActiveApp === "metricas" && (() => {
+                const demands = Array.isArray(props.demands) ? props.demands : [];
+                const clients = Array.isArray(props.clients) ? props.clients : [];
+                const lc = (s) => (s || "").toString().toLowerCase();
+                const published = demands.filter(d => ["published", "done", "publicado"].includes(lc(d.stage || d.status))).length;
+                const inProd = demands.filter(d => ["design", "designing", "production", "copy", "brief"].includes(lc(d.stage || d.status))).length;
+                const pending = demands.filter(d => ["client", "approval"].includes(lc(d.stage || d.status))).length;
+                const mrr = clients.reduce((s, c) => s + (Number(c.monthly_value) || 0), 0);
+                const cards = [
+                  { label: "Posts publicados", value: published, sub: "total" },
+                  { label: "Em produção", value: inProd, sub: "demandas ativas" },
+                  { label: "Aprovação pendente", value: pending, sub: "aguardando cliente" },
+                  { label: "Receita mensal", value: mrr >= 1000 ? `R$ ${(mrr / 1000).toFixed(1)}k` : `R$ ${mrr}`, sub: `${clients.length} clientes` },
+                ];
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                    {cards.map((k, i) => (
+                      <div key={i} onClick={() => goSub && goSub("metrics")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "14px 16px", cursor: "pointer" }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>{k.label}</div>
+                        <div style={{ fontSize: 26, fontWeight: 900, color: "#192126", letterSpacing: "-0.03em", marginTop: 6, lineHeight: 1 }}>{k.value}</div>
+                        <div style={{ fontSize: 10, color: "#8B8F92", fontWeight: 600, marginTop: 4 }}>{k.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {_uhActiveApp === "relatorios" && (() => {
+                const demands = Array.isArray(props.demands) ? props.demands : [];
+                const clients = Array.isArray(props.clients) ? props.clients : [];
+                const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+                const now = new Date();
+                const series = [];
+                for (let i = 2; i >= 0; i--) {
+                  const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                  const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+                  const count = demands.filter(d => {
+                    if (!["published", "done", "publicado"].includes((d.stage || d.status || "").toLowerCase())) return false;
+                    const dt = d.published_at || d.publishedAt || d.updated_at || d.created_at;
+                    if (!dt) return false;
+                    const dd = new Date(dt);
+                    return dd >= m && dd <= mEnd;
+                  }).length;
+                  series.push({ label: months[m.getMonth()], count });
+                }
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "16px 18px", cursor: "pointer" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Publicações nos últimos 3 meses</div>
+                          <div style={{ fontSize: 26, fontWeight: 900, color: "#192126", marginTop: 4, letterSpacing: "-0.03em" }}>{series.reduce((s, x) => s + x.count, 0)}<span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500, marginLeft: 6 }}>posts</span></div>
+                        </div>
+                        <div style={{ fontSize: 11, color: "#0D7C00", fontWeight: 700 }}>{clients.length} clientes</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 70 }}>
+                        {series.map((s, i) => {
+                          const max = Math.max(1, ...series.map(x => x.count));
+                          const h = Math.max(8, (s.count / max) * 100);
+                          return (
+                            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                              <div style={{ fontSize: 11, fontWeight: 800, color: "#192126" }}>{s.count}</div>
+                              <div style={{ width: "60%", height: h + "%", background: i === series.length - 1 ? "#BBF246" : "#0D0D0D", borderRadius: 6, transition: "height .6s cubic-bezier(0.34,1.56,0.64,1)" }}></div>
+                              <div style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase" }}>{s.label}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {_uhActiveApp === "equipe" && (() => {
+                const team = Array.isArray(props.team) ? props.team : [];
+                return team.length === 0 ? (
+                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Equipe vazia</div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, maxHeight: 320, overflow: "auto" }}>
+                    {team.slice(0, 9).map((m, i) => (
+                      <div key={m.id || i} onClick={() => goSub && goSub("team")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "14px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                        <div style={{ width: 40, height: 40, borderRadius: "50%", background: m.avatar ? `url(${m.avatar}) center/cover` : "linear-gradient(135deg, #0D0D0D, #333)", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, flexShrink: 0 }}>{!m.avatar && (m.name || "?")[0].toUpperCase()}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.name || "Sem nome"}</div>
+                          <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.role || m.position || "Membro"}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {_uhActiveApp === "financeiro" && (() => {
+                const clients = Array.isArray(props.clients) ? props.clients : [];
+                const mrr = clients.reduce((s, c) => s + (Number(c.monthly_value) || 0), 0);
+                const planCount = clients.reduce((a, c) => { const p = c.plan || "outro"; a[p] = (a[p] || 0) + 1; return a; }, {});
+                const topPlans = Object.entries(planCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div onClick={() => goSub && goSub("financial")} style={{ background: "linear-gradient(135deg, #0D0D0D, #1A1A1A)", color: "#FFFFFF", borderRadius: 14, padding: "20px 24px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.5px" }}>MRR · receita mensal</div>
+                        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-0.03em", marginTop: 4, lineHeight: 1 }}>R$ {mrr.toLocaleString("pt-BR")}</div>
+                        <div style={{ fontSize: 11, color: "#BBF246", fontWeight: 700, marginTop: 6 }}>{clients.length} {clients.length === 1 ? "cliente" : "clientes"}{clients.length > 0 ? ` · ticket médio R$ ${Math.round(mrr / clients.length).toLocaleString("pt-BR")}` : ""}</div>
+                      </div>
+                      <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(187,242,70,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                      </div>
+                    </div>
+                    {topPlans.length > 0 && (
+                      <div style={{ display: "grid", gridTemplateColumns: `repeat(${topPlans.length}, 1fr)`, gap: 8 }}>
+                        {topPlans.map(([p, n]) => (
+                          <div key={p} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 12, padding: "10px 12px", textAlign: "center" }}>
+                            <div style={{ fontSize: 16, fontWeight: 900, color: "#192126" }}>{n}</div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", textTransform: "capitalize", marginTop: 2 }}>{p}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {_uhActiveApp === "munique" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflow: "auto" }}>
                   {_uhMqMessages.length === 0 ? (
                     <div style={{ display: "flex", gap: 10 }}>
