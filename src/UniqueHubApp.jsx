@@ -4804,44 +4804,154 @@ function HomePageV2(props) {
   const [_uhSearchOpen, _uhSetSearchOpen] = useState(false);
 
   // Briefing playing state (Fase 2 polimento — animações)
-  const [_uhBriefPlaying, _uhSetBriefPlaying] = useState(false);
+  // Briefing — Claude (texto natural) + OpenAI TTS (voice=nova). 3 estados: idle / loading / playing
+  const [_uhBriefState, _uhSetBriefState] = useState("idle"); // "idle" | "loading" | "playing"
+  const [_uhBriefSub, _uhSetBriefSub] = useState("Aperta play e eu te conto o que é prioridade agora.");
+  const [_uhBriefText, _uhSetBriefText] = useState("");
+  const [_uhBriefDuration, _uhSetBriefDuration] = useState("~45s");
+  const _uhBriefAudioRef = useRef(null);
+  const _uhBriefCacheRef = useRef({ key: null, text: null, audioUrl: null });
+  // Compat: alguns trechos antigos checam _uhBriefPlaying — mantém alias
+  const _uhBriefPlaying = _uhBriefState === "playing";
 
-  // Briefing TTS — usa Web Speech API com dados reais
-  const _uhPlayBrief = () => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      alert("Seu navegador não suporta síntese de voz");
+  // garante que o <audio> existe e tem listeners
+  useEffect(() => {
+    if (!_uhBriefAudioRef.current) {
+      _uhBriefAudioRef.current = new Audio();
+      _uhBriefAudioRef.current.preload = "auto";
+    }
+    const a = _uhBriefAudioRef.current;
+    const onEnd = () => { _uhSetBriefState("idle"); _uhSetBriefSub("Aperta play e eu te conto o que é prioridade agora."); };
+    const onErr = () => { _uhSetBriefState("idle"); _uhSetBriefSub("Falha ao tocar — tenta de novo."); };
+    a.addEventListener("ended", onEnd);
+    a.addEventListener("error", onErr);
+    return () => { a.removeEventListener("ended", onEnd); a.removeEventListener("error", onErr); };
+  }, []);
+
+  const _uhPlayBrief = async () => {
+    const a = _uhBriefAudioRef.current;
+    if (_uhBriefState === "playing") {
+      if (a) { a.pause(); a.currentTime = 0; }
+      _uhSetBriefState("idle");
+      _uhSetBriefSub("Aperta play e eu te conto o que é prioridade agora.");
       return;
     }
-    if (_uhBriefPlaying) {
-      window.speechSynthesis.cancel();
-      _uhSetBriefPlaying(false);
-      return;
+    if (_uhBriefState === "loading") return;
+
+    _uhSetBriefState("loading");
+    _uhSetBriefSub("Gerando briefing personalizado…");
+
+    try {
+      // Cache: invalida a cada 30min ou quando dados mudam
+      const demands = Array.isArray(props.demands) ? props.demands : [];
+      const clients = Array.isArray(props.clients) ? props.clients : [];
+      const bucket = Math.floor(Date.now() / (30 * 60 * 1000));
+      const h = new Date().getHours();
+      const greet = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+      const period = h < 12 ? "de manhã" : h < 18 ? "à tarde" : "à noite";
+      const cacheKey = [bucket, greet, clients.length, demands.length, _uhEvents.length].join("|");
+
+      let text = (_uhBriefCacheRef.current.key === cacheKey) ? _uhBriefCacheRef.current.text : null;
+      let audioUrl = (_uhBriefCacheRef.current.key === cacheKey) ? _uhBriefCacheRef.current.audioUrl : null;
+      if (_uhBriefCacheRef.current.key !== cacheKey) {
+        if (_uhBriefCacheRef.current.audioUrl) URL.revokeObjectURL(_uhBriefCacheRef.current.audioUrl);
+        _uhBriefCacheRef.current = { key: cacheKey, text: null, audioUrl: null };
+      }
+
+      // Passo 1 — texto via Claude
+      if (!text) {
+        const lc = (s) => (s || "").toString().toLowerCase();
+        const pendingApproval = demands.filter(x => ["client", "approval", "aguardando_aprovacao"].includes(lc(x.status || x.stage))).length;
+        const inProduction = demands.filter(x => ["design", "designing", "copy", "brief", "briefing", "production", "producao", "produção"].includes(lc(x.status || x.stage))).length;
+        const todayYmd = new Date().toISOString().slice(0, 10);
+        const weekEnd = new Date(); weekEnd.setDate(weekEnd.getDate() + 7);
+        const weekEndYmd = weekEnd.toISOString().slice(0, 10);
+        const scheduledThisWeek = demands.filter(x => {
+          const st = lc(x.status || x.stage);
+          if (!["scheduled", "agendado"].includes(st)) return false;
+          const d = x.scheduling?.date || x.schedule_date;
+          return d && d >= todayYmd && d <= weekEndYmd;
+        }).length;
+        const stuckApproval = demands.filter(x => {
+          if (!["client", "approval", "aguardando_aprovacao"].includes(lc(x.status || x.stage))) return false;
+          const dt = x.created_at || x.createdAt;
+          if (!dt) return false;
+          return Math.floor((Date.now() - new Date(dt).getTime()) / 86400000) >= 3;
+        }).length;
+
+        const eventsToday = _uhEvents.filter(e => (e.date || "") === todayYmd && !e.completed);
+        const eventsWeek = _uhEvents
+          .filter(e => !e.completed && e.date >= todayYmd && e.date <= weekEndYmd)
+          .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))
+          .slice(0, 6)
+          .map(e => {
+            const dt = new Date(e.date + "T12:00:00");
+            const dow = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"][dt.getDay()];
+            const label = e.date === todayYmd ? "hoje" : `${dow}-feira dia ${dt.getDate()}`;
+            const time = e.time ? ` às ${String(e.time).slice(0, 5)}` : "";
+            const client = e.client_name ? ` com ${e.client_name}` : "";
+            return `${e.title}${client} (${label}${time})`;
+          });
+
+        const dataContext = [
+          `Dashboard atual da ${_uhAgencyName}:`,
+          `- ${clients.length} clientes ativos`,
+          `- ${demands.length} demandas no pipeline · ${inProduction} em produção · ${pendingApproval} aguardando aprovação do cliente${stuckApproval > 0 ? " (" + stuckApproval + " parada há mais de 3 dias!)" : ""}`,
+          `- ${scheduledThisWeek} posts agendados pros próximos 7 dias`,
+          eventsToday.length > 0 ? `- Compromissos de hoje: ${eventsToday.map(e => e.title + (e.time ? " às " + String(e.time).slice(0, 5) : "") + (e.client_name ? " com " + e.client_name : "")).join(", ")}` : `- Sem compromissos agendados pra hoje`,
+          eventsWeek.length > 0 ? `- Compromissos da semana: ${eventsWeek.join("; ")}` : null
+        ].filter(Boolean).join("\n");
+
+        const prompt = `Você é a Munique, assistente de voz da ${_uhAgencyName}. Sua saída será narrada por uma voz sintética direto pra ${_uhFirstName} (fundador da agência), sem nenhum processamento intermediário.\n\nDADOS REAIS DO MOMENTO (use APENAS isto, nada além):\n${dataContext}\n\nTAREFA: escreva o texto EXATO que será lido em voz alta. 40 a 60 segundos de narração em português brasileiro, tom de assistente pessoal calorosa e direta.\n\nREGRAS ABSOLUTAS:\n- A PRIMEIRA palavra do texto é OBRIGATORIAMENTE "${greet}" seguida de vírgula e "${_uhFirstName}," (ex: "${greet}, ${_uhFirstName},").\n- NUNCA comece com frases como "Aqui está o briefing", "Segue o resumo", ou qualquer preâmbulo. Começa DIRETO com a saudação e já emenda o conteúdo.\n- NADA de listas, marcadores, emojis, cabeçalhos, quebras de linha duplas, nem formatação markdown — apenas texto corrido.\n- Use APENAS os números e nomes que estão nos dados acima. NÃO invente clientes, compromissos, nem estatísticas.\n- Cite horas no formato "às 9" ou "às 15 horas" (nunca "9:00" ou "15h00").\n- Cite datas pelo dia da semana, não por número.\n- Tom: natural, como uma colega de trabalho te atualizando no café. Contrações tipo "tá", "tô", "pra" são bem-vindas. Evita jargão corporativo.\n\nESTRUTURA EM 4-5 FRASES CORRIDAS:\n1. Abertura com a saudação + observação do estado geral (clientes ativos, demandas no pipeline).\n2. Prioridade do momento: o que precisa de atenção (aprovações paradas, evento imediato).\n3. Compromissos ${period === "à noite" ? "de amanhã e do resto da semana" : "do resto de hoje e próximos dias"}, com nome do cliente, dia da semana e hora.\n4. Uma recomendação acionável curta.\n5. (Opcional) Encerramento leve tipo "conta comigo" ou "qualquer coisa é só me chamar".\n\nÉ ${period} em Brasília. Devolva APENAS o texto a ser lido, nada mais.`;
+
+        const res = await fetch(`${SUPA_URL}/functions/v1/munique-briefing`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` },
+          body: JSON.stringify({ prompt }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || !j?.text) {
+          // fallback simples
+          text = `${greet}, ${_uhFirstName}! Você tem ${clients.length} clientes ativos e ${demands.length} demandas no pipeline, sendo ${pendingApproval} aguardando aprovação. Dá uma olhada no bloco de Atenção pra ver o que precisa da sua revisão. Conta comigo!`;
+        } else {
+          text = String(j.text)
+            .replace(/^[\s\S]*?(Bom dia|Boa tarde|Boa noite)/i, "$1")
+            .replace(/\n{2,}/g, " ")
+            .replace(/\n/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
+        _uhBriefCacheRef.current.text = text;
+      }
+
+      _uhSetBriefText(text);
+      const estSec = Math.max(25, Math.round(text.length / 15));
+      _uhSetBriefDuration(`~${estSec}s`);
+
+      // Passo 2 — áudio via OpenAI TTS
+      _uhSetBriefSub("Sintetizando voz…");
+      if (!audioUrl) {
+        const r = await fetch(`${SUPA_URL}/functions/v1/munique-tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": SUPA_KEY, "Authorization": `Bearer ${SUPA_KEY}` },
+          body: JSON.stringify({ text, voice: "nova", speed: 1.0 }),
+        });
+        if (!r.ok) throw new Error(`TTS ${r.status}`);
+        const blob = await r.blob();
+        audioUrl = URL.createObjectURL(blob);
+        _uhBriefCacheRef.current.audioUrl = audioUrl;
+      }
+      a.src = audioUrl;
+
+      // Passo 3 — tocar
+      _uhSetBriefSub("Tocando agora — clica de novo pra parar.");
+      _uhSetBriefState("playing");
+      await a.play();
+    } catch (err) {
+      console.error("briefing error:", err);
+      _uhSetBriefSub(`Erro: ${err.message || err}`);
+      _uhSetBriefState("idle");
     }
-    const h = new Date().getHours();
-    const greet = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
-    const parts = [`${greet}, ${_uhFirstName}.`];
-    parts.push(`Hoje é ${_uhDays[_uhNow.getDay()]}.`);
-    if (_uhPostsGoal > 0) {
-      parts.push(`Você está com ${_uhGoalPct}% da meta do mês: ${_uhPostsDone} de ${_uhPostsGoal} demandas entregues.`);
-    } else {
-      parts.push("Nenhuma demanda no pipeline desse mês ainda.");
-    }
-    if (_uhAttCount > 0) {
-      const summary = _uhAttItems.map(i => String(i.text || "").replace(/<[^>]+>/g, "")).join(". ");
-      parts.push(`Atenção: ${summary}.`);
-    } else {
-      parts.push("Tudo tranquilo nas pendências.");
-    }
-    const text = parts.join(" ");
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = "pt-BR";
-    utter.rate = 1.05;
-    utter.pitch = 1;
-    utter.onstart = () => _uhSetBriefPlaying(true);
-    utter.onend = () => _uhSetBriefPlaying(false);
-    utter.onerror = () => _uhSetBriefPlaying(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
   };
 
   // Quick cards system state (Fase 4 polimento — 3 estados + expand inline)
@@ -5527,52 +5637,71 @@ REGRAS DE ESTILO:
         Vamos começar<br/>forte, {_uhFirstName}! <span style={{ display: "inline-block", animation: "_uhwave 2.5s ease-in-out infinite", transformOrigin: "70% 70%" }}>👋</span>
       </h1>
 
-      {/* BRIEFING DO DIA — com play state animado */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 4px 14px", marginBottom: 4, position: "relative" }}>
-        <div
-          onClick={_uhPlayBrief}
-          style={{
-            width: 32, height: 32, borderRadius: "50%", background: "#BBF246",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer",
-            boxShadow: "0 4px 10px rgba(187,242,70,0.4)",
-            flexShrink: 0,
-            animation: _uhBriefPlaying ? "_uhBriefPulse 1.2s ease-in-out infinite" : "none",
-            transition: "transform .15s",
-          }}
-          onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.92)"; }}
-          onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-        >
-          {_uhBriefPlaying ? (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="#0D0D0D"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#0D0D0D"><polygon points="6 4 20 12 6 20 6 4"/></svg>
-          )}
+      {/* BRIEFING DO DIA — Claude + OpenAI TTS, com transcrição expandida quando playing */}
+      <div style={{ padding: "4px 4px 14px", marginBottom: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, position: "relative" }}>
+          <div
+            onClick={_uhPlayBrief}
+            style={{
+              width: 36, height: 36, borderRadius: "50%", background: "#BBF246",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: _uhBriefState === "loading" ? "wait" : "pointer",
+              boxShadow: "0 4px 10px rgba(187,242,70,0.4)",
+              flexShrink: 0,
+              animation: _uhBriefState === "playing" ? "_uhBriefPulse 1.2s ease-in-out infinite" : "none",
+              transition: "transform .15s",
+            }}
+            onMouseDown={(e) => { if (_uhBriefState !== "loading") e.currentTarget.style.transform = "scale(0.92)"; }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            {_uhBriefState === "loading" ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "_uhMqSpin 0.9s linear infinite" }}>
+                <circle cx="12" cy="12" r="8" strokeDasharray="30 50"/>
+              </svg>
+            ) : _uhBriefState === "playing" ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="#0D0D0D"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#0D0D0D"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, color: "#8B8F92", letterSpacing: "-0.005em", overflow: "hidden" }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "#192126", textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0 }}>Briefing do dia</span>
+            <span style={{ color: "rgba(0,0,0,0.18)", fontWeight: 600, flexShrink: 0 }}>·</span>
+            <span style={{ fontFamily: "'JetBrains Mono',ui-monospace,monospace", fontSize: 11, fontWeight: 700, color: "#192126", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em", flexShrink: 0 }}>{_uhBriefDuration}</span>
+            <span style={{ color: "rgba(0,0,0,0.18)", fontWeight: 600, flexShrink: 0 }}>·</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: _uhBriefState === "playing" ? "#0D0D0D" : "#8B8F92", transition: "color .25s" }}>
+              {_uhBriefSub}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 2, height: 18, flexShrink: 0, opacity: _uhBriefState === "playing" ? 1 : 0.35, transition: "opacity .3s" }}>
+            {[0, 0.1, 0.2, 0.3, 0.4, 0.15, 0.25, 0.05, 0.35, 0.2, 0.15, 0.3].map((delay, i) => (
+              <div key={i} style={{ width: 2, background: "#A8DF33", borderRadius: 999, height: 5, animation: _uhBriefState === "playing" ? `_uhWaveBounce 0.8s ease-in-out ${delay}s infinite` : "none" }}></div>
+            ))}
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, fontSize: 12, fontWeight: 600, color: "#8B8F92", letterSpacing: "-0.005em", overflow: "hidden" }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "#192126", textTransform: "uppercase", letterSpacing: "0.5px", flexShrink: 0 }}>Briefing do dia</span>
-          <span style={{ color: "rgba(0,0,0,0.18)", fontWeight: 600, flexShrink: 0 }}>·</span>
-          <span style={{ fontFamily: "'JetBrains Mono',ui-monospace,monospace", fontSize: 11, fontWeight: 700, color: "#192126", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em", flexShrink: 0 }}>~45s</span>
-          <span style={{ color: "rgba(0,0,0,0.18)", fontWeight: 600, flexShrink: 0 }}>·</span>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500, color: _uhBriefPlaying ? "#0D0D0D" : "#8B8F92", transition: "color .25s" }}>
-            {_uhBriefPlaying ? "Tocando seu briefing — clique de novo pra pausar." : "Aperta play e eu te conto o que é prioridade agora."}
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 2, height: 18, flexShrink: 0, opacity: _uhBriefPlaying ? 1 : 0.35, transition: "opacity .3s" }}>
-          {[0, 0.1, 0.2, 0.3, 0.4, 0.15, 0.25, 0.05, 0.35, 0.2, 0.15, 0.3].map((delay, i) => (
-            <div
-              key={i}
-              style={{
-                width: 2,
-                background: "#A8DF33",
-                borderRadius: 999,
-                height: 5,
-                animation: _uhBriefPlaying ? `_uhWaveBounce 0.8s ease-in-out ${delay}s infinite` : "none",
-              }}
-            ></div>
-          ))}
-        </div>
+        {/* TRANSCRIÇÃO — só aparece quando tem texto e tá tocando */}
+        {_uhBriefState === "playing" && _uhBriefText && (
+          <div style={{
+            marginTop: 14,
+            padding: "16px 20px",
+            background: "rgba(255,255,255,0.65)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            border: "1px solid rgba(255,255,255,0.7)",
+            borderRadius: 18,
+            fontSize: 13.5,
+            lineHeight: 1.6,
+            color: "#192126",
+            fontWeight: 500,
+            letterSpacing: "-0.005em",
+            animation: "_uhMqBubbleIn .35s cubic-bezier(0.34,1.56,0.64,1) both",
+            maxHeight: 220,
+            overflow: "auto",
+          }}>
+            <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(_uhBriefText.replace(/\b(\d+)\s*(clientes?|demandas?|posts?|aprovaç[ãa]o|aprovações?|compromissos?|eventos?)\b/gi, '<b>$1 $2</b>')) }} />
+          </div>
+        )}
       </div>
       {/* HERO SPLIT — goal card + attention card lado a lado */}
       <div style={{
