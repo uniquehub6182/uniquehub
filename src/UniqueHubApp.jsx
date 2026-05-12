@@ -6322,38 +6322,53 @@ REGRAS DE ESTILO:
               {_uhActiveApp === "biblioteca" && (() => {
                 if (_uhLibFolders === null) return <div style={{ textAlign: "center", padding: 24, color: "#8B8F92", fontSize: 12 }}>Carregando…</div>;
                 if (_uhLibFolders.length === 0) return <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Nenhuma pasta criada</div>;
-                // Paleta de gradientes por pasta (rotaciona)
-                const folderColors = [
-                  "linear-gradient(135deg, #BBF246, #88C200)",
-                  "linear-gradient(135deg, #FFB347, #FF7F00)",
-                  "linear-gradient(135deg, #06B6D4, #0891B2)",
-                  "linear-gradient(135deg, #A855F7, #7C3AED)",
-                  "linear-gradient(135deg, #EC4899, #BE185D)",
-                  "linear-gradient(135deg, #22C55E, #16A34A)",
-                  "linear-gradient(135deg, #3B82F6, #1D4ED8)",
-                  "linear-gradient(135deg, #F59E0B, #D97706)",
-                  "linear-gradient(135deg, #EF4444, #B91C1C)",
-                  "linear-gradient(135deg, #14B8A6, #0F766E)",
-                  "linear-gradient(135deg, #6366F1, #4338CA)",
+                // Paleta sutil de gradientes para os avatares iniciais
+                const avatarGrads = [
+                  ["#0D0D0D", "#2A2A2A"],
+                  ["#0F766E", "#0D9488"],
+                  ["#7C3AED", "#A855F7"],
+                  ["#0369A1", "#0284C7"],
+                  ["#15803D", "#16A34A"],
+                  ["#B45309", "#D97706"],
+                  ["#9F1239", "#BE123C"],
+                  ["#5B21B6", "#7C3AED"],
+                  ["#075985", "#0369A1"],
+                  ["#365314", "#4D7C0F"],
+                  ["#831843", "#9F1239"],
                 ];
+                // Ordena por mais arquivos primeiro
+                const sorted = [..._uhLibFolders].sort((a, b) => (b._childCount || 0) - (a._childCount || 0));
+                const totalFiles = sorted.reduce((s, f) => s + (f._childCount || 0), 0);
                 return (
                   <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>Pastas dos clientes · <b style={{ color: "#192126" }}>{_uhLibFolders.length}</b></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}><b style={{ color: "#192126" }}>{sorted.length}</b> {sorted.length === 1 ? "pasta" : "pastas"} de cliente · <b style={{ color: "#192126" }}>{totalFiles}</b> arquivos no total</div>
+                      <button onClick={() => goSub && goSub("library")} style={{ fontSize: 10.5, fontWeight: 700, color: "#0D7C00", background: "transparent", border: "none", cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Ver tudo →</button>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, maxHeight: 360, overflow: "auto" }}>
-                      {_uhLibFolders.slice(0, 12).map((f, i) => (
-                        <div key={f.id} onClick={() => goSub && goSub("library")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: 12, cursor: "pointer", display: "flex", flexDirection: "column", gap: 8, transition: "transform .15s, box-shadow .15s" }}
-                          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-                        >
-                          <div style={{ aspectRatio: "4 / 3", borderRadius: 10, background: folderColors[i % folderColors.length], display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-                            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.95 }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                            <div style={{ position: "absolute", top: 6, right: 6, padding: "3px 8px", borderRadius: 999, background: "rgba(0,0,0,0.35)", fontSize: 9.5, fontWeight: 800, color: "#FFFFFF" }}>{f._childCount} {f._childCount === 1 ? "item" : "itens"}</div>
-                          </div>
-                          <div style={{ fontSize: 12, fontWeight: 800, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.01em" }}>{f.name || "pasta"}</div>
-                        </div>
-                      ))}
+                    <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, overflow: "hidden", maxHeight: 360 }}>
+                      <div style={{ overflowY: "auto", maxHeight: 360 }}>
+                        {sorted.slice(0, 12).map((f, i) => {
+                          const initial = (f.name || "?")[0].toUpperCase();
+                          const [c1, c2] = avatarGrads[i % avatarGrads.length];
+                          const isLast = i === Math.min(11, sorted.length - 1);
+                          const updatedAt = f.updated_at || f.created_at;
+                          const when = updatedAt ? new Date(updatedAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "";
+                          return (
+                            <div key={f.id} onClick={() => goSub && goSub("library")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", cursor: "pointer", borderBottom: isLast ? "none" : "1px solid rgba(0,0,0,0.05)", transition: "background .12s" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = "rgba(187,242,70,0.06)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                            >
+                              <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, flexShrink: 0, letterSpacing: "-0.02em" }}>{initial}</div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.01em" }}>{f.name || "pasta"}</div>
+                                <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600, marginTop: 1 }}>{f._childCount || 0} {(f._childCount || 0) === 1 ? "arquivo" : "arquivos"}{when ? ` · atualizado ${when}` : ""}</div>
+                              </div>
+                              <div style={{ fontSize: 10.5, fontWeight: 800, color: "#8B8F92", flexShrink: 0, fontVariantNumeric: "tabular-nums", background: "rgba(0,0,0,0.04)", padding: "3px 9px", borderRadius: 999, minWidth: 28, textAlign: "center" }}>{f._childCount || 0}</div>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C0C4C7" strokeWidth="2.2" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 );
@@ -6504,7 +6519,6 @@ REGRAS DE ESTILO:
                 const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
                 const now = new Date();
                 const monthsBack = _uhReportsPeriod === "3m" ? 3 : _uhReportsPeriod === "6m" ? 6 : 12;
-                // Série de publicados por mês
                 const series = [];
                 for (let i = monthsBack - 1; i >= 0; i--) {
                   const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -6520,14 +6534,18 @@ REGRAS DE ESTILO:
                 }
                 const totalP = series.reduce((s, x) => s + x.count, 0);
                 const avgMonth = monthsBack > 0 ? totalP / monthsBack : 0;
-                const bestMonth = series.reduce((b, x) => x.count > b.count ? x : b, series[0] || { count: 0, label: "—" });
                 const lastMonth = series[series.length - 1] || { count: 0 };
                 const prevMonth = series[series.length - 2] || { count: 0 };
-                const trendUp = lastMonth.count > prevMonth.count;
                 const trendDelta = prevMonth.count > 0 ? Math.round(((lastMonth.count - prevMonth.count) / prevMonth.count) * 100) : (lastMonth.count > 0 ? 100 : 0);
+                const trendUp = lastMonth.count > prevMonth.count;
+                // Sparkline path
                 const max = Math.max(1, ...series.map(s => s.count));
+                const N = series.length;
+                const pts = series.map((s, i) => [i / (N - 1) * 100, 100 - (s.count / max) * 100]);
+                const linePath = "M " + pts.map(p => `${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(" L ");
+                const areaPath = linePath + ` L 100 100 L 0 100 Z`;
 
-                // Top clientes por publicações no período
+                // Top clientes
                 const startRange = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
                 const inRange = (dt) => { if (!dt) return false; try { const d = new Date(dt); return d >= startRange && d <= now; } catch { return false; } };
                 const pubByClient = {};
@@ -6538,15 +6556,13 @@ REGRAS DE ESTILO:
                   const cn = d.clientName || d.client || "—";
                   pubByClient[cn] = (pubByClient[cn] || 0) + 1;
                 });
-                const topClients = Object.entries(pubByClient).sort((a, b) => b[1] - a[1]).slice(0, 4);
+                const topClients = Object.entries(pubByClient).sort((a, b) => b[1] - a[1]).slice(0, 5);
                 const maxClient = Math.max(1, ...topClients.map(c => c[1]));
 
-                // Taxa de aprovação: published vs total que saiu do design
+                // Taxa entrega + distribuição
                 const totalEverPub = demands.filter(d => ["published", "done", "publicado"].includes(lc(d.stage || d.status))).length;
                 const totalPipeline = demands.length;
                 const approvalRate = totalPipeline > 0 ? Math.round((totalEverPub / totalPipeline) * 100) : 0;
-
-                // Distribuição por stage atual
                 const stageColors = { idea: "#A8DF33", design: "#F59E0B", client: "#EF4444", scheduled: "#0EA5E9", published: "#22C55E" };
                 const stageDist = ["idea", "design", "client", "scheduled", "published"].map(s => ({
                   k: s,
@@ -6554,11 +6570,10 @@ REGRAS DE ESTILO:
                   c: stageColors[s],
                   count: demands.filter(d => lc(d.stage || d.status) === s).length,
                 }));
-
                 return (
                   <div>
-                    {/* Header period */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    {/* Header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                       <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>Período: <b style={{ color: "#192126" }}>últimos {monthsBack} meses</b></div>
                       <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.04)", borderRadius: 999, padding: 3 }}>
                         {[{ k: "3m", l: "3M" }, { k: "6m", l: "6M" }, { k: "12m", l: "12M" }].map(o => (
@@ -6567,87 +6582,84 @@ REGRAS DE ESTILO:
                       </div>
                     </div>
 
-                    {/* 4 KPI cards no topo */}
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 10 }}>
-                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "12px 14px" }}>
-                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Total publicado</div>
-                        <div style={{ fontSize: 22, fontWeight: 900, color: "#192126", marginTop: 2, letterSpacing: "-0.02em" }}>{totalP}</div>
-                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>posts em {monthsBack}M</div>
-                      </div>
-                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "12px 14px" }}>
-                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Média/mês</div>
-                        <div style={{ fontSize: 22, fontWeight: 900, color: "#192126", marginTop: 2, letterSpacing: "-0.02em" }}>{avgMonth.toFixed(1)}</div>
-                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>posts/mês</div>
-                      </div>
-                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "12px 14px" }}>
-                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Taxa entrega</div>
-                        <div style={{ fontSize: 22, fontWeight: 900, color: "#0D7C00", marginTop: 2, letterSpacing: "-0.02em" }}>{approvalRate}%</div>
-                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>{totalEverPub}/{totalPipeline} demandas</div>
-                      </div>
-                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "12px 14px" }}>
-                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Tendência</div>
-                        <div style={{ fontSize: 22, fontWeight: 900, color: trendUp ? "#0D7C00" : "#DC2626", marginTop: 2, letterSpacing: "-0.02em" }}>{trendUp ? "▲" : trendDelta < 0 ? "▼" : "—"} {trendDelta >= 0 ? "+" : ""}{trendDelta}%</div>
-                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>vs mês anterior</div>
+                    {/* HERO: card dark com sparkline */}
+                    <div style={{ background: "linear-gradient(135deg, #0D0D0D, #1F1F1F)", color: "#FFFFFF", borderRadius: 16, padding: "18px 22px", marginBottom: 10, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: -40, right: -40, width: 200, height: 200, background: "radial-gradient(circle, rgba(187,242,70,0.18), transparent 70%)", pointerEvents: "none" }}></div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 24, position: "relative" }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Total publicado em {monthsBack} meses</div>
+                          <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-0.03em", marginTop: 2, lineHeight: 1 }}>{totalP}<span style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", fontWeight: 500, marginLeft: 6 }}>posts</span></div>
+                          <div style={{ display: "flex", gap: 18, marginTop: 10 }}>
+                            <div>
+                              <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.5)", fontWeight: 700, textTransform: "uppercase" }}>Média/mês</div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: "#FFFFFF", marginTop: 1 }}>{avgMonth.toFixed(1)}</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.5)", fontWeight: 700, textTransform: "uppercase" }}>Taxa entrega</div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: "#BBF246", marginTop: 1 }}>{approvalRate}%</div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.5)", fontWeight: 700, textTransform: "uppercase" }}>vs anterior</div>
+                              <div style={{ fontSize: 14, fontWeight: 800, color: trendUp ? "#BBF246" : "#FCA5A5", marginTop: 1 }}>{trendUp ? "▲" : trendDelta < 0 ? "▼" : "—"} {trendDelta >= 0 ? "+" : ""}{trendDelta}%</div>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Sparkline */}
+                        <div style={{ width: 200, height: 70, flexShrink: 0 }}>
+                          <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+                            <path d={areaPath} fill="rgba(187,242,70,0.18)" />
+                            <path d={linePath} fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                            {pts.map((p, i) => i === pts.length - 1 && <circle key={i} cx={p[0]} cy={p[1]} r="2.5" fill="#BBF246" vectorEffect="non-scaling-stroke" />)}
+                          </svg>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Chart de barras + Top clientes lado a lado */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 10, marginBottom: 10 }}>
+                    {/* 2 colunas: Top clientes + Distribuição por stage */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                       <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px" }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Posts publicados por mês</div>
-                        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 110 }}>
-                          {series.map((s, i) => {
-                            const h = Math.max(8, (s.count / max) * 100);
-                            const isLast = i === series.length - 1;
-                            return (
-                              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 0 }}>
-                                <div style={{ fontSize: 9.5, fontWeight: 800, color: "#192126" }}>{s.count}</div>
-                                <div style={{ width: "65%", height: h + "%", background: isLast ? "linear-gradient(180deg, #BBF246, #88C200)" : "linear-gradient(180deg, #404040, #0D0D0D)", borderRadius: "4px 4px 2px 2px", transition: "height .6s cubic-bezier(0.34,1.56,0.64,1)" }}></div>
-                                <div style={{ fontSize: 8.5, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase" }}>{s.label}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px" }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Top 4 clientes (publicações)</div>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Top clientes (publicações)</div>
                         {topClients.length === 0 ? (
-                          <div style={{ fontSize: 10.5, color: "#A0A4A7", fontStyle: "italic", padding: "8px 0" }}>sem dados no período</div>
+                          <div style={{ fontSize: 10.5, color: "#A0A4A7", fontStyle: "italic", padding: "12px 0" }}>sem publicações no período</div>
                         ) : topClients.map(([name, count], i) => {
                           const pct = (count / maxClient) * 100;
+                          const initial = (name || "?")[0].toUpperCase();
                           return (
-                            <div key={name} style={{ marginBottom: 8 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, marginBottom: 3 }}>
-                                <span style={{ fontWeight: 700, color: "#192126", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", maxWidth: "70%" }}>{name}</span>
-                                <span style={{ fontWeight: 800, color: "#0D7C00", flexShrink: 0 }}>{count}</span>
-                              </div>
-                              <div style={{ height: 5, background: "rgba(0,0,0,0.06)", borderRadius: 999, overflow: "hidden" }}>
-                                <div style={{ width: `${pct}%`, height: "100%", background: "#BBF246", borderRadius: 999, transition: "width .6s cubic-bezier(0.4,0,0.2,1)" }}></div>
+                            <div key={name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                              <div style={{ width: 24, height: 24, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>{initial}</div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                                  <span style={{ fontWeight: 700, color: "#192126", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", maxWidth: "70%" }}>{name}</span>
+                                  <span style={{ fontWeight: 800, color: "#0D7C00", flexShrink: 0 }}>{count}</span>
+                                </div>
+                                <div style={{ height: 5, background: "rgba(0,0,0,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                                  <div style={{ width: `${pct}%`, height: "100%", background: "#BBF246", borderRadius: 999, transition: "width .6s cubic-bezier(0.4,0,0.2,1)" }}></div>
+                                </div>
                               </div>
                             </div>
                           );
                         })}
                       </div>
-                    </div>
 
-                    {/* Distribuição por stage */}
-                    <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px" }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Status atual de TODAS as demandas</div>
-                      <div style={{ display: "flex", height: 24, borderRadius: 8, overflow: "hidden", background: "rgba(0,0,0,0.04)", marginBottom: 8 }}>
+                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Status atual ({totalPipeline} demandas)</div>
                         {stageDist.map(s => {
-                          const flex = (s.count / Math.max(1, totalPipeline)) * 100;
-                          if (flex <= 0) return null;
-                          return <div key={s.k} title={`${s.l}: ${s.count}`} style={{ flexGrow: flex, background: s.c, minWidth: 2, transition: "flex-grow .6s cubic-bezier(0.4,0,0.2,1)" }}></div>;
+                          const pct = totalPipeline > 0 ? (s.count / totalPipeline) * 100 : 0;
+                          return (
+                            <div key={s.k} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 7 }}>
+                              <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.c, flexShrink: 0 }}></div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 3 }}>
+                                  <span style={{ fontWeight: 700, color: "#192126" }}>{s.l}</span>
+                                  <span style={{ fontWeight: 800, color: "#192126", fontVariantNumeric: "tabular-nums" }}>{s.count} <span style={{ color: "#8B8F92", fontWeight: 600, fontSize: 10 }}>· {Math.round(pct)}%</span></span>
+                                </div>
+                                <div style={{ height: 5, background: "rgba(0,0,0,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                                  <div style={{ width: `${pct}%`, height: "100%", background: s.c, borderRadius: 999, transition: "width .6s cubic-bezier(0.4,0,0.2,1)" }}></div>
+                                </div>
+                              </div>
+                            </div>
+                          );
                         })}
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 14px", fontSize: 10.5 }}>
-                        {stageDist.map(s => (
-                          <span key={s.k} style={{ display: "inline-flex", alignItems: "center", gap: 5, opacity: s.count > 0 ? 1 : 0.4 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></span>
-                            <span style={{ fontWeight: 600, color: "#8B8F92" }}>{s.l}</span>
-                            <b style={{ color: "#192126" }}>{s.count}</b>
-                          </span>
-                        ))}
                       </div>
                     </div>
                   </div>
