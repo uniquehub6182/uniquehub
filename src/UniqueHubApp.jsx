@@ -12985,6 +12985,8 @@ function ContentPageV2(props) {
   const [_ctDragId, _ctSetDragId] = useState(null);
   const [_ctDragOverCol, _ctSetDragOverCol] = useState(null);
   const [_ctToast, _ctSetToast] = useState("");
+  const [_ctActionsOpen, _ctSetActionsOpen] = useState(false);
+  const [_ctPipelineExpand, _ctSetPipelineExpand] = useState(null); // stage k expandido na view pipeline
 
   // ─── Identidade ───
   const _ctFirstName = useMemo(() => {
@@ -13165,82 +13167,29 @@ function ContentPageV2(props) {
           </div>
         </div>
 
-        {/* ═══════ HERO ═══════ */}
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 32, paddingBottom: 22 }}>
+        {/* ═══════ HERO — limpo ═══════ */}
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, paddingBottom: 24 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Produção</div>
-            <h1 style={{ fontSize: 76, fontWeight: 800, lineHeight: 0.95, letterSpacing: "-0.04em", margin: 0, color: "#192126" }}>Demandas</h1>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Produção</div>
+            <h1 style={{ fontSize: 64, fontWeight: 800, lineHeight: 0.95, letterSpacing: "-0.04em", margin: 0, color: "#192126" }}>Demandas</h1>
+            <div style={{ fontSize: 13.5, color: "#8B8F92", fontWeight: 500, marginTop: 10, letterSpacing: "-0.005em" }}>
+              <b style={{ color: "#192126" }}>{totalActive}</b> ativa{totalActive === 1 ? "" : "s"}
+              {lateCount > 0 && <> · <b style={{ color: "#DC2626", cursor: "pointer" }} onClick={() => _ctSetScope("late")}>{lateCount} atrasada{lateCount === 1 ? "" : "s"}</b></>}
+              {thisWeekCount > 0 && <> · {thisWeekCount} esta semana</>}
+            </div>
           </div>
-          {/* 4 KPI cards micro */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 130px))", gap: 8, flexShrink: 0 }}>
-            {[
-              { label: "Ativas", value: totalActive, color: "#192126" },
-              { label: "Atrasadas", value: lateCount, color: lateCount > 0 ? "#DC2626" : "#192126", clickable: lateCount > 0, onClick: () => _ctSetScope("late") },
-              { label: "Esta semana", value: thisWeekCount, color: "#192126" },
-              { label: "Cliente", value: pendingClient, color: "#0D7C00", clickable: pendingClient > 0, onClick: () => { _ctSetScope("all"); /* could filter by stage */ } },
-            ].map((k, i) => (
-              <div key={i} onClick={k.clickable ? k.onClick : undefined} style={{
-                background: "rgba(255,255,255,0.85)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.7)",
-                borderRadius: 14,
-                padding: "10px 12px",
-                cursor: k.clickable ? "pointer" : "default",
-                transition: "transform .15s",
-              }}
-                onMouseEnter={e => { if (k.clickable) e.currentTarget.style.transform = "translateY(-2px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
-              >
-                <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>{k.label}</div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: k.color, letterSpacing: "-0.03em", marginTop: 1, lineHeight: 1 }}>{k.value}</div>
+          {/* Atalho rápido lateral, sem cards berrantes */}
+          {lateCount > 0 && (
+            <button onClick={() => _ctSetScope("late")} style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontFamily: "inherit" }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "#DC2626", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ═══════ PIPELINE SPLIT ═══════ */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 12, marginBottom: 18 }}>
-          <div style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 20, padding: "16px 20px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.5px" }}>Pipeline · {_ctFiltered.length} demanda{_ctFiltered.length === 1 ? "" : "s"}</div>
-              <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.04)", borderRadius: 999, padding: 2 }}>
-                {[{ k: "kanban", l: "Kanban" }, { k: "pipeline", l: "Lista" }].map(o => (
-                  <button key={o.k} onClick={() => _ctSetView(o.k)} style={{ padding: "4px 11px", borderRadius: 999, fontSize: 10.5, fontWeight: 700, background: _ctView === o.k ? "#FFFFFF" : "transparent", color: _ctView === o.k ? "#192126" : "#8B8F92", boxShadow: _ctView === o.k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
-                ))}
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Atenção</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.01em" }}>{lateCount} atrasada{lateCount === 1 ? "" : "s"} → ver</div>
               </div>
-            </div>
-            <div style={{ display: "flex", height: 12, borderRadius: 7, overflow: "hidden", background: "rgba(0,0,0,0.04)", marginBottom: 10 }}>
-              {_ctPipeline.map(s => {
-                const flex = _ctFiltered.length > 0 ? (s.count / _ctFiltered.length) * 100 : 0;
-                if (flex <= 0) return null;
-                return <div key={s.k} title={`${s.l}: ${s.count}`} style={{ flexGrow: flex, background: s.c, minWidth: 2, transition: "flex-grow .6s cubic-bezier(0.4,0,0.2,1)" }}></div>;
-              })}
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 14px", fontSize: 10.5 }}>
-              {_ctPipeline.map(s => (
-                <span key={s.k} style={{ display: "inline-flex", alignItems: "center", gap: 5, opacity: s.count > 0 ? 1 : 0.4 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.c }}></span>
-                  <span style={{ fontWeight: 600, color: "#8B8F92" }}>{s.l}</span>
-                  <b style={{ color: "#192126" }}>{s.count}</b>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div onClick={lateCount > 0 ? () => _ctSetScope("late") : undefined} style={{ background: lateCount > 0 ? "linear-gradient(135deg, rgba(220,38,38,0.10), rgba(255,255,255,0.85))" : "rgba(240,250,213,0.65)", border: "1px solid " + (lateCount > 0 ? "rgba(220,38,38,0.25)" : "rgba(187,242,70,0.4)"), borderRadius: 20, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, cursor: lateCount > 0 ? "pointer" : "default" }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, background: lateCount > 0 ? "#DC2626" : "#BBF246", color: lateCount > 0 ? "#FFFFFF" : "#0D0D0D", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {lateCount > 0 ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              )}
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>{lateCount > 0 ? "Atenção" : "Tudo em dia"}</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em", marginTop: 1 }}>{lateCount > 0 ? `${lateCount} demanda${lateCount === 1 ? "" : "s"} atrasada${lateCount === 1 ? "" : "s"}` : "Nenhuma demanda atrasada"}</div>
-              {lateCount > 0 && <div style={{ fontSize: 10, color: "#DC2626", fontWeight: 700, marginTop: 2 }}>Ver todas →</div>}
-            </div>
-          </div>
+            </button>
+          )}
         </div>
 
         {/* ═══════ TOOLBAR (2 linhas) ═══════ */}
@@ -13305,19 +13254,47 @@ function ContentPageV2(props) {
               )}
             </div>
 
-            {/* Botões ação (cores sutis tipo home v2 — não 4 cores berrantes) */}
-            <button onClick={() => _ctSetToast("Publicação Rápida em breve")} style={{ background: "linear-gradient(135deg, #3B82F6, #6366F1)", color: "#FFFFFF", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 4px 12px rgba(99,102,241,0.25)" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-              Publicação Rápida
-            </button>
-            <button onClick={() => _ctSetToast("Munique Importer em breve")} style={{ background: "linear-gradient(135deg, #BBF246, #88C200)", color: "#0D0D0D", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 4px 12px rgba(136,194,0,0.25)" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              Importe com Munique
-            </button>
-            <button onClick={() => _ctSetToast("Gerar Posts de Notícias em breve")} style={{ background: "linear-gradient(135deg, #06B6D4, #0EA5E9)", color: "#FFFFFF", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 4px 12px rgba(14,165,233,0.25)" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
-              Gerar de Notícias
-            </button>
+            {/* Botão Ações (dropdown único com 3 opções) */}
+            <div style={{ position: "relative" }}>
+              <button onClick={() => _ctSetActionsOpen(v => !v)} style={{ background: "rgba(255,255,255,0.75)", color: "#192126", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "8px 14px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                Ações rápidas
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {_ctActionsOpen && (
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: 6, boxShadow: "0 14px 36px rgba(0,0,0,0.14)", zIndex: 50, minWidth: 240 }}>
+                  {[
+                    { l: "Publicação Rápida", desc: "Agendar post sem passar pelo Kanban", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>, msg: "Publicação Rápida em breve" },
+                    { l: "Importar com Munique", desc: "IA cria demandas em lote", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#88C200" strokeWidth="2.4"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, msg: "Munique Importer em breve" },
+                    { l: "Gerar de Notícias", desc: "Posts baseados em tendências", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" strokeWidth="2.2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/></svg>, msg: "Gerar de Notícias em breve" },
+                  ].map((a, i) => (
+                    <button key={i} onClick={() => { _ctSetActionsOpen(false); _ctSetToast(a.msg); setTimeout(() => _ctSetToast(""), 2500); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 10px", background: "transparent", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(0,0,0,0.03)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{a.icon}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#192126" }}>{a.l}</div>
+                        <div style={{ fontSize: 10, color: "#8B8F92", fontWeight: 500, marginTop: 1 }}>{a.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Toggle Kanban/Pipeline (igual V1) */}
+            <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.75)", borderRadius: 999, padding: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              <button onClick={() => _ctSetView("kanban")} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: _ctView === "kanban" ? "#FFFFFF" : "transparent", color: _ctView === "kanban" ? "#192126" : "#8B8F92", boxShadow: _ctView === "kanban" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>
+                Kanban
+              </button>
+              <button onClick={() => _ctSetView("pipeline")} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: _ctView === "pipeline" ? "#FFFFFF" : "transparent", color: _ctView === "pipeline" ? "#192126" : "#8B8F92", boxShadow: _ctView === "pipeline" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                Pipeline
+              </button>
+            </div>
+
             <div style={{ flex: 1 }}></div>
             <button onClick={() => _ctSetToast("Modal Nova demanda em breve")} style={{ background: "#0D0D0D", color: "#BBF246", border: "none", borderRadius: 999, padding: "9px 18px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -13343,13 +13320,11 @@ function ContentPageV2(props) {
                     flex: "0 0 282px",
                     display: "flex",
                     flexDirection: "column",
-                    background: "rgba(255,255,255,0.7)",
-                    border: "1px solid rgba(255,255,255,0.7)",
-                    borderTop: `3px solid ${s.c}`,
-                    borderRadius: 18,
+                    background: "rgba(255,255,255,0.55)",
+                    border: "1px solid rgba(0,0,0,0.04)",
+                    borderRadius: 16,
                     padding: "12px 10px 10px",
                     maxHeight: 720,
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.04)",
                     scrollSnapAlign: "start",
                     transition: "background .15s, outline .15s",
                   }}
@@ -13396,24 +13371,25 @@ function ContentPageV2(props) {
                             boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 4px 12px rgba(0,0,0,0.04)",
                             cursor: "grab",
                             animation: `_ctCardIn .25s ease-out ${i * 0.015}s both`,
-                            border: isAjuste ? "2px solid #F97316" : isExpired ? "2px solid #DC2626" : "none",
+                            border: isExpired ? "1px solid #DC2626" : isAjuste ? "1px solid #F97316" : "1px solid rgba(0,0,0,0.04)",
                             position: "relative",
                           }}
                         >
-                          {/* Pills topo: priority + tipo + warning */}
-                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
-                            <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: priCfg.bg, color: priCfg.c, letterSpacing: "0.3px" }}>{priCfg.l}</span>
-                            <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "rgba(0,0,0,0.05)", color: "#192126" }}>{fmtType}</span>
-                            {isAjuste && (
-                              <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(249,115,22,0.15)", color: "#C2410C", letterSpacing: "0.3px", display: "inline-flex", alignItems: "center", gap: 3 }}>
-                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-                                AJUSTE
-                              </span>
-                            )}
-                            {isExpired && (
-                              <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(220,38,38,0.15)", color: "#991B1B", letterSpacing: "0.3px" }}>EXPIRADO</span>
-                            )}
-                          </div>
+                          {/* Pills topo: APENAS priority ALTA + warning (sem tipo) */}
+                          {(priority === "alta" || isAjuste || isExpired) && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
+                              {priority === "alta" && <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "#FEE2E2", color: "#B91C1C", letterSpacing: "0.3px" }}>ALTA</span>}
+                              {isAjuste && (
+                                <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(249,115,22,0.15)", color: "#C2410C", letterSpacing: "0.3px", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                                  AJUSTE
+                                </span>
+                              )}
+                              {isExpired && (
+                                <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(220,38,38,0.15)", color: "#991B1B", letterSpacing: "0.3px" }}>EXPIRADO</span>
+                              )}
+                            </div>
+                          )}
                           {/* Título */}
                           <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 5, letterSpacing: "-0.01em" }}>{d.task || d.title || "Sem título"}</div>
                           {/* Cliente */}
@@ -13430,19 +13406,13 @@ function ContentPageV2(props) {
                               {assigneeName && (
                                 <div title={assigneeName} style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg, #0D0D0D, #333)", color: "#BBF246", fontSize: 8.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{assigneeName[0].toUpperCase()}</div>
                               )}
-                              {networks.includes("ig") && (
-                                <div title="Instagram" style={{ width: 16, height: 16, borderRadius: 4, background: "linear-gradient(135deg, #833AB4, #FD1D1D, #FCB045)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41 1.27-.06 1.65-.07 4.85-.07M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.8.31-1.47.72-2.14 1.39A5.9 5.9 0 00.63 4.14c-.3.76-.5 1.64-.56 2.91C.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.8.72 1.47 1.39 2.14.67.67 1.34 1.08 2.14 1.39.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56.8-.31 1.47-.72 2.14-1.39.67-.67 1.08-1.34 1.39-2.14.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.9 5.9 0 00-1.39-2.14A5.9 5.9 0 0019.86.63c-.76-.3-1.64-.5-2.91-.56C15.67.01 15.26 0 12 0zm0 5.84A6.16 6.16 0 1018.16 12 6.16 6.16 0 0012 5.84zm0 10.16A4 4 0 1116 12a4 4 0 01-4 4zm6.41-11.85a1.44 1.44 0 10-.001 2.881A1.44 1.44 0 0018.41 4.15z"/></svg>
-                                </div>
+                              {networks.length > 0 && (
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 9, fontWeight: 700, color: "#8B8F92" }}>
+                                  {networks.includes("ig") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>}
+                                  {networks.includes("fb") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>}
+                                </span>
                               )}
-                              {networks.includes("fb") && (
-                                <div title="Facebook" style={{ width: 16, height: 16, borderRadius: 4, background: "#1877F2", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M24 12a12 12 0 10-13.88 11.85v-8.38H7.08V12h3.04V9.36c0-3 1.79-4.66 4.52-4.66 1.31 0 2.68.23 2.68.23v2.95h-1.5c-1.49 0-1.96.93-1.96 1.88V12h3.32l-.53 3.47h-2.79v8.38A12 12 0 0024 12z"/></svg>
-                                </div>
-                              )}
-                              {aspectRatio && (
-                                <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 5px", borderRadius: 4, background: "rgba(0,0,0,0.05)", color: "#8B8F92", letterSpacing: "0.2px" }}>{aspectRatio}</span>
-                              )}
+                              {aspectRatio && <span style={{ fontSize: 9, fontWeight: 700, color: "#8B8F92" }}>{aspectRatio}</span>}
                             </div>
                           </div>
                         </div>
@@ -13455,29 +13425,120 @@ function ContentPageV2(props) {
             })}
           </div>
         ) : (
-          /* PIPELINE LIST VIEW */
-          <div style={{ background: "rgba(255,255,255,0.85)", borderRadius: 18, padding: 4, maxHeight: 720, overflow: "auto" }}>
-            {_ctFiltered.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 40, color: "#8B8F92", fontSize: 13 }}>Nenhuma demanda</div>
-            ) : _ctFiltered.map((d, i) => {
-              const sCfg = _ctStages.find(s => s.k === lc(d.stage || d.status)) || _ctStages[0];
-              const date = d.scheduling?.date || d.schedule_date;
-              const time = d.scheduling?.time || d.schedule_time;
+          /* PIPELINE VIEW — drill-down com stage pills + grid expandido (igual V1) */
+          <div>
+            {/* Row de stage pills */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+              {_ctPipeline.map(s => {
+                const isOpen = _ctPipelineExpand === s.k;
+                return (
+                  <button key={s.k} onClick={() => _ctSetPipelineExpand(isOpen ? null : s.k)} style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    padding: "9px 14px",
+                    background: isOpen ? "#FFFFFF" : "rgba(255,255,255,0.75)",
+                    border: isOpen ? `1.5px solid ${s.c}` : "1px solid rgba(0,0,0,0.05)",
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#192126",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    boxShadow: isOpen ? `0 4px 14px ${s.c}33` : "none",
+                    transition: "all .15s",
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.c, flexShrink: 0 }}></span>
+                    {s.l}
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "2px 8px", borderRadius: 999, fontVariantNumeric: "tabular-nums" }}>{s.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Conteúdo expandido (grid 4 cols) */}
+            {_ctPipelineExpand ? (() => {
+              const sExp = _ctStages.find(s => s.k === _ctPipelineExpand);
+              const items = _ctByStage[_ctPipelineExpand] || [];
+              const clientInitialColor = (name) => {
+                if (!name) return ["#0D0D0D", "#333"];
+                const palette = [
+                  ["#DC2626", "#991B1B"], ["#F59E0B", "#B45309"], ["#10B981", "#047857"],
+                  ["#3B82F6", "#1E40AF"], ["#8B5CF6", "#6D28D9"], ["#EC4899", "#9F1239"],
+                  ["#06B6D4", "#0E7490"], ["#84CC16", "#4D7C0F"], ["#F97316", "#C2410C"],
+                ];
+                let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) & 0xffffffff;
+                return palette[Math.abs(h) % palette.length];
+              };
               return (
-                <div key={d.id || d.supaId || i} onClick={() => _ctSetDrawerOpen(d)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", borderBottom: i < _ctFiltered.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none", transition: "background .12s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(187,242,70,0.06)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-                >
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: sCfg.c, flexShrink: 0 }}></span>
-                  <div style={{ width: 90, fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", flexShrink: 0 }}>{sCfg.l}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.task || d.title || "Sem título"}</div>
-                    <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600 }}>{d.clientName || d.client || "—"} · {d.format || "Post"}</div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "rgba(255,255,255,0.7)", borderRadius: 14, marginBottom: 10, borderLeft: `3px solid ${sExp.c}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: sExp.c }}></span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "#192126", letterSpacing: "-0.01em" }}>{sExp.l}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "3px 10px", borderRadius: 999 }}>{items.length} {items.length === 1 ? "item" : "itens"}</span>
+                    </div>
+                    <button onClick={() => _ctSetPipelineExpand(null)} style={{ width: 26, height: 26, borderRadius: 8, background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", color: "#192126", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   </div>
-                  {date && <div style={{ fontSize: 10.5, color: isLatePost(d) ? "#DC2626" : "#8B8F92", fontWeight: 700, flexShrink: 0 }}>{fmtDate(date, time)}</div>}
+                  {items.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: 60, color: "#A0A4A7", fontSize: 12.5, fontStyle: "italic" }}>Nenhuma demanda nesse stage</div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                      {items.map((d, i) => {
+                        const client = d.clientName || d.client || "—";
+                        const initial = (client || "?")[0].toUpperCase();
+                        const [c1, c2] = clientInitialColor(client);
+                        const date = d.scheduling?.date || d.schedule_date;
+                        const time = d.scheduling?.time || d.schedule_time;
+                        const networks = d.networks || d.platforms || ["ig"];
+                        const fmt = d.format || (d.type === "video" ? "Reels" : "Post");
+                        const fmtType = ["reels", "stories"].includes(lc(fmt)) ? "Video" : "Post";
+                        const isLate = isLatePost(d);
+                        return (
+                          <div key={d.id || d.supaId || i} onClick={() => _ctSetDrawerOpen(d)} className="ct-card" style={{
+                            background: "#FFFFFF",
+                            borderRadius: 14,
+                            padding: "13px 14px",
+                            border: "1px solid rgba(0,0,0,0.05)",
+                            cursor: "pointer",
+                            animation: `_ctCardIn .25s ease-out ${i * 0.015}s both`,
+                          }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 10 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                                <div style={{ width: 22, height: 22, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{initial}</div>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.01em" }}>{client}</span>
+                              </div>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "#8B8F92", flexShrink: 0 }}>
+                                {networks.includes("ig") && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>}
+                                {networks.includes("fb") && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 8, letterSpacing: "-0.01em", minHeight: "calc(1.35em * 2)" }}>{d.task || d.title || "Sem título"}</div>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, fontSize: 10 }}>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                {lc(d.priority) === "alta" && <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "#FEE2E2", color: "#B91C1C", letterSpacing: "0.3px" }}>ALTA</span>}
+                                {date && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 700, color: isLate ? "#DC2626" : "#8B8F92" }}>
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    {fmtDate(date, time)}
+                                  </span>
+                                )}
+                              </div>
+                              <span style={{ fontSize: 9, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>{fmtType}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
-            })}
+            })() : (
+              <div style={{ textAlign: "center", padding: 80, color: "#8B8F92", fontSize: 13, fontWeight: 500 }}>
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.4, marginBottom: 10 }}><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                <div>Clique num stage acima pra ver as demandas</div>
+              </div>
+            )}
           </div>
         )}
       </div>
