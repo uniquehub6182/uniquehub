@@ -12987,6 +12987,7 @@ function ContentPageV2(props) {
   const [_ctToast, _ctSetToast] = useState("");
   const [_ctActionsOpen, _ctSetActionsOpen] = useState(false);
   const [_ctPipelineExpand, _ctSetPipelineExpand] = useState(null); // stage k expandido na view pipeline
+  const [_ctCalMonth, _ctSetCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
 
   // ─── Identidade ───
   const _ctFirstName = useMemo(() => {
@@ -13130,6 +13131,7 @@ function ContentPageV2(props) {
     .ct-card { transition: transform .15s, box-shadow .15s, opacity .15s; }
     .ct-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 14px 32px rgba(0,0,0,0.10); }
     .ct-card.dragging { opacity: 0.35; transform: rotate(2deg); }
+    .ct-card:hover .ct-card-actions { opacity: 1; }
     .ct-col.dragover { background: rgba(187,242,70,0.16) !important; outline: 2px dashed #BBF246; }
   `;
 
@@ -13167,8 +13169,8 @@ function ContentPageV2(props) {
           </div>
         </div>
 
-        {/* ═══════ HERO — limpo ═══════ */}
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, paddingBottom: 24 }}>
+        {/* ═══════ HERO RICO ═══════ */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, paddingBottom: 22, alignItems: "end" }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>Produção</div>
             <h1 style={{ fontSize: 64, fontWeight: 800, lineHeight: 0.95, letterSpacing: "-0.04em", margin: 0, color: "#192126" }}>Demandas</h1>
@@ -13178,18 +13180,47 @@ function ContentPageV2(props) {
               {thisWeekCount > 0 && <> · {thisWeekCount} esta semana</>}
             </div>
           </div>
-          {/* Atalho rápido lateral, sem cards berrantes */}
-          {lateCount > 0 && (
-            <button onClick={() => _ctSetScope("late")} style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontFamily: "inherit" }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "#DC2626", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              </div>
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Atenção</div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.01em" }}>{lateCount} atrasada{lateCount === 1 ? "" : "s"} → ver</div>
-              </div>
-            </button>
-          )}
+          {/* Workload por designer (top 4) — quem tá mais carregado */}
+          <div style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(0,0,0,0.04)", borderRadius: 16, padding: "12px 16px", backdropFilter: "blur(12px)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Workload da equipe</div>
+              <div style={{ fontSize: 10, color: "#8B8F92", fontWeight: 600 }}>demandas ativas por pessoa</div>
+            </div>
+            {(() => {
+              const byAssignee = {};
+              _ctFiltered.forEach(d => {
+                if (["published", "done", "publicado"].includes(lc(d.stage || d.status))) return;
+                const a = d.assigneeName || d.assignee || d.assignees?.[0] || "Não atribuído";
+                byAssignee[a] = (byAssignee[a] || 0) + 1;
+              });
+              const top = Object.entries(byAssignee).sort((a, b) => b[1] - a[1]).slice(0, 4);
+              const max = Math.max(1, ...top.map(t => t[1]));
+              return top.length === 0 ? (
+                <div style={{ fontSize: 11, color: "#A0A4A7", fontStyle: "italic", padding: "4px 0" }}>sem demandas atribuídas</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {top.map(([name, count]) => {
+                    const pct = (count / max) * 100;
+                    const isHeavy = count >= 10;
+                    return (
+                      <div key={name} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: "50%", background: "linear-gradient(135deg, #0D0D0D, #333)", color: "#BBF246", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{(name || "?")[0].toUpperCase()}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, marginBottom: 2 }}>
+                            <span style={{ fontWeight: 700, color: "#192126", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", maxWidth: "70%" }}>{name}</span>
+                            <span style={{ fontWeight: 800, color: isHeavy ? "#DC2626" : "#192126", flexShrink: 0 }}>{count}</span>
+                          </div>
+                          <div style={{ height: 4, background: "rgba(0,0,0,0.05)", borderRadius: 999, overflow: "hidden" }}>
+                            <div style={{ width: `${pct}%`, height: "100%", background: isHeavy ? "linear-gradient(90deg, #F59E0B, #DC2626)" : "linear-gradient(90deg, #BBF246, #88C200)", borderRadius: 999, transition: "width .6s cubic-bezier(0.4,0,0.2,1)" }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
         {/* ═══════ TOOLBAR (2 linhas) ═══════ */}
@@ -13283,7 +13314,7 @@ function ContentPageV2(props) {
               )}
             </div>
 
-            {/* Toggle Kanban/Pipeline (igual V1) */}
+            {/* Toggle Kanban/Pipeline/Calendário */}
             <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.75)", borderRadius: 999, padding: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
               <button onClick={() => _ctSetView("kanban")} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: _ctView === "kanban" ? "#FFFFFF" : "transparent", color: _ctView === "kanban" ? "#192126" : "#8B8F92", boxShadow: _ctView === "kanban" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>
@@ -13292,6 +13323,10 @@ function ContentPageV2(props) {
               <button onClick={() => _ctSetView("pipeline")} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: _ctView === "pipeline" ? "#FFFFFF" : "transparent", color: _ctView === "pipeline" ? "#192126" : "#8B8F92", boxShadow: _ctView === "pipeline" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
                 Pipeline
+              </button>
+              <button onClick={() => _ctSetView("calendar")} style={{ padding: "6px 12px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: _ctView === "calendar" ? "#FFFFFF" : "transparent", color: _ctView === "calendar" ? "#192126" : "#8B8F92", boxShadow: _ctView === "calendar" ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Calendário
               </button>
             </div>
 
@@ -13304,7 +13339,77 @@ function ContentPageV2(props) {
         </div>
 
         {/* ═══════ KANBAN ═══════ */}
-        {_ctView === "kanban" ? (
+        {_ctView === "calendar" ? (() => {
+          // ═══════ CALENDÁRIO ═══════
+          const monthStart = _ctCalMonth;
+          const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+          const firstDayOfWeek = monthStart.getDay(); // 0=dom
+          const daysInMonth = monthEnd.getDate();
+          const cells = [];
+          for (let i = 0; i < firstDayOfWeek; i++) cells.push(null);
+          for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(monthStart.getFullYear(), monthStart.getMonth(), d));
+          while (cells.length % 7 !== 0) cells.push(null);
+          const monthLabel = monthStart.toLocaleString("pt-BR", { month: "long", year: "numeric" });
+          // Demandas agrupadas por data
+          const byDay = {};
+          _ctFiltered.forEach(d => {
+            const dt = d.scheduling?.date || d.schedule_date;
+            if (!dt) return;
+            if (!byDay[dt]) byDay[dt] = [];
+            byDay[dt].push(d);
+          });
+          const todayYmdStr = new Date().toISOString().slice(0, 10);
+          const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          const stageColor = (k) => _ctStages.find(s => s.k === k)?.c || "#8B8F92";
+          return (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button onClick={() => _ctSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1))} style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(255,255,255,0.75)", border: "1px solid rgba(0,0,0,0.06)", cursor: "pointer", color: "#192126", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><polyline points="15 18 9 12 15 6"/></svg>
+                  </button>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em", textTransform: "capitalize", minWidth: 200 }}>{monthLabel}</div>
+                  <button onClick={() => _ctSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1))} style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(255,255,255,0.75)", border: "1px solid rgba(0,0,0,0.06)", cursor: "pointer", color: "#192126", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                  <button onClick={() => { const n = new Date(); _ctSetCalMonth(new Date(n.getFullYear(), n.getMonth(), 1)); }} style={{ padding: "7px 14px", borderRadius: 999, background: "rgba(255,255,255,0.75)", border: "1px solid rgba(0,0,0,0.06)", fontSize: 11.5, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit", marginLeft: 4 }}>Hoje</button>
+                </div>
+                <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>{Object.keys(byDay).filter(d => d.startsWith(monthStart.toISOString().slice(0, 7))).reduce((s, k) => s + byDay[k].length, 0)} posts neste mês</div>
+              </div>
+              {/* Grid 7-col */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+                {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map(d => (
+                  <div key={d} style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", padding: "6px 8px" }}>{d}</div>
+                ))}
+                {cells.map((cell, i) => {
+                  if (!cell) return <div key={i} style={{ background: "transparent", minHeight: 110 }}></div>;
+                  const cellYmd = ymd(cell);
+                  const items = byDay[cellYmd] || [];
+                  const isToday = cellYmd === todayYmdStr;
+                  const isWeekend = cell.getDay() === 0 || cell.getDay() === 6;
+                  return (
+                    <div key={i} style={{ background: isToday ? "rgba(187,242,70,0.12)" : "rgba(255,255,255,0.7)", border: isToday ? "1.5px solid #BBF246" : "1px solid rgba(0,0,0,0.04)", borderRadius: 10, padding: 6, minHeight: 110, display: "flex", flexDirection: "column", gap: 3 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                        <div style={{ fontSize: 11, fontWeight: isToday ? 800 : 700, color: isToday ? "#0D7C00" : isWeekend ? "#A0A4A7" : "#192126" }}>{cell.getDate()}</div>
+                        {items.length > 0 && <div style={{ fontSize: 8, fontWeight: 800, padding: "1px 5px", borderRadius: 999, background: "rgba(0,0,0,0.06)", color: "#8B8F92" }}>{items.length}</div>}
+                      </div>
+                      {items.slice(0, 3).map((d, j) => {
+                        const stage = lc(d.stage || d.status);
+                        const sCfg = _ctStages.find(s => s.k === stage) || _ctStages[0];
+                        return (
+                          <div key={d.id || d.supaId || j} onClick={(e) => { e.stopPropagation(); _ctSetDrawerOpen(d); }} style={{ background: "#FFFFFF", borderRadius: 6, padding: "3px 5px", fontSize: 9, fontWeight: 700, color: "#192126", cursor: "pointer", borderLeft: `2.5px solid ${sCfg.c}`, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", lineHeight: 1.3 }} title={`${d.task || d.title} · ${d.clientName || d.client || ""}`}>
+                            {(d.scheduling?.time || d.schedule_time || "").slice(0, 5)} {d.task || d.title || "—"}
+                          </div>
+                        );
+                      })}
+                      {items.length > 3 && <div style={{ fontSize: 8.5, fontWeight: 700, color: "#8B8F92", padding: "1px 4px" }}>+ {items.length - 3} mais</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })() : _ctView === "kanban" ? (
           <div style={{ display: "flex", gap: 11, overflowX: "auto", overflowY: "hidden", padding: "4px 4px 16px", scrollSnapType: "x mandatory" }}>
             {_ctStages.map(s => {
               const items = _ctByStage[s.k] || [];
@@ -13353,9 +13458,30 @@ function ContentPageV2(props) {
                       const fmtType = ["reels", "stories"].includes(lc(fmt)) ? "Video" : "Post";
                       const aspectRatio = lc(fmt) === "reels" || lc(fmt) === "stories" ? "9:16" : lc(fmt) === "feed" || lc(fmt) === "carrossel" ? "3:4" : null;
                       const assigneeName = d.assigneeName || d.assignee || d.assignees?.[0];
+                      const stageIdx = _ctStages.findIndex(st => st.k === lc(d.stage || d.status));
                       const networks = d.networks || d.platforms || (lc(fmt) === "reels" ? ["ig", "fb"] : ["ig"]);
                       const isDragging = _ctDragId === (d.supaId || d.id);
 
+                      // Thumbnail visual: usa cover_url se tem, senão gradient por format
+                      const coverUrl = d.cover_url || d.coverUrl || d.thumbnail_url || d.thumbnail || d.media_url;
+                      const fmtGrad = lc(fmt) === "reels" ? "linear-gradient(135deg, #EC4899, #BE185D)"
+                        : lc(fmt) === "stories" ? "linear-gradient(135deg, #F59E0B, #EA580C)"
+                        : lc(fmt) === "carrossel" ? "linear-gradient(135deg, #3B82F6, #6366F1)"
+                        : lc(fmt) === "feed" ? "linear-gradient(135deg, #10B981, #047857)"
+                        : "linear-gradient(135deg, #0D0D0D, #333)";
+                      const fmtIcon = lc(fmt) === "reels" || lc(fmt) === "stories" ? (
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFFFFF"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      ) : lc(fmt) === "carrossel" ? (
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 21h10a2 2 0 0 0 2-2V8"/></svg>
+                      ) : (
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.35-4.35a1 1 0 0 0-1.41 0L7 19"/></svg>
+                      );
+                      const clientInitialColor = (() => {
+                        const name = d.clientName || d.client || "";
+                        const palette = [["#DC2626","#991B1B"],["#F59E0B","#B45309"],["#10B981","#047857"],["#3B82F6","#1E40AF"],["#8B5CF6","#6D28D9"],["#EC4899","#9F1239"],["#06B6D4","#0E7490"],["#84CC16","#4D7C0F"],["#F97316","#C2410C"]];
+                        let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) & 0xffffffff;
+                        return palette[Math.abs(h) % palette.length];
+                      })();
                       return (
                         <div
                           key={d.id || d.supaId || i}
@@ -13366,8 +13492,8 @@ function ContentPageV2(props) {
                           onClick={() => _ctSetDrawerOpen(d)}
                           style={{
                             background: "#FFFFFF",
-                            borderRadius: 12,
-                            padding: "10px 12px",
+                            borderRadius: 14,
+                            overflow: "hidden",
                             boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 4px 12px rgba(0,0,0,0.04)",
                             cursor: "grab",
                             animation: `_ctCardIn .25s ease-out ${i * 0.015}s both`,
@@ -13375,44 +13501,73 @@ function ContentPageV2(props) {
                             position: "relative",
                           }}
                         >
-                          {/* Pills topo: APENAS priority ALTA + warning (sem tipo) */}
-                          {(priority === "alta" || isAjuste || isExpired) && (
-                            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
-                              {priority === "alta" && <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "#FEE2E2", color: "#B91C1C", letterSpacing: "0.3px" }}>ALTA</span>}
+                          {/* THUMB VISUAL no topo do card (gradient ou imagem real) */}
+                          <div className="ct-thumb" style={{
+                            height: 72,
+                            background: coverUrl ? `url(${coverUrl}) center/cover no-repeat` : fmtGrad,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            position: "relative",
+                          }}>
+                            {!coverUrl && <div style={{ opacity: 0.85 }}>{fmtIcon}</div>}
+                            {/* Overlay: pills topo */}
+                            <div style={{ position: "absolute", top: 6, left: 6, display: "flex", gap: 4, flexWrap: "wrap" }}>
+                              {priority === "alta" && <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.95)", color: "#B91C1C", letterSpacing: "0.3px", backdropFilter: "blur(4px)" }}>ALTA</span>}
                               {isAjuste && (
-                                <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(249,115,22,0.15)", color: "#C2410C", letterSpacing: "0.3px", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(249,115,22,0.95)", color: "#FFFFFF", letterSpacing: "0.3px", display: "inline-flex", alignItems: "center", gap: 3 }}>
                                   <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
                                   AJUSTE
                                 </span>
                               )}
-                              {isExpired && (
-                                <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(220,38,38,0.15)", color: "#991B1B", letterSpacing: "0.3px" }}>EXPIRADO</span>
-                              )}
+                              {isExpired && <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(220,38,38,0.95)", color: "#FFFFFF", letterSpacing: "0.3px" }}>EXPIRADO</span>}
                             </div>
-                          )}
-                          {/* Título */}
-                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 5, letterSpacing: "-0.01em" }}>{d.task || d.title || "Sem título"}</div>
-                          {/* Cliente */}
-                          <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600, marginBottom: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.clientName || d.client || "—"}</div>
-                          {/* Footer: data + avatar + redes + ratio */}
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10 }}>
-                            {dateLabel && (
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 700, color: isLate ? "#DC2626" : "#8B8F92", flexShrink: 0 }}>
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                {dateLabel}{time ? ` · ${time.slice(0, 5)}` : ""}
-                              </span>
-                            )}
-                            <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                              {assigneeName && (
-                                <div title={assigneeName} style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg, #0D0D0D, #333)", color: "#BBF246", fontSize: 8.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{assigneeName[0].toUpperCase()}</div>
+                            {/* Overlay: format + ratio badge no canto bottom-right */}
+                            <div style={{ position: "absolute", bottom: 6, right: 6, display: "flex", gap: 4, alignItems: "center" }}>
+                              {aspectRatio && <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 5px", borderRadius: 4, background: "rgba(0,0,0,0.6)", color: "#FFFFFF", backdropFilter: "blur(4px)" }}>{aspectRatio}</span>}
+                              <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(0,0,0,0.6)", color: "#FFFFFF", backdropFilter: "blur(4px)", textTransform: "uppercase" }}>{fmt}</span>
+                            </div>
+                            {/* QUICK ACTIONS overlay on hover */}
+                            <div className="ct-card-actions" style={{ position: "absolute", inset: 0, background: "rgba(13,13,13,0.65)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: 0, transition: "opacity .15s", backdropFilter: "blur(2px)" }}>
+                              {stageIdx !== _ctStages.length - 1 && (
+                                <button onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const next = _ctStages[stageIdx + 1].k;
+                                  setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === (d.supaId || d.id) ? { ...x, stage: next } : x)));
+                                  if (d.supaId && typeof supaUpdateDemand === "function") await supaUpdateDemand(d.supaId, { stage: next });
+                                  _ctSetToast(`→ ${_ctStages[stageIdx + 1].l}`); setTimeout(() => _ctSetToast(""), 1800);
+                                }} title="Avançar stage" style={{ width: 30, height: 30, borderRadius: "50%", background: "#BBF246", border: "none", color: "#0D0D0D", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
                               )}
-                              {networks.length > 0 && (
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: 2, fontSize: 9, fontWeight: 700, color: "#8B8F92" }}>
-                                  {networks.includes("ig") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>}
-                                  {networks.includes("fb") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>}
+                              <button onClick={(e) => { e.stopPropagation(); _ctSetDrawerOpen(d); }} title="Detalhes" style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(255,255,255,0.95)", border: "none", color: "#192126", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                              </button>
+                            </div>
+                          </div>
+                          {/* CORPO DO CARD */}
+                          <div style={{ padding: "10px 12px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+                              <div style={{ width: 18, height: 18, borderRadius: "50%", background: `linear-gradient(135deg, ${clientInitialColor[0]}, ${clientInitialColor[1]})`, color: "#FFFFFF", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{(d.clientName || d.client || "?")[0].toUpperCase()}</div>
+                              <span style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.clientName || d.client || "—"}</span>
+                            </div>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 8, letterSpacing: "-0.01em" }}>{d.task || d.title || "Sem título"}</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10 }}>
+                              {dateLabel && (
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 700, color: isLate ? "#DC2626" : "#8B8F92", flexShrink: 0 }}>
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                  {dateLabel}{time ? ` · ${time.slice(0, 5)}` : ""}
                                 </span>
                               )}
-                              {aspectRatio && <span style={{ fontSize: 9, fontWeight: 700, color: "#8B8F92" }}>{aspectRatio}</span>}
+                              <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                {networks.length > 0 && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 2, color: "#8B8F92" }}>
+                                    {networks.includes("ig") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>}
+                                    {networks.includes("fb") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>}
+                                  </span>
+                                )}
+                                {assigneeName && (
+                                  <div title={assigneeName} style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg, #0D0D0D, #333)", color: "#BBF246", fontSize: 8.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{assigneeName[0].toUpperCase()}</div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
