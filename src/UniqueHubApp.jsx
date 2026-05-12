@@ -12959,42 +12959,30 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
 function ContentPageV2(props) {
   const { user, clients, demands, setDemands, team, goTab, goSub, agencyIdentity } = props;
 
-  // ─── STAGES (cores mais muted, escala iOS) ───
+  // ─── STAGES ───
   const _ctStages = useMemo(() => [
-    { k: "idea",      l: "Ideia",      c: "#7C6BFE" },
-    { k: "briefing",  l: "Briefing",   c: "#4F8FFF" },
-    { k: "design",    l: "Criativo",   c: "#FF5AAA" },
-    { k: "caption",   l: "Legenda",    c: "#FFA94D" },
-    { k: "review",    l: "Revisão",    c: "#4DBEDB" },
-    { k: "client",    l: "Cliente",    c: "#2EC27E" },
-    { k: "ajuste",    l: "Alterações", c: "#FF7849" },
-    { k: "scheduled", l: "Programado", c: "#4DA3DD" },
-    { k: "published", l: "Publicado",  c: "#A0E83C" },
+    { k: "idea",      l: "Ideia",      c: "#A78BFA", icon: "💡" },
+    { k: "briefing",  l: "Briefing",   c: "#60A5FA", icon: "📋" },
+    { k: "design",    l: "Criativo",   c: "#F472B6", icon: "✏️" },
+    { k: "caption",   l: "Legenda",    c: "#FBBF24", icon: "✍️" },
+    { k: "review",    l: "Revisão",    c: "#22D3EE", icon: "🔍" },
+    { k: "client",    l: "Cliente",    c: "#34D399", icon: "👤" },
+    { k: "ajuste",    l: "Alterações", c: "#FB923C", icon: "🔧" },
+    { k: "scheduled", l: "Programado", c: "#0EA5E9", icon: "📅" },
+    { k: "published", l: "Publicado",  c: "#A0E83C", icon: "✓"  },
   ], []);
 
   // ─── STATES ───
-  const [_ctView, _ctSetView] = useState("kanban"); // kanban | pipeline | calendar
-  const [_ctSearch, _ctSetSearch] = useState("");
-  const [_ctScope, _ctSetScope] = useState("all"); // all | mine | late
-  const [_ctFmt, _ctSetFmt] = useState(null);
-  const [_ctClientF, _ctSetClientF] = useState(null);
-  const [_ctDateF, _ctSetDateF] = useState(null);
-  const [_ctStageFilter, _ctSetStageFilter] = useState(null); // filtra Kanban via stage nav
-  const [_ctFiltersOpen, _ctSetFiltersOpen] = useState(false);
-  const [_ctSheetDemand, _ctSetSheetDemand] = useState(null);
-  const [_ctDragId, _ctSetDragId] = useState(null);
-  const [_ctDragOverCol, _ctSetDragOverCol] = useState(null);
-  const [_ctToast, _ctSetToast] = useState("");
-  const [_ctCalMonth, _ctSetCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
-  const [_ctActionsOpen, _ctSetActionsOpen] = useState(false);
-  const [_ctPipelineExpand, _ctSetPipelineExpand] = useState(null);
-
-  // ─── IDENT ───
-  const _ctFirstName = useMemo(() => {
-    const n = user?.user_metadata?.first_name || user?.name || user?.email || "";
-    return String(n).split(" ")[0].split("@")[0] || "Matheus";
-  }, [user]);
-  const _ctAgencyName = useMemo(() => agencyIdentity?.name || "Unique Marketing", [agencyIdentity]);
+  // view: "hoje" | "semana" | "todas" | "atrasadas" | "publicadas" | "stage:idea" | ... | "kanban" | "calendar" | "cliente:Pet Way"
+  const [_thView, _thSetView] = useState("hoje");
+  const [_thSearch, _thSetSearch] = useState("");
+  const [_thSheet, _thSetSheet] = useState(null);
+  const [_thQuickAddOpen, _thSetQuickAddOpen] = useState(false);
+  const [_thDragId, _thSetDragId] = useState(null);
+  const [_thDragOver, _thSetDragOver] = useState(null);
+  const [_thToast, _thSetToast] = useState("");
+  const [_thCalMonth, _thSetCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
+  const [_thSidebarExpanded, _thSetSidebarExpanded] = useState({ stages: true, clientes: false, atalhos: false });
 
   // ─── HELPERS ───
   const lc = (s) => (s || "").toString().toLowerCase();
@@ -13011,94 +12999,125 @@ function ContentPageV2(props) {
     if (isNaN(dd.getTime())) return null;
     const ms = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
     let s = `${dd.getDate()} ${ms[dd.getMonth()]}`;
-    if (time) s += ` · ${time.slice(0, 5)}`;
+    if (time) s += `, ${time.slice(0, 5)}`;
     return s;
   };
   const relDate = (date) => {
     if (!date) return null;
-    if (date === todayYmd) return "hoje";
+    if (date === todayYmd) return "Hoje";
     const d1 = new Date(date + "T12:00:00"); const d2 = new Date(todayYmd + "T12:00:00");
     const diff = Math.round((d1 - d2) / 86400000);
-    if (diff === 1) return "amanhã";
-    if (diff === -1) return "ontem";
-    if (diff < 0 && diff > -7) return `${Math.abs(diff)}d atrás`;
+    if (diff === 1) return "Amanhã";
+    if (diff === -1) return "Ontem";
+    if (diff < 0 && diff > -7) return `${Math.abs(diff)} dias atrás`;
     if (diff < 0) return fmtDate(date);
-    if (diff < 7) return `em ${diff}d`;
+    if (diff < 7) return `Em ${diff} dias`;
     return fmtDate(date);
   };
-  const clientHue = (name) => {
-    if (!name) return ["#0A0A0B", "#2A2A2D"];
-    const palette = [["#7C6BFE","#5B4DD9"],["#FF5AAA","#D63B8A"],["#4DBEDB","#2A9DBA"],["#FFA94D","#E08530"],["#2EC27E","#1A9E5D"],["#4F8FFF","#3373E0"],["#FF7849","#E15C2E"],["#A0E83C","#7CC020"]];
-    let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) & 0xffffffff;
-    return palette[Math.abs(h) % palette.length];
-  };
+  const _ctFirstName = useMemo(() => {
+    const n = user?.user_metadata?.first_name || user?.name || user?.email || "";
+    return String(n).split(" ")[0].split("@")[0] || "Matheus";
+  }, [user]);
+  const _ctAgencyName = useMemo(() => agencyIdentity?.name || "Unique Marketing", [agencyIdentity]);
 
-  // ─── FILTROS ───
-  const _ctFiltered = useMemo(() => {
+  // ─── DEMANDS BY VIEW ───
+  const allActive = useMemo(() => (Array.isArray(demands) ? demands : []).filter(d => !["published", "done", "publicado"].includes(lc(d.stage || d.status))), [demands]);
+
+  const visibleDemands = useMemo(() => {
     let list = Array.isArray(demands) ? [...demands] : [];
-    if (_ctScope === "mine") list = list.filter(d => (d.assignees || []).some(a => a === user?.id) || lc(d.assignee) === lc(_ctFirstName));
-    if (_ctScope === "late") list = list.filter(isLatePost);
-    if (_ctFmt) list = list.filter(d => lc(d.format) === lc(_ctFmt));
-    if (_ctClientF) list = list.filter(d => d.clientName === _ctClientF || d.client === _ctClientF);
-    if (_ctDateF) list = list.filter(d => (d.scheduling?.date || d.schedule_date) === _ctDateF);
-    if (_ctSearch.trim()) {
-      const s = _ctSearch.trim().toLowerCase();
+
+    if (_thView === "hoje") {
+      list = list.filter(d => {
+        const dt = d.scheduling?.date || d.schedule_date;
+        return dt === todayYmd && !["published", "done"].includes(lc(d.stage || d.status));
+      });
+    } else if (_thView === "semana") {
+      list = list.filter(d => {
+        const dt = d.scheduling?.date || d.schedule_date;
+        if (!dt || ["published", "done"].includes(lc(d.stage || d.status))) return false;
+        const d1 = new Date(dt + "T12:00:00"); const d2 = new Date(todayYmd + "T12:00:00");
+        const diff = Math.round((d1 - d2) / 86400000);
+        return diff >= 0 && diff <= 7;
+      });
+    } else if (_thView === "todas") {
+      list = list.filter(d => !["published", "done", "publicado"].includes(lc(d.stage || d.status)));
+    } else if (_thView === "atrasadas") {
+      list = list.filter(isLatePost);
+    } else if (_thView === "publicadas") {
+      list = list.filter(d => ["published", "done", "publicado"].includes(lc(d.stage || d.status)));
+    } else if (_thView.startsWith("stage:")) {
+      const k = _thView.slice(6);
+      list = list.filter(d => lc(d.stage || d.status) === k);
+    } else if (_thView.startsWith("cliente:")) {
+      const cn = _thView.slice(8);
+      list = list.filter(d => (d.clientName || d.client) === cn);
+    }
+    // search global
+    if (_thSearch.trim()) {
+      const s = _thSearch.trim().toLowerCase();
       list = list.filter(d => (d.task || d.title || "").toLowerCase().includes(s) || (d.clientName || d.client || "").toLowerCase().includes(s));
     }
     return list;
-  }, [demands, _ctScope, _ctFmt, _ctClientF, _ctDateF, _ctSearch, user, _ctFirstName]);
+  }, [demands, _thView, _thSearch]);
 
-  // Stage filtered version (pra Kanban quando filtrar stage)
-  const _ctKanbanVisible = useMemo(() => {
-    if (!_ctStageFilter) return _ctStages;
-    return _ctStages.filter(s => s.k === _ctStageFilter);
-  }, [_ctStages, _ctStageFilter]);
+  // ─── COUNTS pra sidebar ───
+  const counts = useMemo(() => {
+    const dArr = Array.isArray(demands) ? demands : [];
+    const isToday = (d) => (d.scheduling?.date || d.schedule_date) === todayYmd && !["published", "done"].includes(lc(d.stage || d.status));
+    const inWeek = (d) => {
+      const dt = d.scheduling?.date || d.schedule_date;
+      if (!dt || ["published", "done"].includes(lc(d.stage || d.status))) return false;
+      const d1 = new Date(dt + "T12:00:00"); const d2 = new Date(todayYmd + "T12:00:00");
+      const diff = Math.round((d1 - d2) / 86400000);
+      return diff >= 0 && diff <= 7;
+    };
+    const byStage = {};
+    _ctStages.forEach(s => byStage[s.k] = 0);
+    dArr.forEach(d => { const k = lc(d.stage || d.status); if (byStage[k] !== undefined) byStage[k]++; });
+    return {
+      hoje: dArr.filter(isToday).length,
+      semana: dArr.filter(inWeek).length,
+      todas: dArr.filter(d => !["published", "done", "publicado"].includes(lc(d.stage || d.status))).length,
+      atrasadas: dArr.filter(isLatePost).length,
+      publicadas: dArr.filter(d => ["published", "done", "publicado"].includes(lc(d.stage || d.status))).length,
+      byStage,
+    };
+  }, [demands, _ctStages]);
 
-  const _ctByStage = useMemo(() => {
-    const map = {};
-    _ctStages.forEach(s => map[s.k] = []);
-    _ctFiltered.forEach(d => {
-      const stage = lc(d.stage || d.status || "idea");
-      if (map[stage]) map[stage].push(d);
-      else if (map.idea) map.idea.push(d);
-    });
-    return map;
-  }, [_ctFiltered, _ctStages]);
-
-  const totalActive = _ctFiltered.filter(d => !["published", "done", "publicado"].includes(lc(d.stage || d.status))).length;
-  const lateCount = _ctFiltered.filter(isLatePost).length;
-
-  const _ctClientList = useMemo(() => {
-    const names = new Set();
-    (Array.isArray(clients) ? clients : []).forEach(c => c.name && names.add(c.name));
+  // ─── Clientes únicos (top 8 por número de demandas ativas) ───
+  const sidebarClientes = useMemo(() => {
+    const counts = {};
     (Array.isArray(demands) ? demands : []).forEach(d => {
-      const n = d.clientName || d.client; if (n) names.add(n);
+      if (["published", "done"].includes(lc(d.stage || d.status))) return;
+      const cn = d.clientName || d.client;
+      if (!cn) return;
+      counts[cn] = (counts[cn] || 0) + 1;
     });
-    return Array.from(names).sort();
-  }, [clients, demands]);
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [demands]);
 
   // ─── DRAG & DROP ───
   const onDragStart = (e, d) => {
     const id = d.supaId || d.id;
-    _ctSetDragId(id);
+    _thSetDragId(id);
     e.dataTransfer.effectAllowed = "move";
     try { e.dataTransfer.setData("text/plain", id); } catch {}
   };
   const onDragOver = (e, stageK) => {
     e.preventDefault();
-    if (_ctDragOverCol !== stageK) _ctSetDragOverCol(stageK);
+    if (_thDragOver !== stageK) _thSetDragOver(stageK);
   };
   const onDrop = async (e, stageK) => {
     e.preventDefault();
-    _ctSetDragOverCol(null);
-    const id = _ctDragId;
-    _ctSetDragId(null);
+    _thSetDragOver(null);
+    const id = _thDragId;
+    _thSetDragId(null);
     if (!id) return;
     const target = (demands || []).find(d => (d.supaId || d.id) === id);
     if (!target || lc(target.stage || target.status) === stageK) return;
     setDemands && setDemands(prev => prev.map(d => ((d.supaId || d.id) === id ? { ...d, stage: stageK } : d)));
-    _ctSetToast(`→ ${_ctStages.find(s => s.k === stageK)?.l}`);
-    setTimeout(() => _ctSetToast(""), 2200);
+    _thSetToast(`Movido pra ${_ctStages.find(s => s.k === stageK)?.l}`);
+    setTimeout(() => _thSetToast(""), 2200);
     if (target.supaId && typeof supaUpdateDemand === "function") {
       try { await supaUpdateDemand(target.supaId, { stage: stageK }); } catch {}
     }
@@ -13110,620 +13129,548 @@ function ContentPageV2(props) {
     const tgt = _ctStages[idx + dir];
     if (!tgt) return;
     setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === (d.supaId || d.id) ? { ...x, stage: tgt.k } : x)));
-    _ctSetSheetDemand(prev => prev && (prev.supaId || prev.id) === (d.supaId || d.id) ? { ...prev, stage: tgt.k } : prev);
-    _ctSetToast(`${dir > 0 ? "→" : "←"} ${tgt.l}`);
-    setTimeout(() => _ctSetToast(""), 2000);
+    _thSetSheet(prev => prev && (prev.supaId || prev.id) === (d.supaId || d.id) ? { ...prev, stage: tgt.k } : prev);
+    _thSetToast(`${dir > 0 ? "→" : "←"} ${tgt.l}`);
+    setTimeout(() => _thSetToast(""), 2000);
     if (d.supaId && typeof supaUpdateDemand === "function") await supaUpdateDemand(d.supaId, { stage: tgt.k });
   };
 
-  const activeFiltersCount = [_ctScope !== "all", !!_ctFmt, !!_ctClientF, !!_ctDateF].filter(Boolean).length;
-  const clearAllFilters = () => { _ctSetScope("all"); _ctSetFmt(null); _ctSetClientF(null); _ctSetDateF(null); _ctSetSearch(""); _ctSetStageFilter(null); };
+  // ─── Group demands by date for list views ───
+  const groupByDate = (list) => {
+    const groups = { Hoje: [], Amanhã: [], "Esta semana": [], "Próximas semanas": [], "Sem data": [] };
+    list.forEach(d => {
+      const dt = d.scheduling?.date || d.schedule_date;
+      if (!dt) { groups["Sem data"].push(d); return; }
+      if (dt === todayYmd) { groups.Hoje.push(d); return; }
+      const d1 = new Date(dt + "T12:00:00"); const d2 = new Date(todayYmd + "T12:00:00");
+      const diff = Math.round((d1 - d2) / 86400000);
+      if (diff === 1) { groups.Amanhã.push(d); return; }
+      if (diff > 0 && diff <= 7) { groups["Esta semana"].push(d); return; }
+      groups["Próximas semanas"].push(d);
+    });
+    return groups;
+  };
+
+  // ─── Render row de demand (Things style) ───
+  const renderDemandRow = (d, i, opts = {}) => {
+    const stage = lc(d.stage || d.status);
+    const sCfg = _ctStages.find(s => s.k === stage) || _ctStages[0];
+    const isDone = stage === "published" || stage === "done";
+    const isLate = isLatePost(d);
+    const date = d.scheduling?.date || d.schedule_date;
+    const time = d.scheduling?.time || d.schedule_time;
+    const client = d.clientName || d.client || "—";
+    const fmt = d.format || (d.type === "video" ? "Reels" : "Post");
+    const priority = lc(d.priority);
+    const assigneeName = d.assigneeName || d.assignee || d.assignees?.[0];
+    const networks = d.networks || d.platforms || ["ig"];
+    const isAjuste = stage === "ajuste";
+    return (
+      <div
+        key={d.id || d.supaId || i}
+        onClick={() => _thSetSheet(d)}
+        draggable={!opts.noDrag}
+        onDragStart={(e) => onDragStart(e, d)}
+        onDragEnd={() => { _thSetDragId(null); _thSetDragOver(null); }}
+        className="th-row"
+        style={{
+          display: "flex", alignItems: "flex-start", gap: 14, padding: "13px 14px",
+          borderRadius: 10, cursor: "pointer",
+          background: "transparent",
+          transition: "background .14s ease, transform .14s ease",
+          opacity: _thDragId === (d.supaId || d.id) ? 0.4 : 1,
+        }}
+      >
+        {/* Checkbox-like stage indicator */}
+        <div style={{ marginTop: 1, flexShrink: 0 }}>
+          <div onClick={(e) => { e.stopPropagation(); advanceDemand(d, 1); }} style={{
+            width: 19, height: 19, borderRadius: "50%",
+            border: `1.5px solid ${isDone ? sCfg.c : sCfg.c + "80"}`,
+            background: isDone ? sCfg.c : "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", transition: "all .2s cubic-bezier(0.32, 0.72, 0, 1)",
+          }}
+            title="Avançar stage"
+            onMouseEnter={e => { e.currentTarget.style.background = sCfg.c + "20"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = isDone ? sCfg.c : "transparent"; }}
+          >
+            {isDone && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+          </div>
+        </div>
+
+        {/* Conteúdo */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 3 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 500, color: "#1C1C1E", letterSpacing: "-0.012em", lineHeight: 1.32, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.task || d.title || "Sem título"}</div>
+            {priority === "alta" && <span style={{ fontSize: 10, fontWeight: 600, color: "#E1483F", flexShrink: 0 }}>!</span>}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12.5, color: "#8E8E93", fontWeight: 400, letterSpacing: "-0.008em" }}>{client}</span>
+            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#C7C7CC" }}></span>
+            <span style={{ fontSize: 12.5, color: "#8E8E93", fontWeight: 400 }}>{fmt}</span>
+            {date && (<>
+              <span style={{ width: 3, height: 3, borderRadius: "50%", background: "#C7C7CC" }}></span>
+              <span className="tabnum" style={{ fontSize: 12.5, color: isLate ? "#E1483F" : "#8E8E93", fontWeight: isLate ? 500 : 400 }}>{relDate(date)}{time ? `, ${time.slice(0, 5)}` : ""}</span>
+            </>)}
+            {isAjuste && <span style={{ fontSize: 10.5, fontWeight: 600, color: "#FB923C", letterSpacing: "0.02em", textTransform: "uppercase", marginLeft: 4 }}>ajuste</span>}
+          </div>
+        </div>
+
+        {/* Right side: avatar + networks subtle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, color: "#C7C7CC" }}>
+          <div style={{ display: "inline-flex", gap: 4 }}>
+            {networks.includes("ig") && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>}
+            {networks.includes("fb") && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>}
+          </div>
+          {assigneeName && <div title={assigneeName} style={{ width: 22, height: 22, borderRadius: "50%", background: "#F2F2F7", color: "#1C1C1E", fontSize: 10, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", letterSpacing: "0" }}>{assigneeName[0].toUpperCase()}</div>}
+        </div>
+      </div>
+    );
+  };
 
   // ─── CSS ───
-  const cssLocal = `
-    .ct2 { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-    .ct2 * { box-sizing: border-box; }
-    .ct2 ::-webkit-scrollbar { height: 10px; width: 8px; }
-    .ct2 ::-webkit-scrollbar-track { background: transparent; }
-    .ct2 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.10); border-radius: 999px; }
-    .ct2 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
-    .ct2 .tabnum { font-variant-numeric: tabular-nums; }
-    @keyframes _ct2FadeIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
-    @keyframes _ct2SheetIn { 0% { transform: translateY(100%); } 100% { transform: translateY(0); } }
-    @keyframes _ct2BackdropIn { 0% { opacity: 0; } 100% { opacity: 1; } }
-    @keyframes _ct2ToastIn { 0% { transform: translateX(-50%) translateY(12px); opacity: 0; } 100% { transform: translateX(-50%) translateY(0); opacity: 1; } }
-    .ct2-card { transition: transform .4s cubic-bezier(0.32, 0.72, 0, 1), box-shadow .3s ease; }
-    .ct2-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05); }
-    .ct2-card.dragging { opacity: 0.4; }
-    .ct2-col.dragover { background: rgba(187,242,70,0.10) !important; box-shadow: inset 0 0 0 2px #BBF246; }
-    .ct2-btn { transition: all .15s ease; }
-    .ct2-btn:hover { transform: translateY(-0.5px); }
-    .ct2-btn:active { transform: translateY(0); opacity: 0.85; }
-    .ct2-segment { transition: background .25s cubic-bezier(0.32, 0.72, 0, 1), color .25s ease, box-shadow .25s ease; }
-    .ct2-cover-overlay { opacity: 0; transition: opacity .25s ease; }
-    .ct2-card:hover .ct2-cover-overlay { opacity: 1; }
+  const css = `
+    .th { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    .th * { box-sizing: border-box; }
+    .th .tabnum { font-variant-numeric: tabular-nums; }
+    .th ::-webkit-scrollbar { width: 6px; height: 6px; }
+    .th ::-webkit-scrollbar-track { background: transparent; }
+    .th ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.10); border-radius: 999px; }
+    .th ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.20); }
+    .th-row:hover { background: rgba(0,0,0,0.03) !important; }
+    .th-sidebar-item:hover { background: rgba(0,0,0,0.04) !important; }
+    .th-sidebar-item.active { background: rgba(187,242,70,0.18); }
+    .th-sidebar-item.active .th-side-label { color: #1C1C1E; font-weight: 600; }
+    @keyframes _thFadeIn { 0% { opacity: 0; transform: translateY(4px); } 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes _thSheetIn { 0% { transform: translateX(100%); opacity: 0.5; } 100% { transform: translateX(0); opacity: 1; } }
+    @keyframes _thBackdrop { 0% { opacity: 0; } 100% { opacity: 1; } }
+    @keyframes _thToastIn { 0% { transform: translateX(-50%) translateY(8px); opacity: 0; } 100% { transform: translateX(-50%) translateY(0); opacity: 1; } }
+    @keyframes _thPlusBob { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+    .th-plus { transition: transform .25s cubic-bezier(0.32, 0.72, 0, 1), box-shadow .25s; }
+    .th-plus:hover { transform: scale(1.06); box-shadow: 0 14px 32px rgba(0,0,0,0.18); }
+    .th-plus:active { transform: scale(0.96); }
+    .th-kanban-col.dragover { background: rgba(187,242,70,0.10) !important; }
+    .th-card { transition: background .15s ease, transform .15s ease, box-shadow .15s ease; }
+    .th-card:hover { background: rgba(0,0,0,0.02); }
   `;
+
+  const viewLabel = (() => {
+    if (_thView === "hoje") return { title: "Hoje", subtitle: counts.hoje === 0 ? "Nenhuma demanda pra hoje" : `${counts.hoje} ${counts.hoje === 1 ? "demanda" : "demandas"}` };
+    if (_thView === "semana") return { title: "Próximos 7 dias", subtitle: `${counts.semana} ${counts.semana === 1 ? "demanda" : "demandas"}` };
+    if (_thView === "todas") return { title: "Todas as ativas", subtitle: `${counts.todas} ${counts.todas === 1 ? "demanda" : "demandas"}` };
+    if (_thView === "atrasadas") return { title: "Atrasadas", subtitle: counts.atrasadas === 0 ? "Tudo em dia" : `${counts.atrasadas} precisam de atenção` };
+    if (_thView === "publicadas") return { title: "Publicadas", subtitle: `${counts.publicadas} ${counts.publicadas === 1 ? "demanda" : "demandas"}` };
+    if (_thView === "kanban") return { title: "Kanban", subtitle: `${counts.todas} ativas no pipeline` };
+    if (_thView === "calendar") return { title: "Calendário", subtitle: _thCalMonth.toLocaleString("pt-BR", { month: "long", year: "numeric" }) };
+    if (_thView.startsWith("stage:")) {
+      const k = _thView.slice(6);
+      const sc = _ctStages.find(s => s.k === k);
+      return { title: sc?.l || "Stage", subtitle: `${counts.byStage[k] || 0} ${(counts.byStage[k] || 0) === 1 ? "demanda" : "demandas"}` };
+    }
+    if (_thView.startsWith("cliente:")) {
+      const cn = _thView.slice(8);
+      return { title: cn, subtitle: `${visibleDemands.length} ${visibleDemands.length === 1 ? "demanda ativa" : "demandas ativas"}` };
+    }
+    return { title: "Demandas", subtitle: "" };
+  })();
 
   // ─── RENDER ───
   return (
-    <div className="ct2" style={{
+    <div className="th" style={{
       minHeight: "calc(100vh - 26px)",
       width: "100%",
       maxWidth: "none",
       padding: 0,
-      background: "#FAFAF7",
-      color: "#0A0A0B",
-      letterSpacing: "-0.01em",
+      background: "#FAFAFA",
+      color: "#1C1C1E",
+      letterSpacing: "-0.005em",
       position: "relative",
+      display: "flex",
     }}>
-      <style dangerouslySetInnerHTML={{ __html: cssLocal }} />
+      <style dangerouslySetInnerHTML={{ __html: css }} />
 
-      <div style={{ maxWidth: 1600, margin: "0 auto", padding: "32px 56px 200px" }}>
-
-        {/* ═══════ TOPBAR (minimal) ═══════ */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 56 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 11, background: "#0A0A0B", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800 }}>U</div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#0A0A0B", letterSpacing: "-0.012em" }}>unique <span style={{ fontWeight: 400, color: "#6E7178" }}>hub</span></div>
-              <div style={{ fontSize: 11, color: "#6E7178", fontWeight: 500 }}>{_ctAgencyName}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button className="ct2-btn" onClick={() => { localStorage.removeItem("uh_content"); window.location.search = "?content=v1"; }} style={{ background: "transparent", border: "1px solid rgba(0,0,0,0.06)", borderRadius: 999, padding: "7px 12px", fontSize: 11, fontWeight: 600, color: "#6E7178", cursor: "pointer", fontFamily: "inherit" }}>v1</button>
-            <button className="ct2-btn" onClick={() => goTab && goTab("home")} style={{ background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 12, fontWeight: 600, color: "#0A0A0B", cursor: "pointer", fontFamily: "inherit" }}>Home</button>
+      {/* ═══════ SIDEBAR (Things 3 style) ═══════ */}
+      <aside style={{
+        width: 248, flexShrink: 0,
+        background: "#F3F2EF",
+        borderRight: "1px solid rgba(0,0,0,0.06)",
+        padding: "20px 12px",
+        position: "sticky", top: 0,
+        alignSelf: "flex-start",
+        height: "calc(100vh - 26px)",
+        overflowY: "auto",
+        display: "flex", flexDirection: "column", gap: 4,
+      }}>
+        {/* Brand */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 8px 14px" }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: "#1C1C1E", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700 }}>U</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1C1C1E", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>unique <span style={{ fontWeight: 400, color: "#8E8E93" }}>hub</span></div>
+            <div style={{ fontSize: 11, color: "#8E8E93", fontWeight: 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{_ctAgencyName}</div>
           </div>
         </div>
 
-        {/* ═══════ HERO (iOS-style massive) ═══════ */}
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#6E7178", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>Produção</div>
-          <h1 style={{ fontSize: 96, fontWeight: 700, lineHeight: 0.92, letterSpacing: "-0.045em", margin: 0, color: "#0A0A0B" }}>Demandas</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: 24, marginTop: 18, fontSize: 14, fontWeight: 500, color: "#6E7178" }}>
-            <div className="tabnum"><b style={{ color: "#0A0A0B", fontWeight: 700 }}>{totalActive}</b> ativas</div>
-            <div style={{ width: 1, height: 14, background: "rgba(0,0,0,0.1)" }}></div>
-            <button onClick={() => _ctSetScope(_ctScope === "late" ? "all" : "late")} className="tabnum" style={{ background: "transparent", border: "none", padding: 0, fontFamily: "inherit", fontSize: 14, fontWeight: 500, color: lateCount > 0 ? "#E1483F" : "#6E7178", cursor: "pointer", letterSpacing: "-0.01em" }}>
-              <b style={{ fontWeight: 700 }}>{lateCount}</b> {lateCount === 1 ? "atrasada" : "atrasadas"}
+        {/* Smart views */}
+        {[
+          { k: "hoje", l: "Hoje", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>, count: counts.hoje, color: "#FBBF24" },
+          { k: "semana", l: "Próximos 7 dias", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, count: counts.semana, color: "#A78BFA" },
+          { k: "todas", l: "Todas as ativas", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>, count: counts.todas, color: "#60A5FA" },
+          { k: "atrasadas", l: "Atrasadas", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, count: counts.atrasadas, color: "#E1483F", showAlways: true },
+          { k: "publicadas", l: "Publicadas", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 6 9 17l-5-5"/></svg>, count: counts.publicadas, color: "#A0E83C" },
+        ].map(item => {
+          const isActive = _thView === item.k;
+          return (
+            <button key={item.k} onClick={() => _thSetView(item.k)}
+              className={"th-sidebar-item" + (isActive ? " active" : "")}
+              style={{
+                display: "flex", alignItems: "center", gap: 11, width: "100%",
+                padding: "8px 10px", border: "none", background: "transparent",
+                borderRadius: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                transition: "background .12s",
+              }}>
+              <span style={{ color: item.color, display: "flex", flexShrink: 0 }}>{item.icon}</span>
+              <span className="th-side-label" style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#1C1C1E", letterSpacing: "-0.005em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.l}</span>
+              {(item.count > 0 || item.showAlways) && <span className="tabnum" style={{ fontSize: 12, fontWeight: 500, color: item.k === "atrasadas" && item.count > 0 ? "#E1483F" : "#8E8E93", flexShrink: 0 }}>{item.count}</span>}
             </button>
-            <div style={{ width: 1, height: 14, background: "rgba(0,0,0,0.1)" }}></div>
-            <div className="tabnum"><b style={{ color: "#0A0A0B", fontWeight: 700 }}>{_ctFiltered.length}</b> no filtro</div>
-          </div>
-        </div>
+          );
+        })}
 
-        {/* ═══════ SEARCH + VIEW SWITCH (sticky top) ═══════ */}
-        <div style={{ position: "sticky", top: 12, zIndex: 20, marginBottom: 24, backdropFilter: "saturate(180%) blur(20px)", WebkitBackdropFilter: "saturate(180%) blur(20px)", background: "rgba(250,250,247,0.85)", padding: "10px 0", borderRadius: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* Search principal (estilo iOS Mail) */}
+        {/* Divider */}
+        <div style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "12px 8px 8px" }}></div>
+
+        {/* Stages section */}
+        <button onClick={() => _thSetSidebarExpanded(p => ({ ...p, stages: !p.stages }))} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "6px 10px", border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.2" style={{ transform: _thSidebarExpanded.stages ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#8E8E93", letterSpacing: "0.04em", textTransform: "uppercase" }}>Etapas</span>
+        </button>
+        {_thSidebarExpanded.stages && _ctStages.map(s => {
+          const isActive = _thView === `stage:${s.k}`;
+          const cnt = counts.byStage[s.k] || 0;
+          return (
+            <button key={s.k} onClick={() => _thSetView(`stage:${s.k}`)}
+              className={"th-sidebar-item" + (isActive ? " active" : "")}
+              style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "7px 10px", border: "none", background: "transparent", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left", opacity: cnt === 0 ? 0.55 : 1 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.c, flexShrink: 0 }}></span>
+              <span className="th-side-label" style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#1C1C1E", letterSpacing: "-0.005em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.l}</span>
+              {cnt > 0 && <span className="tabnum" style={{ fontSize: 12, fontWeight: 500, color: "#8E8E93", flexShrink: 0 }}>{cnt}</span>}
+            </button>
+          );
+        })}
+
+        {/* Clientes (collapsible) */}
+        {sidebarClientes.length > 0 && (<>
+          <button onClick={() => _thSetSidebarExpanded(p => ({ ...p, clientes: !p.clientes }))} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "6px 10px", border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left", marginTop: 8 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.2" style={{ transform: _thSidebarExpanded.clientes ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#8E8E93", letterSpacing: "0.04em", textTransform: "uppercase" }}>Clientes</span>
+          </button>
+          {_thSidebarExpanded.clientes && sidebarClientes.slice(0, 10).map(([cn, cnt]) => {
+            const isActive = _thView === `cliente:${cn}`;
+            return (
+              <button key={cn} onClick={() => _thSetView(`cliente:${cn}`)}
+                className={"th-sidebar-item" + (isActive ? " active" : "")}
+                style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "7px 10px", border: "none", background: "transparent", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                <div style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg, #1C1C1E, #3A3A3C)", color: "#FFFFFF", fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{cn[0].toUpperCase()}</div>
+                <span className="th-side-label" style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "#1C1C1E", letterSpacing: "-0.005em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cn}</span>
+                <span className="tabnum" style={{ fontSize: 12, fontWeight: 500, color: "#8E8E93", flexShrink: 0 }}>{cnt}</span>
+              </button>
+            );
+          })}
+        </>)}
+
+        <div style={{ flex: 1 }}></div>
+
+        {/* Footer */}
+        <div style={{ padding: "8px", display: "flex", gap: 6 }}>
+          <button onClick={() => { localStorage.removeItem("uh_content"); window.location.search = "?content=v1"; }} style={{ flex: 1, padding: "7px 0", borderRadius: 8, background: "transparent", border: "none", fontSize: 11, fontWeight: 500, color: "#8E8E93", cursor: "pointer", fontFamily: "inherit" }}>v1</button>
+          <button onClick={() => goTab && goTab("home")} style={{ flex: 2, padding: "7px 0", borderRadius: 8, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 11.5, fontWeight: 500, color: "#1C1C1E", cursor: "pointer", fontFamily: "inherit" }}>← Home</button>
+        </div>
+      </aside>
+
+      {/* ═══════ MAIN CONTENT ═══════ */}
+      <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", padding: "0 32px", background: "#FAFAFA" }}>
+        {/* Top: search + view switcher (subtle) */}
+        <div style={{ position: "sticky", top: 0, zIndex: 30, background: "rgba(250,250,250,0.85)", backdropFilter: "saturate(180%) blur(20px)", padding: "16px 0 12px", borderBottom: "1px solid transparent", marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, maxWidth: 960, margin: "0 auto", width: "100%" }}>
             <div style={{ flex: 1, position: "relative" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E7178" strokeWidth="2.2" style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input value={_ctSearch} onChange={(e) => _ctSetSearch(e.target.value)} placeholder="Buscar demandas, clientes…" style={{ width: "100%", padding: "12px 16px 12px 42px", border: "none", borderRadius: 14, background: "rgba(0,0,0,0.05)", fontSize: 13.5, fontFamily: "inherit", outline: "none", color: "#0A0A0B", letterSpacing: "-0.005em" }} />
-              {_ctSearch && <button onClick={() => _ctSetSearch("")} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.15)", border: "none", borderRadius: "50%", width: 18, height: 18, padding: 0, cursor: "pointer", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input value={_thSearch} onChange={(e) => _thSetSearch(e.target.value)} placeholder="Buscar demandas, clientes..." style={{ width: "100%", padding: "9px 14px 9px 38px", border: "none", borderRadius: 9, background: "rgba(0,0,0,0.05)", fontSize: 13, fontFamily: "inherit", outline: "none", color: "#1C1C1E", letterSpacing: "-0.005em" }} />
+              {_thSearch && <button onClick={() => _thSetSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.18)", border: "none", borderRadius: "50%", width: 17, height: 17, padding: 0, cursor: "pointer", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>}
             </div>
-
-            {/* View switcher (iOS segmented control) */}
-            <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.05)", borderRadius: 11, padding: 2 }}>
+            <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.05)", borderRadius: 9, padding: 2 }}>
               {[
-                { k: "kanban", l: "Kanban", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/></svg> },
-                { k: "pipeline", l: "Pipeline", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> },
-                { k: "calendar", l: "Calendário", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-              ].map(o => (
-                <button key={o.k} onClick={() => _ctSetView(o.k)} className="ct2-segment" style={{ padding: "7px 12px", borderRadius: 9, fontSize: 12, fontWeight: 600, background: _ctView === o.k ? "#FFFFFF" : "transparent", color: _ctView === o.k ? "#0A0A0B" : "#6E7178", boxShadow: _ctView === o.k ? "0 1px 2px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.04)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  {o.icon}
-                  {o.l}
-                </button>
-              ))}
-            </div>
-
-            {/* Filtros (dropdown único) */}
-            <button onClick={() => _ctSetFiltersOpen(v => !v)} className="ct2-btn" style={{ background: activeFiltersCount > 0 ? "#0A0A0B" : "rgba(0,0,0,0.05)", color: activeFiltersCount > 0 ? "#FFFFFF" : "#0A0A0B", border: "none", borderRadius: 11, padding: "9px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, position: "relative" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-              Filtros
-              {activeFiltersCount > 0 && <span className="tabnum" style={{ background: "#BBF246", color: "#0A0A0B", fontSize: 10, fontWeight: 800, padding: "0 6px", borderRadius: 999, minWidth: 18, height: 18, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{activeFiltersCount}</span>}
-            </button>
-
-            {/* Ações */}
-            <div style={{ position: "relative" }}>
-              <button onClick={() => _ctSetActionsOpen(v => !v)} className="ct2-btn" style={{ background: "rgba(0,0,0,0.05)", border: "none", borderRadius: 11, padding: "9px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#0A0A0B", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-              </button>
-              {_ctActionsOpen && (
-                <>
-                  <div onClick={() => _ctSetActionsOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 30 }}></div>
-                  <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "rgba(255,255,255,0.96)", backdropFilter: "blur(20px)", border: "1px solid rgba(0,0,0,0.06)", borderRadius: 14, padding: 6, boxShadow: "0 14px 40px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.05)", zIndex: 31, minWidth: 260 }}>
-                    {[
-                      { l: "Publicação Rápida", desc: "Agendar post fora do Kanban", msg: "Publicação Rápida em breve" },
-                      { l: "Importar com Munique", desc: "IA cria demandas em lote", msg: "Munique Importer em breve" },
-                      { l: "Gerar de Notícias", desc: "Posts a partir de tendências", msg: "Gerar de Notícias em breve" },
-                    ].map((a, i) => (
-                      <button key={i} onClick={() => { _ctSetActionsOpen(false); _ctSetToast(a.msg); setTimeout(() => _ctSetToast(""), 2200); }} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "100%", padding: "10px 12px", background: "transparent", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-                      >
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#0A0A0B" }}>{a.l}</span>
-                        <span style={{ fontSize: 11, color: "#6E7178", fontWeight: 500, marginTop: 1 }}>{a.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Nova demanda — botão principal */}
-            <button className="ct2-btn" onClick={() => _ctSetToast("Modal Nova demanda em breve")} style={{ background: "#0A0A0B", color: "#BBF246", border: "none", borderRadius: 11, padding: "10px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nova demanda
-            </button>
-          </div>
-
-          {/* Filtros expandido (slide down) */}
-          {_ctFiltersOpen && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.05)", animation: "_ct2FadeIn .25s ease-out" }}>
-              <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.05)", borderRadius: 999, padding: 2 }}>
-                {[{ k: "all", l: "Todas" }, { k: "mine", l: "Minhas" }, { k: "late", l: "Atrasadas" }].map(o => (
-                  <button key={o.k} onClick={() => _ctSetScope(o.k)} className="ct2-segment" style={{ padding: "5px 12px", borderRadius: 999, fontSize: 11.5, fontWeight: 600, background: _ctScope === o.k ? "#FFFFFF" : "transparent", color: _ctScope === o.k ? "#0A0A0B" : "#6E7178", boxShadow: _ctScope === o.k ? "0 1px 2px rgba(0,0,0,0.07)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
-                ))}
-              </div>
-              <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.05)", borderRadius: 999, padding: 2 }}>
-                {[{ k: null, l: "Formato" }, { k: "Feed", l: "Feed" }, { k: "Reels", l: "Reels" }, { k: "Carrossel", l: "Carrossel" }, { k: "Stories", l: "Stories" }].map(o => (
-                  <button key={o.l} onClick={() => _ctSetFmt(o.k)} className="ct2-segment" style={{ padding: "5px 12px", borderRadius: 999, fontSize: 11.5, fontWeight: 600, background: _ctFmt === o.k ? "#FFFFFF" : "transparent", color: _ctFmt === o.k ? "#0A0A0B" : "#6E7178", boxShadow: _ctFmt === o.k ? "0 1px 2px rgba(0,0,0,0.07)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
-                ))}
-              </div>
-              <select value={_ctClientF || ""} onChange={(e) => _ctSetClientF(e.target.value || null)} style={{ padding: "6px 12px", borderRadius: 999, border: "1px solid rgba(0,0,0,0.06)", background: _ctClientF ? "#0A0A0B" : "rgba(0,0,0,0.05)", color: _ctClientF ? "#FFFFFF" : "#0A0A0B", fontSize: 11.5, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", outline: "none" }}>
-                <option value="">Todos os clientes</option>
-                {_ctClientList.map(cn => <option key={cn} value={cn}>{cn}</option>)}
-              </select>
-              <input type="date" value={_ctDateF || ""} onChange={(e) => _ctSetDateF(e.target.value || null)} style={{ padding: "5px 12px", borderRadius: 999, border: "1px solid rgba(0,0,0,0.06)", background: _ctDateF ? "#0A0A0B" : "rgba(0,0,0,0.05)", color: _ctDateF ? "#FFFFFF" : "#0A0A0B", fontSize: 11.5, fontWeight: 600, fontFamily: "inherit", outline: "none", cursor: "pointer" }} />
-              {activeFiltersCount > 0 && (
-                <button onClick={clearAllFilters} className="ct2-btn" style={{ background: "transparent", border: "none", color: "#E1483F", fontSize: 11.5, fontWeight: 600, cursor: "pointer", padding: "5px 10px", fontFamily: "inherit" }}>Limpar tudo</button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ═══════ STAGE NAVIGATOR (só no kanban view) ═══════ */}
-        {_ctView === "kanban" && (
-          <div style={{ display: "flex", gap: 6, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
-            <button onClick={() => _ctSetStageFilter(null)} className="ct2-segment" style={{
-              flexShrink: 0, padding: "8px 14px", borderRadius: 11,
-              background: !_ctStageFilter ? "#0A0A0B" : "rgba(255,255,255,0.7)",
-              color: !_ctStageFilter ? "#FFFFFF" : "#0A0A0B",
-              border: !_ctStageFilter ? "none" : "1px solid rgba(0,0,0,0.06)",
-              fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-              display: "inline-flex", alignItems: "center", gap: 8,
-            }}>
-              Todos os stages
-              <span className="tabnum" style={{ fontSize: 10, fontWeight: 700, color: !_ctStageFilter ? "rgba(255,255,255,0.7)" : "#6E7178" }}>{_ctFiltered.length}</span>
-            </button>
-            {_ctStages.map(s => {
-              const count = _ctByStage[s.k]?.length || 0;
-              const isActive = _ctStageFilter === s.k;
-              return (
-                <button key={s.k} onClick={() => _ctSetStageFilter(isActive ? null : s.k)} className="ct2-segment" style={{
-                  flexShrink: 0, padding: "8px 14px", borderRadius: 11,
-                  background: isActive ? "#FFFFFF" : "rgba(255,255,255,0.7)",
-                  color: "#0A0A0B",
-                  border: isActive ? `1.5px solid ${s.c}` : "1px solid rgba(0,0,0,0.06)",
-                  fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-                  display: "inline-flex", alignItems: "center", gap: 8, opacity: count === 0 ? 0.5 : 1,
-                  boxShadow: isActive ? `0 4px 12px ${s.c}30` : "none",
-                }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.c }}></span>
-                  {s.l}
-                  <span className="tabnum" style={{ fontSize: 10, fontWeight: 700, color: "#6E7178" }}>{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ═══════ MAIN AREA (Kanban / Pipeline / Calendar) ═══════ */}
-        {_ctView === "kanban" ? (
-          <div style={{ display: "flex", gap: 12, overflowX: "auto", overflowY: "hidden", paddingBottom: 8 }}>
-            {_ctKanbanVisible.map(s => {
-              const items = _ctByStage[s.k] || [];
-              const isOver = _ctDragOverCol === s.k;
-              return (
-                <section
-                  key={s.k}
-                  className={"ct2-col" + (isOver ? " dragover" : "")}
-                  onDragOver={(e) => onDragOver(e, s.k)}
-                  onDragLeave={() => _ctSetDragOverCol(null)}
-                  onDrop={(e) => onDrop(e, s.k)}
-                  style={{
-                    flex: _ctStageFilter ? "1 1 auto" : "0 0 296px",
-                    minWidth: _ctStageFilter ? "auto" : 296,
-                    display: "flex", flexDirection: "column",
-                    background: "rgba(255,255,255,0.6)",
-                    backdropFilter: "blur(12px)",
-                    border: "1px solid rgba(0,0,0,0.04)",
-                    borderRadius: 18, padding: "14px 12px 12px",
-                    maxHeight: 820,
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px 12px", flexShrink: 0 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></span>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0A0A0B", letterSpacing: "-0.015em" }}>{s.l}</div>
-                    <div className="tabnum" style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, color: "#6E7178" }}>{items.length}</div>
-                  </div>
-
-                  <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: _ctStageFilter ? "grid" : "flex", gridTemplateColumns: _ctStageFilter ? "repeat(auto-fill, minmax(260px, 1fr))" : undefined, flexDirection: _ctStageFilter ? undefined : "column", gap: 10, paddingTop: 4 }}>
-                    {items.length === 0 ? (
-                      <div style={{ fontSize: 11.5, color: "#A8AAAF", fontStyle: "italic", textAlign: "center", padding: "24px 0", gridColumn: "1 / -1" }}>vazio</div>
-                    ) : items.slice(0, 60).map((d, i) => {
-                      const isLate = isLatePost(d);
-                      const date = d.scheduling?.date || d.schedule_date;
-                      const time = d.scheduling?.time || d.schedule_time;
-                      const dateLabel = relDate(date);
-                      const priority = lc(d.priority);
-                      const isAjuste = lc(d.stage) === "ajuste";
-                      const isExpired = isLate && lc(d.stage) === "scheduled";
-                      const fmt = d.format || (d.type === "video" ? "Reels" : "Post");
-                      const aspectRatio = lc(fmt) === "reels" || lc(fmt) === "stories" ? "9:16" : lc(fmt) === "feed" || lc(fmt) === "carrossel" ? "3:4" : null;
-                      const assigneeName = d.assigneeName || d.assignee || d.assignees?.[0];
-                      const networks = d.networks || d.platforms || (lc(fmt) === "reels" ? ["ig"] : ["ig"]);
-                      const coverUrl = d.cover_url || d.coverUrl || d.thumbnail_url || d.thumbnail;
-                      const isDragging = _ctDragId === (d.supaId || d.id);
-                      const client = d.clientName || d.client || "—";
-                      const [c1, c2] = clientHue(client);
-
-                      // Cover background: imagem real ou gradient sutil baseado em format
-                      const fmtTint = lc(fmt) === "reels" ? "linear-gradient(135deg, #FF5AAA20, #FF5AAA08)"
-                        : lc(fmt) === "stories" ? "linear-gradient(135deg, #FFA94D20, #FFA94D08)"
-                        : lc(fmt) === "carrossel" ? "linear-gradient(135deg, #4F8FFF20, #4F8FFF08)"
-                        : "linear-gradient(135deg, #2EC27E20, #2EC27E08)";
-
-                      return (
-                        <div
-                          key={d.id || d.supaId || i}
-                          className={"ct2-card" + (isDragging ? " dragging" : "")}
-                          draggable
-                          onDragStart={(e) => onDragStart(e, d)}
-                          onDragEnd={() => { _ctSetDragId(null); _ctSetDragOverCol(null); }}
-                          onClick={() => _ctSetSheetDemand(d)}
-                          style={{
-                            background: "#FFFFFF",
-                            borderRadius: 16,
-                            overflow: "hidden",
-                            boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 0 0 0.5px rgba(0,0,0,0.04)",
-                            cursor: "grab",
-                            animation: `_ct2FadeIn .35s cubic-bezier(0.32, 0.72, 0, 1) ${i * 0.02}s both`,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {/* COVER */}
-                          <div style={{
-                            height: 96,
-                            background: coverUrl ? `url(${coverUrl}) center/cover no-repeat` : fmtTint,
-                            position: "relative",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            flexShrink: 0,
-                          }}>
-                            {!coverUrl && (
-                              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={s.c} strokeWidth="1.5" style={{ opacity: 0.6 }}>
-                                {lc(fmt) === "reels" || lc(fmt) === "stories"
-                                  ? <><polygon points="5 3 19 12 5 21 5 3"/></>
-                                  : lc(fmt) === "carrossel"
-                                  ? <><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 21h10a2 2 0 0 0 2-2V8"/></>
-                                  : <><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.35-4.35a1 1 0 0 0-1.41 0L7 19"/></>
-                                }
-                              </svg>
-                            )}
-                            {/* Pill stacked top-left: priority/warning */}
-                            {(priority === "alta" || isAjuste || isExpired) && (
-                              <div style={{ position: "absolute", top: 8, left: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
-                                {priority === "alta" && <span style={{ fontSize: 9, fontWeight: 700, padding: "3px 7px", borderRadius: 999, background: "rgba(255,255,255,0.95)", color: "#E1483F", letterSpacing: "0.04em", backdropFilter: "blur(8px)" }}>ALTA</span>}
-                                {isAjuste && <span style={{ fontSize: 9, fontWeight: 700, padding: "3px 7px", borderRadius: 999, background: "rgba(255,120,73,0.95)", color: "#FFFFFF", letterSpacing: "0.04em", backdropFilter: "blur(8px)" }}>AJUSTE</span>}
-                                {isExpired && <span style={{ fontSize: 9, fontWeight: 700, padding: "3px 7px", borderRadius: 999, background: "rgba(225,72,63,0.95)", color: "#FFFFFF", letterSpacing: "0.04em", backdropFilter: "blur(8px)" }}>EXPIRADO</span>}
-                              </div>
-                            )}
-                            {/* Aspect ratio badge bottom-right */}
-                            {aspectRatio && (
-                              <span style={{ position: "absolute", bottom: 8, right: 8, fontSize: 9, fontWeight: 700, padding: "3px 7px", borderRadius: 7, background: "rgba(10,10,11,0.7)", color: "#FFFFFF", backdropFilter: "blur(8px)", letterSpacing: "0.02em" }}>{aspectRatio}</span>
-                            )}
-                            {/* Quick action overlay on hover */}
-                            <div className="ct2-cover-overlay" style={{ position: "absolute", inset: 0, background: "rgba(10,10,11,0.55)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                              <button onClick={(e) => { e.stopPropagation(); advanceDemand(d, 1); }} title="Avançar" style={{ width: 32, height: 32, borderRadius: "50%", background: "#BBF246", border: "none", color: "#0A0A0B", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><polyline points="20 6 9 17 4 12"/></svg>
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); _ctSetSheetDemand(d); }} title="Detalhes" style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.96)", border: "none", color: "#0A0A0B", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><polyline points="9 18 15 12 9 6"/></svg>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* BODY */}
-                          <div style={{ padding: "12px 14px 13px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                              <div style={{ width: 16, height: 16, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 8.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{client[0].toUpperCase()}</div>
-                              <span style={{ fontSize: 10.5, color: "#6E7178", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.005em" }}>{client}</span>
-                            </div>
-                            <div style={{ fontSize: 13.5, fontWeight: 600, color: "#0A0A0B", lineHeight: 1.32, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 10, letterSpacing: "-0.015em" }}>{d.task || d.title || "Sem título"}</div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10.5 }}>
-                              {dateLabel && (
-                                <span className="tabnum" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: isLate ? "#E1483F" : "#6E7178" }}>
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                  {dateLabel}{time ? ` · ${time.slice(0, 5)}` : ""}
-                                </span>
-                              )}
-                              <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, color: "#A8AAAF" }}>
-                                {networks.includes("ig") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>}
-                                {networks.includes("fb") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>}
-                                {assigneeName && <div title={assigneeName} style={{ width: 16, height: 16, borderRadius: "50%", background: "#0A0A0B", color: "#BBF246", fontSize: 8, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{assigneeName[0].toUpperCase()}</div>}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {items.length > 60 && <div style={{ fontSize: 10.5, color: "#A8AAAF", textAlign: "center", padding: "8px 0", fontWeight: 600, gridColumn: "1 / -1" }}>+ {items.length - 60} mais</div>}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        ) : _ctView === "pipeline" ? (
-          /* ═══════ PIPELINE LIST (linhas de cards agrupados) ═══════ */
-          <div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
-              {_ctStages.map(s => {
-                const isOpen = _ctPipelineExpand === s.k;
-                const count = _ctByStage[s.k]?.length || 0;
+                { k: "list", l: "Lista", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> },
+                { k: "kanban", l: "Kanban", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/></svg> },
+                { k: "calendar", l: "Cal", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+              ].map(o => {
+                // Mapping: when "kanban" or "calendar" is selected, _thView becomes that key. Otherwise, view stays in current smart view + list mode.
+                const isActive = (o.k === "kanban" && _thView === "kanban") || (o.k === "calendar" && _thView === "calendar") || (o.k === "list" && _thView !== "kanban" && _thView !== "calendar");
                 return (
-                  <button key={s.k} onClick={() => _ctSetPipelineExpand(isOpen ? null : s.k)} className="ct2-segment" style={{
-                    padding: "8px 14px", borderRadius: 11,
-                    background: isOpen ? "#FFFFFF" : "rgba(255,255,255,0.7)",
-                    border: isOpen ? `1.5px solid ${s.c}` : "1px solid rgba(0,0,0,0.06)",
-                    fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
-                    display: "inline-flex", alignItems: "center", gap: 8, opacity: count === 0 ? 0.5 : 1,
-                    boxShadow: isOpen ? `0 4px 12px ${s.c}30` : "none",
-                  }}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.c }}></span>
-                    {s.l}
-                    <span className="tabnum" style={{ fontSize: 10.5, fontWeight: 700, color: "#6E7178" }}>{count}</span>
+                  <button key={o.k} onClick={() => {
+                    if (o.k === "kanban") _thSetView("kanban");
+                    else if (o.k === "calendar") _thSetView("calendar");
+                    else if (_thView === "kanban" || _thView === "calendar") _thSetView("hoje");
+                  }} style={{ padding: "6px 10px", borderRadius: 7, fontSize: 12, fontWeight: 500, background: isActive ? "#FFFFFF" : "transparent", color: "#1C1C1E", boxShadow: isActive ? "0 1px 2px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    {o.icon}
+                    {o.l}
                   </button>
                 );
               })}
             </div>
-            {_ctPipelineExpand ? (() => {
-              const sExp = _ctStages.find(s => s.k === _ctPipelineExpand);
-              const items = _ctByStage[_ctPipelineExpand] || [];
+          </div>
+        </div>
+
+        {/* Page header */}
+        <div style={{ maxWidth: 960, margin: "0 auto", width: "100%", padding: "12px 0 28px" }}>
+          <h1 style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.025em", margin: 0, color: "#1C1C1E" }}>{viewLabel.title}</h1>
+          {viewLabel.subtitle && <div style={{ fontSize: 14, color: "#8E8E93", fontWeight: 400, marginTop: 4, letterSpacing: "-0.005em" }}>{viewLabel.subtitle}</div>}
+        </div>
+
+        {/* Main view rendering */}
+        <div style={{ maxWidth: _thView === "kanban" ? 1400 : 960, margin: "0 auto", width: "100%", paddingBottom: 120 }}>
+          {_thView === "kanban" ? (
+            // KANBAN view
+            <div style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 8 }}>
+              {_ctStages.map(s => {
+                const items = visibleDemands.filter(d => lc(d.stage || d.status) === s.k);
+                const isOver = _thDragOver === s.k;
+                return (
+                  <section key={s.k}
+                    onDragOver={(e) => onDragOver(e, s.k)}
+                    onDragLeave={() => _thSetDragOver(null)}
+                    onDrop={(e) => onDrop(e, s.k)}
+                    className={"th-kanban-col" + (isOver ? " dragover" : "")}
+                    style={{ flex: "0 0 280px", display: "flex", flexDirection: "column", background: "#FFFFFF", borderRadius: 12, padding: "14px 10px", maxHeight: 820, border: "1px solid rgba(0,0,0,0.05)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 6px 12px", flexShrink: 0 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.c }}></span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#1C1C1E", letterSpacing: "-0.012em" }}>{s.l}</span>
+                      <span className="tabnum" style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 500, color: "#8E8E93" }}>{items.length}</span>
+                    </div>
+                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4, padding: "0 2px" }}>
+                      {items.length === 0 ? (
+                        <div style={{ fontSize: 12, color: "#C7C7CC", fontStyle: "italic", textAlign: "center", padding: "20px 0" }}>vazio</div>
+                      ) : items.map((d, i) => renderDemandRow(d, i))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : _thView === "calendar" ? (
+            // CALENDAR view
+            (() => {
+              const monthStart = _thCalMonth;
+              const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+              const firstDay = monthStart.getDay();
+              const daysInMonth = monthEnd.getDate();
+              const cells = [];
+              for (let i = 0; i < firstDay; i++) cells.push(null);
+              for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(monthStart.getFullYear(), monthStart.getMonth(), d));
+              while (cells.length % 7 !== 0) cells.push(null);
+              const byDay = {};
+              visibleDemands.forEach(d => {
+                const dt = d.scheduling?.date || d.schedule_date;
+                if (!dt) return;
+                if (!byDay[dt]) byDay[dt] = [];
+                byDay[dt].push(d);
+              });
               return (
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", background: "rgba(255,255,255,0.7)", borderRadius: 16, marginBottom: 12, backdropFilter: "blur(12px)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: sExp.c }}></span>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: "#0A0A0B", letterSpacing: "-0.02em" }}>{sExp.l}</span>
-                      <span className="tabnum" style={{ fontSize: 11.5, fontWeight: 600, color: "#6E7178" }}>{items.length} {items.length === 1 ? "item" : "itens"}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <button onClick={() => _thSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1))} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#1C1C1E", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+                      </button>
+                      <button onClick={() => _thSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1))} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer", color: "#1C1C1E", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                      </button>
+                      <button onClick={() => { const n = new Date(); _thSetCalMonth(new Date(n.getFullYear(), n.getMonth(), 1)); }} style={{ marginLeft: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 500, color: "#1C1C1E", cursor: "pointer", fontFamily: "inherit" }}>Hoje</button>
                     </div>
-                    <button onClick={() => _ctSetPipelineExpand(null)} className="ct2-btn" style={{ width: 28, height: 28, borderRadius: 9, background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", color: "#0A0A0B", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
                   </div>
-                  {items.length === 0 ? (
-                    <div style={{ textAlign: "center", padding: 80, color: "#A8AAAF", fontSize: 13, fontStyle: "italic" }}>nenhuma demanda</div>
-                  ) : (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
-                      {items.map((d, i) => {
-                        const client = d.clientName || d.client || "—";
-                        const [c1, c2] = clientHue(client);
-                        const date = d.scheduling?.date || d.schedule_date;
-                        const time = d.scheduling?.time || d.schedule_time;
-                        const networks = d.networks || ["ig"];
-                        const isLate = isLatePost(d);
-                        return (
-                          <div key={d.id || d.supaId || i} onClick={() => _ctSetSheetDemand(d)} className="ct2-card" style={{
-                            background: "#FFFFFF", borderRadius: 16, padding: "14px 16px", cursor: "pointer",
-                            boxShadow: "0 1px 2px rgba(0,0,0,0.04), 0 0 0 0.5px rgba(0,0,0,0.04)",
-                            animation: `_ct2FadeIn .35s cubic-bezier(0.32, 0.72, 0, 1) ${i * 0.015}s both`,
-                          }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                              <div style={{ width: 26, height: 26, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{client[0].toUpperCase()}</div>
-                              <span style={{ fontSize: 12, fontWeight: 600, color: "#0A0A0B", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.01em" }}>{client}</span>
-                              <div style={{ marginLeft: "auto", display: "inline-flex", color: "#A8AAAF", gap: 4 }}>
-                                {networks.includes("ig") && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>}
-                                {networks.includes("fb") && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+                    {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map(d => (
+                      <div key={d} style={{ fontSize: 10, fontWeight: 600, color: "#C7C7CC", textTransform: "uppercase", letterSpacing: "0.08em", padding: "6px 10px" }}>{d}</div>
+                    ))}
+                    {cells.map((cell, i) => {
+                      if (!cell) return <div key={i} style={{ minHeight: 110 }}></div>;
+                      const cellYmd = ymd(cell);
+                      const items = byDay[cellYmd] || [];
+                      const isToday = cellYmd === todayYmd;
+                      const isWeekend = cell.getDay() === 0 || cell.getDay() === 6;
+                      return (
+                        <div key={i} style={{ background: isToday ? "rgba(187,242,70,0.10)" : "#FFFFFF", border: isToday ? "1.5px solid #BBF246" : "1px solid rgba(0,0,0,0.05)", borderRadius: 10, padding: 8, minHeight: 110, display: "flex", flexDirection: "column", gap: 3 }}>
+                          <div className="tabnum" style={{ fontSize: 12, fontWeight: isToday ? 700 : 500, color: isWeekend && !isToday ? "#C7C7CC" : "#1C1C1E", marginBottom: 4 }}>{cell.getDate()}</div>
+                          {items.slice(0, 3).map((d, j) => {
+                            const stage = lc(d.stage || d.status);
+                            const sCfg = _ctStages.find(s => s.k === stage) || _ctStages[0];
+                            return (
+                              <div key={d.id || d.supaId || j} onClick={(e) => { e.stopPropagation(); _thSetSheet(d); }} style={{ background: "rgba(0,0,0,0.04)", borderRadius: 6, padding: "3px 6px", fontSize: 10, fontWeight: 500, color: "#1C1C1E", cursor: "pointer", borderLeft: `2.5px solid ${sCfg.c}`, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", lineHeight: 1.3 }} title={`${d.task || d.title} · ${d.clientName || d.client || ""}`}>
+                                {(d.scheduling?.time || d.schedule_time || "").slice(0, 5)} {d.task || d.title || "—"}
                               </div>
-                            </div>
-                            <div style={{ fontSize: 13.5, fontWeight: 600, color: "#0A0A0B", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 10, letterSpacing: "-0.015em" }}>{d.task || d.title || "Sem título"}</div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10.5 }}>
-                              {date ? (
-                                <span className="tabnum" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 600, color: isLate ? "#E1483F" : "#6E7178" }}>
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                  {fmtDate(date, time)}
-                                </span>
-                              ) : <span></span>}
-                              <span style={{ fontSize: 9.5, fontWeight: 700, color: "#A8AAAF", textTransform: "uppercase", letterSpacing: "0.05em" }}>{d.format || "Post"}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                            );
+                          })}
+                          {items.length > 3 && <div style={{ fontSize: 9, fontWeight: 500, color: "#8E8E93", padding: "1px 6px" }}>+ {items.length - 3} mais</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               );
-            })() : (
-              <div style={{ textAlign: "center", padding: "80px 20px", color: "#A8AAAF" }}>
-                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ opacity: 0.5, marginBottom: 14 }}><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                <div style={{ fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em" }}>Toque num stage acima pra ver as demandas</div>
+            })()
+          ) : (
+            // LIST view (default — Things style)
+            visibleDemands.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "80px 24px", color: "#C7C7CC" }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ opacity: 0.5, marginBottom: 14 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "#8E8E93", letterSpacing: "-0.005em" }}>{_thSearch ? "Nada encontrado" : "Tudo limpo por aqui"}</div>
               </div>
-            )}
-          </div>
-        ) : (
-          /* ═══════ CALENDAR ═══════ */
-          (() => {
-            const monthStart = _ctCalMonth;
-            const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-            const firstDay = monthStart.getDay();
-            const daysInMonth = monthEnd.getDate();
-            const cells = [];
-            for (let i = 0; i < firstDay; i++) cells.push(null);
-            for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(monthStart.getFullYear(), monthStart.getMonth(), d));
-            while (cells.length % 7 !== 0) cells.push(null);
-            const monthLabel = monthStart.toLocaleString("pt-BR", { month: "long", year: "numeric" });
-            const byDay = {};
-            _ctFiltered.forEach(d => {
-              const dt = d.scheduling?.date || d.schedule_date;
-              if (!dt) return;
-              if (!byDay[dt]) byDay[dt] = [];
-              byDay[dt].push(d);
-            });
-            return (
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <button onClick={() => _ctSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1))} className="ct2-btn" style={{ width: 34, height: 34, borderRadius: 11, background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", color: "#0A0A0B", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <div style={{ fontSize: 19, fontWeight: 700, color: "#0A0A0B", letterSpacing: "-0.025em", textTransform: "capitalize", padding: "0 12px", minWidth: 200 }}>{monthLabel}</div>
-                    <button onClick={() => _ctSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1))} className="ct2-btn" style={{ width: 34, height: 34, borderRadius: 11, background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", color: "#0A0A0B", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><polyline points="9 18 15 12 9 6"/></svg>
-                    </button>
-                    <button onClick={() => { const n = new Date(); _ctSetCalMonth(new Date(n.getFullYear(), n.getMonth(), 1)); }} className="ct2-btn" style={{ marginLeft: 6, padding: "8px 14px", borderRadius: 11, background: "rgba(0,0,0,0.05)", border: "none", fontSize: 12, fontWeight: 600, color: "#0A0A0B", cursor: "pointer", fontFamily: "inherit" }}>Hoje</button>
-                  </div>
-                  <div className="tabnum" style={{ fontSize: 12, color: "#6E7178", fontWeight: 500 }}>{Object.keys(byDay).filter(d => d.startsWith(monthStart.toISOString().slice(0, 7))).reduce((s, k) => s + byDay[k].length, 0)} posts neste mês</div>
+            ) : (() => {
+              // Group por data quando view = todas/semana/atrasadas/publicadas
+              const shouldGroup = ["todas", "semana", "atrasadas", "publicadas"].includes(_thView);
+              if (shouldGroup) {
+                const groups = groupByDate(visibleDemands);
+                return Object.entries(groups).filter(([_, items]) => items.length > 0).map(([label, items]) => (
+                  <section key={label} style={{ marginBottom: 28 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 14px 8px" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "#8E8E93", letterSpacing: "0.04em", textTransform: "uppercase" }}>{label}</span>
+                      <span style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.06)" }}></span>
+                      <span className="tabnum" style={{ fontSize: 11, fontWeight: 500, color: "#C7C7CC" }}>{items.length}</span>
+                    </div>
+                    <div style={{ background: "#FFFFFF", borderRadius: 12, padding: 4, border: "1px solid rgba(0,0,0,0.04)" }}>
+                      {items.map((d, i) => renderDemandRow(d, i))}
+                    </div>
+                  </section>
+                ));
+              }
+              return (
+                <div style={{ background: "#FFFFFF", borderRadius: 12, padding: 4, border: "1px solid rgba(0,0,0,0.04)" }}>
+                  {visibleDemands.map((d, i) => renderDemandRow(d, i))}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
-                  {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map(d => (
-                    <div key={d} style={{ fontSize: 10, fontWeight: 700, color: "#A8AAAF", textTransform: "uppercase", letterSpacing: "0.08em", padding: "6px 10px" }}>{d}</div>
-                  ))}
-                  {cells.map((cell, i) => {
-                    if (!cell) return <div key={i} style={{ minHeight: 124 }}></div>;
-                    const cellYmd = ymd(cell);
-                    const items = byDay[cellYmd] || [];
-                    const isToday = cellYmd === todayYmd;
-                    const isWeekend = cell.getDay() === 0 || cell.getDay() === 6;
-                    return (
-                      <div key={i} style={{
-                        background: isToday ? "rgba(187,242,70,0.12)" : "#FFFFFF",
-                        border: isToday ? "1.5px solid #BBF246" : "1px solid rgba(0,0,0,0.04)",
-                        borderRadius: 12, padding: 8, minHeight: 124, display: "flex", flexDirection: "column", gap: 3,
-                      }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                          <div className="tabnum" style={{ fontSize: 12, fontWeight: isToday ? 700 : 600, color: isToday ? "#0A0A0B" : isWeekend ? "#A8AAAF" : "#0A0A0B", letterSpacing: "-0.02em" }}>{cell.getDate()}</div>
-                          {items.length > 0 && <span className="tabnum" style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999, background: "rgba(0,0,0,0.06)", color: "#6E7178" }}>{items.length}</span>}
-                        </div>
-                        {items.slice(0, 3).map((d, j) => {
-                          const stage = lc(d.stage || d.status);
-                          const sCfg = _ctStages.find(s => s.k === stage) || _ctStages[0];
-                          return (
-                            <div key={d.id || d.supaId || j} onClick={(e) => { e.stopPropagation(); _ctSetSheetDemand(d); }} style={{
-                              background: "rgba(0,0,0,0.03)", borderRadius: 7, padding: "4px 6px",
-                              fontSize: 9.5, fontWeight: 600, color: "#0A0A0B", cursor: "pointer",
-                              borderLeft: `2.5px solid ${sCfg.c}`, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", lineHeight: 1.3, letterSpacing: "-0.005em",
-                            }} title={`${d.task || d.title} · ${d.clientName || d.client || ""}`}>
-                              {(d.scheduling?.time || d.schedule_time || "").slice(0, 5)} {d.task || d.title || "—"}
-                            </div>
-                          );
-                        })}
-                        {items.length > 3 && <div style={{ fontSize: 9, fontWeight: 600, color: "#6E7178", padding: "1px 6px" }}>+ {items.length - 3} mais</div>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()
-        )}
-      </div>
+              );
+            })()
+          )}
+        </div>
+      </main>
 
-      {/* ═══════ BOTTOM SHEET (iOS-style detail modal) ═══════ */}
-      {_ctSheetDemand && (() => {
-        const d = _ctSheetDemand;
+      {/* ═══════ MAGIC PLUS (floating) ═══════ */}
+      <button onClick={() => _thSetQuickAddOpen(true)} className="th-plus" style={{
+        position: "fixed", bottom: 30, right: 32, zIndex: 50,
+        width: 56, height: 56, borderRadius: "50%",
+        background: "#1C1C1E", color: "#BBF246", border: "none",
+        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08)",
+      }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+
+      {/* ═══════ QUICK ADD modal (Things 3 style) ═══════ */}
+      {_thQuickAddOpen && (
+        <>
+          <div onClick={() => _thSetQuickAddOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(28,28,30,0.32)", animation: "_thBackdrop .25s ease" }}></div>
+          <div style={{ position: "fixed", top: "30%", left: "50%", transform: "translateX(-50%)", width: 480, maxWidth: "92vw", background: "#FFFFFF", borderRadius: 14, boxShadow: "0 24px 64px rgba(0,0,0,0.3)", zIndex: 201, padding: 0, animation: "_thFadeIn .25s ease-out" }}>
+            <div style={{ padding: "20px 22px 16px" }}>
+              <input autoFocus placeholder="Nova demanda" style={{ width: "100%", border: "none", outline: "none", fontSize: 18, fontWeight: 600, color: "#1C1C1E", fontFamily: "inherit", letterSpacing: "-0.02em", background: "transparent" }} />
+              <input placeholder="Notas..." style={{ width: "100%", marginTop: 8, border: "none", outline: "none", fontSize: 14, color: "#8E8E93", fontFamily: "inherit", letterSpacing: "-0.005em", background: "transparent" }} />
+            </div>
+            <div style={{ padding: "12px 22px", borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button style={{ padding: "5px 10px", borderRadius: 7, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 500, color: "#1C1C1E", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Quando
+              </button>
+              <button style={{ padding: "5px 10px", borderRadius: 7, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 500, color: "#1C1C1E", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Cliente
+              </button>
+              <button style={{ padding: "5px 10px", borderRadius: 7, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 500, color: "#1C1C1E", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>Formato</button>
+              <div style={{ flex: 1 }}></div>
+              <button onClick={() => _thSetQuickAddOpen(false)} style={{ padding: "6px 14px", borderRadius: 7, background: "transparent", border: "none", fontSize: 12, fontWeight: 500, color: "#8E8E93", cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+              <button onClick={() => { _thSetQuickAddOpen(false); _thSetToast("Salvar nova demanda em breve"); setTimeout(() => _thSetToast(""), 2200); }} style={{ padding: "6px 14px", borderRadius: 7, background: "#1C1C1E", color: "#BBF246", border: "none", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Salvar</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ═══════ DETAIL SHEET (right side, Things style) ═══════ */}
+      {_thSheet && (() => {
+        const d = _thSheet;
         const sCfg = _ctStages.find(s => s.k === lc(d.stage || d.status)) || _ctStages[0];
         const stageIdx = _ctStages.findIndex(s => s.k === sCfg.k);
         const date = d.scheduling?.date || d.schedule_date;
         const time = d.scheduling?.time || d.schedule_time;
         const client = d.clientName || d.client || "—";
-        const [c1, c2] = clientHue(client);
-        const coverUrl = d.cover_url || d.coverUrl || d.thumbnail_url || d.thumbnail;
-        const fmt = d.format || (d.type === "video" ? "Reels" : "Post");
         return (
           <>
-            <div onClick={() => _ctSetSheetDemand(null)} style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(10,10,11,0.4)", backdropFilter: "blur(8px)", animation: "_ct2BackdropIn .3s ease" }}></div>
-            <div style={{
-              position: "fixed", left: "50%", bottom: 0, transform: "translateX(-50%)",
-              width: "min(640px, 96vw)", maxHeight: "92vh",
-              background: "#FFFFFF", borderRadius: "24px 24px 0 0",
-              boxShadow: "0 -24px 80px rgba(0,0,0,0.3)",
-              zIndex: 101, display: "flex", flexDirection: "column",
-              animation: "_ct2SheetIn .42s cubic-bezier(0.32, 0.72, 0, 1)",
+            <div onClick={() => _thSetSheet(null)} style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(28,28,30,0.18)", backdropFilter: "blur(2px)", animation: "_thBackdrop .25s ease" }}></div>
+            <aside style={{
+              position: "fixed", top: 12, right: 12, bottom: 12, width: 440, maxWidth: "94vw",
+              background: "#FFFFFF", borderRadius: 14,
+              boxShadow: "0 24px 64px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.06)",
+              zIndex: 151, display: "flex", flexDirection: "column",
+              animation: "_thSheetIn .35s cubic-bezier(0.32, 0.72, 0, 1)",
             }}>
-              {/* Drag handle */}
-              <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 4px", cursor: "grab" }}>
-                <div style={{ width: 38, height: 5, borderRadius: 999, background: "rgba(0,0,0,0.18)" }}></div>
-              </div>
-
-              {/* Hero */}
-              <div style={{ padding: "8px 28px 20px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "5px 11px", borderRadius: 999, background: `${sCfg.c}18`, marginBottom: 14 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: sCfg.c }}></span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: sCfg.c, letterSpacing: "0.02em" }}>{sCfg.l}</span>
-                    </div>
-                    <h2 style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.15, letterSpacing: "-0.025em", margin: 0, color: "#0A0A0B" }}>{d.task || d.title || "Sem título"}</h2>
+              <div style={{ padding: "20px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "4px 10px", borderRadius: 999, background: `${sCfg.c}1A`, marginBottom: 12 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: sCfg.c }}></span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: sCfg.c }}>{sCfg.l}</span>
                   </div>
-                  <button onClick={() => _ctSetSheetDemand(null)} className="ct2-btn" style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.06)", border: "none", cursor: "pointer", color: "#0A0A0B", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
+                  <h2 style={{ fontSize: 22, fontWeight: 600, lineHeight: 1.2, letterSpacing: "-0.022em", margin: 0, color: "#1C1C1E" }}>{d.task || d.title || "Sem título"}</h2>
+                  <div style={{ fontSize: 13, color: "#8E8E93", fontWeight: 400, marginTop: 4, letterSpacing: "-0.005em" }}>{client}</div>
                 </div>
+                <button onClick={() => _thSetSheet(null)} style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(0,0,0,0.05)", border: "none", cursor: "pointer", color: "#1C1C1E", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
               </div>
 
-              {/* Meta row */}
-              <div style={{ padding: "0 28px 18px", display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{client[0].toUpperCase()}</div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#0A0A0B", letterSpacing: "-0.01em" }}>{client}</span>
-                </div>
-                <div style={{ width: 1, height: 14, background: "rgba(0,0,0,0.1)" }}></div>
-                <span style={{ fontSize: 12.5, color: "#6E7178", fontWeight: 500 }}>{fmt}</span>
-                {date && (<><div style={{ width: 1, height: 14, background: "rgba(0,0,0,0.1)" }}></div><span className="tabnum" style={{ fontSize: 12.5, color: "#6E7178", fontWeight: 500 }}>{fmtDate(date, time)}</span></>)}
-                {d.priority && (<><div style={{ width: 1, height: 14, background: "rgba(0,0,0,0.1)" }}></div><span style={{ fontSize: 12.5, color: lc(d.priority) === "alta" ? "#E1483F" : "#6E7178", fontWeight: 600 }}>Prioridade {String(d.priority).toLowerCase()}</span></>)}
+              {/* Properties */}
+              <div style={{ padding: "20px 24px 16px", display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                {[
+                  { l: "Quando", v: date ? fmtDate(date, time) : "Sem data" },
+                  { l: "Formato", v: d.format || (d.type === "video" ? "Reels" : "Post") },
+                  { l: "Prioridade", v: d.priority || "Média" },
+                  { l: "Atribuído", v: d.assigneeName || d.assignee || d.assignees?.[0] || "Sem atribuição" },
+                ].map(p => (
+                  <div key={p.l} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, letterSpacing: "-0.005em" }}>
+                    <span style={{ color: "#8E8E93", fontWeight: 400 }}>{p.l}</span>
+                    <span style={{ color: "#1C1C1E", fontWeight: 500 }}>{p.v}</span>
+                  </div>
+                ))}
               </div>
 
-              {/* Workflow + cover */}
-              <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px" }}>
-                {coverUrl && (
-                  <div style={{ borderRadius: 14, overflow: "hidden", marginBottom: 18, background: `url(${coverUrl}) center/cover no-repeat`, aspectRatio: "16/9" }}></div>
-                )}
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#A8AAAF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Workflow</div>
-                <div>
-                  {_ctStages.map((s, i) => {
-                    const done = i < stageIdx;
-                    const current = i === stageIdx;
-                    return (
-                      <div key={s.k} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < _ctStages.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none" }}>
-                        <div style={{ width: 26, height: 26, borderRadius: "50%", background: done ? s.c : current ? "transparent" : "rgba(0,0,0,0.05)", border: current ? `2px solid ${s.c}` : "none", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          {done && <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
-                          {current && <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></div>}
-                        </div>
-                        <div style={{ flex: 1, fontSize: 14, fontWeight: current ? 700 : done ? 600 : 500, color: current || done ? "#0A0A0B" : "#A8AAAF", letterSpacing: "-0.01em" }}>{s.l}</div>
-                        {current && <div style={{ fontSize: 10.5, fontWeight: 700, color: sCfg.c, textTransform: "uppercase", letterSpacing: "0.05em" }}>atual</div>}
+              {/* Workflow */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#8E8E93", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>Workflow</div>
+                {_ctStages.map((s, i) => {
+                  const done = i < stageIdx;
+                  const current = i === stageIdx;
+                  return (
+                    <div key={s.k} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0" }}>
+                      <div style={{ width: 18, height: 18, borderRadius: "50%", border: `1.5px solid ${done || current ? s.c : "#C7C7CC"}`, background: done ? s.c : "transparent", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {done && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
                       </div>
-                    );
-                  })}
-                </div>
+                      <div style={{ flex: 1, fontSize: 13.5, fontWeight: current ? 600 : done ? 500 : 400, color: current || done ? "#1C1C1E" : "#C7C7CC", letterSpacing: "-0.008em" }}>{s.l}</div>
+                      {current && <div style={{ fontSize: 10.5, fontWeight: 600, color: sCfg.c, letterSpacing: "0.02em" }}>atual</div>}
+                    </div>
+                  );
+                })}
               </div>
 
-              {/* Actions footer */}
-              <div style={{ padding: "14px 28px 28px", borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", gap: 8 }}>
+              <div style={{ padding: "12px 24px 20px", borderTop: "1px solid rgba(0,0,0,0.05)", display: "flex", gap: 8 }}>
                 {stageIdx > 0 && (
-                  <button onClick={() => advanceDemand(d, -1)} className="ct2-btn" style={{ flex: 1, background: "rgba(0,0,0,0.05)", border: "none", borderRadius: 12, padding: "12px 0", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#0A0A0B" }}>← {_ctStages[stageIdx - 1].l}</button>
+                  <button onClick={() => advanceDemand(d, -1)} style={{ flex: 1, background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 9, padding: "10px 0", fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", color: "#1C1C1E" }}>← {_ctStages[stageIdx - 1].l}</button>
                 )}
                 {stageIdx < _ctStages.length - 1 && (
-                  <button onClick={() => advanceDemand(d, 1)} className="ct2-btn" style={{ flex: 1, background: "#0A0A0B", color: "#BBF246", border: "none", borderRadius: 12, padding: "12px 0", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>{_ctStages[stageIdx + 1].l} →</button>
+                  <button onClick={() => advanceDemand(d, 1)} style={{ flex: 1, background: "#1C1C1E", color: "#BBF246", border: "none", borderRadius: 9, padding: "10px 0", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{_ctStages[stageIdx + 1].l} →</button>
                 )}
               </div>
-            </div>
+            </aside>
           </>
         );
       })()}
 
       {/* ═══════ TOAST ═══════ */}
-      {_ctToast && (
-        <div style={{ position: "fixed", bottom: 110, left: "50%", transform: "translateX(-50%)", background: "rgba(10,10,11,0.92)", color: "#FFFFFF", padding: "10px 18px", borderRadius: 999, fontSize: 12.5, fontWeight: 600, zIndex: 200, backdropFilter: "blur(12px)", boxShadow: "0 8px 24px rgba(0,0,0,0.2)", letterSpacing: "-0.005em", animation: "_ct2ToastIn .35s cubic-bezier(0.32, 0.72, 0, 1)" }}>{_ctToast}</div>
+      {_thToast && (
+        <div style={{ position: "fixed", bottom: 110, left: "50%", transform: "translateX(-50%)", background: "rgba(28,28,30,0.92)", color: "#FFFFFF", padding: "9px 16px", borderRadius: 999, fontSize: 12, fontWeight: 500, zIndex: 250, backdropFilter: "blur(12px)", boxShadow: "0 8px 24px rgba(0,0,0,0.18)", letterSpacing: "-0.005em", animation: "_thToastIn .3s cubic-bezier(0.32, 0.72, 0, 1)" }}>{_thToast}</div>
       )}
     </div>
   );
