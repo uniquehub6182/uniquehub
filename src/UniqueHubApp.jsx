@@ -4990,6 +4990,27 @@ function HomePageV2(props) {
   const [_uhActionToast, _uhSetActionToast] = useState("");
   const [_uhNews, _uhSetNews] = useState(null); // null = nao carregado
   const [_uhLibFiles, _uhSetLibFiles] = useState(null);
+  const [_uhNoteModalOpen, _uhSetNoteModalOpen] = useState(false);
+  const [_uhNoteDraft, _uhSetNoteDraft] = useState({ title: "", body: "" });
+  const [_uhNotesVersion, _uhSetNotesVersion] = useState(0);
+  const [_uhMetricsPeriod, _uhSetMetricsPeriod] = useState("mes");
+  const [_uhReportsPeriod, _uhSetReportsPeriod] = useState("6m");
+  const _uhSaveNewNote = () => {
+    if (!_uhNoteDraft.title.trim() && !_uhNoteDraft.body.trim()) return;
+    let notes = [];
+    try { const raw = localStorage.getItem("uh_notes_list"); if (raw) notes = JSON.parse(raw) || []; } catch {}
+    const newNote = { id: "n_" + Date.now(), title: _uhNoteDraft.title.trim() || "Sem título", body: _uhNoteDraft.body.trim(), created_at: new Date().toISOString() };
+    notes = [newNote, ...notes];
+    try { localStorage.setItem("uh_notes_list", JSON.stringify(notes)); } catch {}
+    _uhSetNoteDraft({ title: "", body: "" });
+    _uhSetNoteModalOpen(false);
+    _uhSetNotesVersion(v => v + 1);
+    _uhSetActionToast("✓ Nota criada");
+  };
+  const _uhOpenChat = (member) => {
+    try { sessionStorage.setItem("uh_chat_open_with", member.name || ""); } catch {}
+    goTab && goTab("chat");
+  };
   // Lazy load quando abre o body do app correspondente
   useEffect(() => {
     if (_uhActiveApp === "noticias" && _uhNews === null && supabase) {
@@ -5164,10 +5185,16 @@ function HomePageV2(props) {
 VOCÊ ESTÁ FALANDO COM: ${_uhFirstName} (${user?.role || "equipe"}), da agência "${_uhAgencyName}".
 DATA: ${_uhDateStr} (hoje é ${_uhDays[_uhNow.getDay()]}-feira) — agora são ${_uhTime.h}:${_uhTime.m}.
 
-CONTEXTO REAL DA AGÊNCIA NESTE MOMENTO:
-- ${_uhMqContext.clientsCount} cliente(s) ativo(s)${_uhMqContext.teamCount ? " · " + _uhMqContext.teamCount + " colaborador(es) na equipe" : ""}
-- ${_uhMqContext.totalActive} demanda(s) em andamento (${_uhMqContext.pendingApproval} aguardando aprovação do cliente, ${_uhMqContext.inReview} em revisão interna, ${_uhMqContext.inProduction} em produção, ${_uhMqContext.scheduled} agendada(s))
-- ${_uhPostsDone}/${_uhPostsGoal} posts publicados esse mês (${_uhGoalPct}% da meta)${_uhMqAttSummary ? "\n\nALERTAS:\n" + _uhMqAttSummary : ""}
+CONTEXTO REAL DA AGÊNCIA NESTE MOMENTO (use SEMPRE que perguntarem sobre clientes/demandas/equipe/números):
+- ${_uhMqContext.clientsCount} cliente(s) ativo(s)${_uhMqContext.clientsList.length ? ": " + _uhMqContext.clientsList.join(", ") : ""}
+- Equipe (${_uhMqContext.teamCount}): ${_uhMqContext.teamList.length ? _uhMqContext.teamList.join(", ") : "ninguém cadastrado"}
+- Receita mensal: R$ ${_uhMqContext.mrr.toLocaleString("pt-BR")} (MRR)
+- Pipeline: ${_uhMqContext.totalActive} demanda(s) ativas — ${_uhMqContext.pendingApproval} aguardando cliente, ${_uhMqContext.inProduction} em produção, ${_uhMqContext.scheduled} agendada(s)
+- Aprovações pendentes: ${_uhMqContext.pendingTitles.length ? _uhMqContext.pendingTitles.join("; ") : "nenhuma"}
+- Performance do mês: ${_uhPostsDone}/${_uhPostsGoal} posts publicados (${_uhGoalPct}% da meta)${_uhMqAttSummary ? "\n\nALERTAS ATUAIS:\n" + _uhMqAttSummary : ""}
+
+SOBRE A PLATAFORMA UniqueHub (sua própria casa — se perguntarem o que ela faz, responda com isso):
+UniqueHub é uma plataforma brasileira SaaS pra agências de marketing digital gerenciarem clientes e demandas. Recursos: pipeline Kanban de produção de conteúdo (7 etapas — Ideia, Briefing, Produção, Revisão Interna, Aguardando Cliente, Agendado, Publicado), agendamento automático no Instagram/Facebook (com processamento server-side), portal do cliente com Growth Score (gamificação), você (Munique A.I.) integrada em todas as telas, Comentários IA (sugestões automáticas de respostas pra comentários do Insta/FB), Match4Biz (Tinder B2B entre agência/clientes), Radar de Concorrentes, Detector de Tendências Locais, Biblioteca de arquivos estilo Drive, Apresentações automáticas mensais pra clientes, Banco de Ideias, Equipe com check-in/horas, gestão Financeira de planos. Você é a Munique A.I. — assistente IA que vive dentro do UniqueHub.
 
 ESPECIALIDADE PRINCIPAL: marketing digital, copywriting, legendas pra Instagram/Facebook/TikTok, ideias de post, roteiros (Reels/Stories), estratégia, análise de concorrente, planejamento editorial e gestão do dia-a-dia de agência.
 
@@ -5360,18 +5387,29 @@ REGRAS DE ESTILO:
     const clients = Array.isArray(props.clients) ? props.clients : [];
     const team = Array.isArray(props.team) ? props.team : [];
     const lc = (s) => (s || "").toString().toLowerCase();
-    const isStatus = (d, arr) => arr.includes(lc(d?.status));
+    const isStatus = (d, arr) => arr.includes(lc(d?.status || d?.stage));
+    const clientNames = clients.map(c => c.name).filter(Boolean);
+    const teamNames = team.map(m => m.name).filter(Boolean);
+    const pending = demands.filter(d => isStatus(d, ["client", "approval", "aguardando_aprovacao"]));
+    const pendingTitles = pending.slice(0, 8).map(d => `"${d.task || d.title || "—"}" (${d.clientName || d.client || "?"})`);
+    const todayYmd = new Date().toISOString().slice(0, 10);
+    const wkEnd = new Date(); wkEnd.setDate(wkEnd.getDate() + 7); const wkYmd = wkEnd.toISOString().slice(0, 10);
+    const events = (Array.isArray(props.events) ? props.events : []);
     return {
       clientsCount: clients.length,
+      clientsList: clientNames,
       teamCount: team.length,
-      pendingApproval: demands.filter(d => isStatus(d, ["client", "approval", "aguardando_aprovacao", "aguardando aprovação"])).length,
+      teamList: teamNames,
+      pendingApproval: pending.length,
+      pendingTitles,
       inReview: demands.filter(d => isStatus(d, ["review", "revisao", "revisão"])).length,
-      inProduction: demands.filter(d => isStatus(d, ["production", "producao", "produção", "designing"])).length,
+      inProduction: demands.filter(d => isStatus(d, ["production", "producao", "produção", "designing", "design", "copy", "brief", "briefing"])).length,
       scheduled: demands.filter(d => isStatus(d, ["scheduled", "agendado"])).length,
       totalActive: demands.filter(d => !isStatus(d, ["published", "done", "publicado", "concluido", "concluído"])).length,
       published: demands.filter(d => isStatus(d, ["published", "done", "publicado", "concluido", "concluído"])).length,
+      mrr: clients.reduce((s, c) => s + (Number(c.monthly_value) || 0), 0),
     };
-  }, [props.demands, props.clients, props.team]);
+  }, [props.demands, props.clients, props.team, props.events]);
 
   // ─── Fase 6: derivados — week strip (com items), range label, summary stats ───
   const _uhFmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -6020,13 +6058,7 @@ REGRAS DE ESTILO:
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em" }}>{cfg.name}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  onClick={(e) => { e.stopPropagation(); _uhSetPinnedApp(_uhActiveApp); _uhSetActiveApp(null); }}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#0D0D0D", background: "#BBF246", border: "1px solid #A8DF33", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5M9 10.76V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4.76l2.5 3.74-1 1.5h-9l-1-1.5L9 10.76z"/></svg>
-                  Fixar ao lado
-                </button>
+                
                 <button
                   onClick={(e) => { e.stopPropagation(); cfg.nav(); }}
                   style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "#192126", background: "transparent", border: "1px solid rgba(0,0,0,0.12)", padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit" }}
@@ -6274,43 +6306,47 @@ REGRAS DE ESTILO:
               {_uhActiveApp === "biblioteca" && (() => {
                 if (_uhLibFiles === null) return <div style={{ textAlign: "center", padding: 24, color: "#8B8F92", fontSize: 12 }}>Carregando…</div>;
                 if (_uhLibFiles.length === 0) return <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Biblioteca vazia</div>;
+                const fmtSize = (b) => { if (!b) return ""; if (b < 1024) return b + "B"; if (b < 1048576) return (b / 1024).toFixed(0) + "KB"; return (b / 1048576).toFixed(1) + "MB"; };
                 const fileMeta = (f) => {
                   const m = (f.mime_type || "").toLowerCase();
                   const n = (f.name || "").toLowerCase();
                   const ext = n.split(".").pop() || "";
-                  if (m.startsWith("image/") && !["heic", "heif"].includes(ext)) return { kind: "img", color: "#8B8F92", bg: "#F4F4F5", label: ext.toUpperCase() };
-                  if (m.startsWith("video/") || ["mp4", "mov", "avi", "webm"].includes(ext)) return { kind: "vid", color: "#BBF246", bg: "linear-gradient(135deg, #0D0D0D, #333)", label: ext.toUpperCase() };
-                  if (m === "application/pdf" || ext === "pdf") return { kind: "pdf", color: "#FFFFFF", bg: "linear-gradient(135deg, #DC2626, #991B1B)", label: "PDF" };
-                  if (["doc", "docx"].includes(ext)) return { kind: "doc", color: "#FFFFFF", bg: "linear-gradient(135deg, #2563EB, #1E40AF)", label: ext.toUpperCase() };
-                  if (["xls", "xlsx", "csv"].includes(ext)) return { kind: "xls", color: "#FFFFFF", bg: "linear-gradient(135deg, #16A34A, #15803D)", label: ext.toUpperCase() };
-                  if (["heic", "heif"].includes(ext)) return { kind: "heic", color: "#FFFFFF", bg: "linear-gradient(135deg, #7C3AED, #5B21B6)", label: "HEIC" };
-                  return { kind: "file", color: "#FFFFFF", bg: "linear-gradient(135deg, #404040, #1F1F1F)", label: ext.toUpperCase() || "FILE" };
+                  if (m.startsWith("image/") && !["heic", "heif"].includes(ext)) return { color: "#192126", bg: "#F4F4F5", label: ext.toUpperCase(), isImg: true };
+                  if (m.startsWith("video/") || ["mp4", "mov", "avi", "webm"].includes(ext)) return { color: "#FFFFFF", bg: "#0D0D0D", label: ext.toUpperCase() };
+                  if (m === "application/pdf" || ext === "pdf") return { color: "#FFFFFF", bg: "#DC2626", label: "PDF" };
+                  if (["doc", "docx"].includes(ext)) return { color: "#FFFFFF", bg: "#2563EB", label: ext.toUpperCase() };
+                  if (["xls", "xlsx", "csv"].includes(ext)) return { color: "#FFFFFF", bg: "#16A34A", label: ext.toUpperCase() };
+                  if (["heic", "heif"].includes(ext)) return { color: "#FFFFFF", bg: "#7C3AED", label: "HEIC" };
+                  return { color: "#FFFFFF", bg: "#404040", label: ext.toUpperCase() || "FILE" };
                 };
                 return (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, maxHeight: 320, overflow: "auto", padding: 2, margin: -2 }}>
-                    {_uhLibFiles.slice(0, 8).map((f, i) => {
-                      const meta = fileMeta(f);
-                      return (
-                        <div key={f.id || i} onClick={() => goSub && goSub("library")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 10, cursor: "pointer", display: "flex", flexDirection: "column", gap: 8, transition: "transform .15s, box-shadow .15s" }}
-                          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-                        >
-                          <div style={{ aspectRatio: "4 / 3", borderRadius: 10, background: meta.kind === "img" && f.url ? `#F4F4F5 url(${f.url}) center/cover no-repeat` : meta.bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                            {meta.kind === "img" ? null : (
-                              <>
-                                {meta.kind === "vid" ? (
-                                  <svg width="34" height="34" viewBox="0 0 24 24" fill={meta.color}><polygon points="6 4 20 12 6 20 6 4"/></svg>
-                                ) : (
-                                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={meta.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                )}
-                                <div style={{ position: "absolute", bottom: 6, right: 6, padding: "2px 6px", borderRadius: 5, background: "rgba(0,0,0,0.55)", fontSize: 8.5, fontWeight: 800, color: "#FFFFFF", letterSpacing: "0.5px" }}>{meta.label}</div>
-                              </>
-                            )}
+                  <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, overflow: "hidden", maxHeight: 360 }}>
+                    <div style={{ overflowY: "auto", maxHeight: 360 }}>
+                      {_uhLibFiles.slice(0, 12).map((f, i) => {
+                        const meta = fileMeta(f);
+                        const when = f.created_at ? new Date(f.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "";
+                        return (
+                          <div key={f.id || i} onClick={() => goSub && goSub("library")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", cursor: "pointer", borderBottom: i === Math.min(11, _uhLibFiles.length - 1) ? "none" : "1px solid rgba(0,0,0,0.05)", transition: "background .15s" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(187,242,70,0.08)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                          >
+                            <div style={{
+                              width: 38, height: 38, borderRadius: 9, flexShrink: 0,
+                              background: meta.isImg && f.url ? `url(${f.url}) center/cover no-repeat` : meta.bg,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: 9, fontWeight: 800, color: meta.color, letterSpacing: "0.3px"
+                            }}>
+                              {!meta.isImg && meta.label}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name || "arquivo"}</div>
+                              <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600, marginTop: 1 }}>{meta.label}{f.size_bytes ? ` · ${fmtSize(f.size_bytes)}` : ""}{when ? ` · ${when}` : ""}</div>
+                            </div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
                           </div>
-                          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }}>{f.name || "arquivo"}</div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })()}
@@ -6354,19 +6390,30 @@ REGRAS DE ESTILO:
               {_uhActiveApp === "notas" && (() => {
                 let notes = [];
                 try { const raw = localStorage.getItem("uh_notes_list"); if (raw) notes = JSON.parse(raw) || []; } catch {}
-                return notes.length === 0 ? (
-                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>
-                    Bloco de Notas vazio
-                    <div style={{ fontSize: 10.5, color: "#A0A4A7", marginTop: 6 }}>Cria a primeira em <span onClick={() => goSub && goSub("notes")} style={{ color: "#0D0D0D", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>Notas</span></div>
-                  </div>
-                ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, maxHeight: 320, overflow: "auto" }}>
-                    {notes.slice(0, 9).map((n, i) => (
-                      <div key={n.id || i} onClick={() => goSub && goSub("notes")} style={{ background: "rgba(255,247,219,0.9)", borderRadius: 12, padding: 12, cursor: "pointer", minHeight: 90, display: "flex", flexDirection: "column" }}>
-                        <div style={{ fontSize: 11.5, fontWeight: 800, color: "#192126", marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title || "Sem título"}</div>
-                        <div style={{ fontSize: 10.5, color: "#5A4A1A", lineHeight: 1.3, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical" }}>{n.body || n.content || ""}</div>
+                const _ = _uhNotesVersion; // dep pra re-render
+                return (
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                      <button onClick={() => { _uhSetNoteDraft({ title: "", body: "" }); _uhSetNoteModalOpen(true); }} style={{ background: "#BBF246", color: "#0D0D0D", border: "none", borderRadius: 999, padding: "7px 14px", fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Nova nota
+                      </button>
+                    </div>
+                    {notes.length === 0 ? (
+                      <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>
+                        Bloco de Notas vazio<div style={{ fontSize: 10.5, color: "#A0A4A7", marginTop: 6 }}>Click em <b>Nova nota</b> pra criar a primeira</div>
                       </div>
-                    ))}
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, maxHeight: 320, overflow: "auto" }}>
+                        {notes.slice(0, 9).map((n, i) => (
+                          <div key={n.id || i} onClick={() => goSub && goSub("notes")} style={{ background: "rgba(255,247,219,0.95)", borderRadius: 12, padding: 12, cursor: "pointer", minHeight: 110, display: "flex", flexDirection: "column", border: "1px solid rgba(180,140,0,0.12)" }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 800, color: "#192126", marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title || "Sem título"}</div>
+                            <div style={{ fontSize: 10.5, color: "#5A4A1A", lineHeight: 1.35, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical" }}>{n.body || n.content || ""}</div>
+                            {n.created_at && <div style={{ fontSize: 9, color: "#8B7A3A", fontWeight: 600, marginTop: 6 }}>{new Date(n.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -6375,36 +6422,76 @@ REGRAS DE ESTILO:
                 const demands = Array.isArray(props.demands) ? props.demands : [];
                 const clients = Array.isArray(props.clients) ? props.clients : [];
                 const lc = (s) => (s || "").toString().toLowerCase();
-                const published = demands.filter(d => ["published", "done", "publicado"].includes(lc(d.stage || d.status))).length;
-                const inProd = demands.filter(d => ["design", "designing", "production", "copy", "brief"].includes(lc(d.stage || d.status))).length;
-                const pending = demands.filter(d => ["client", "approval"].includes(lc(d.stage || d.status))).length;
+                const now = new Date();
+                let rangeStart, prevStart, prevEnd, rangeLabel;
+                if (_uhMetricsPeriod === "hoje") {
+                  rangeStart = new Date(now); rangeStart.setHours(0,0,0,0);
+                  prevEnd = new Date(rangeStart.getTime() - 1);
+                  prevStart = new Date(rangeStart); prevStart.setDate(prevStart.getDate() - 1);
+                  rangeLabel = "hoje";
+                } else if (_uhMetricsPeriod === "semana") {
+                  rangeStart = new Date(now); rangeStart.setHours(0,0,0,0); rangeStart.setDate(rangeStart.getDate() - 7);
+                  prevEnd = new Date(rangeStart.getTime() - 1);
+                  prevStart = new Date(rangeStart); prevStart.setDate(prevStart.getDate() - 7);
+                  rangeLabel = "últimos 7 dias";
+                } else {
+                  rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+                  prevEnd = new Date(rangeStart.getTime() - 1);
+                  prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), 1);
+                  rangeLabel = "este mês";
+                }
+                const inR = (dt) => { if (!dt) return false; try { const d = new Date(dt); return d >= rangeStart && d <= now; } catch { return false; } };
+                const inPrev = (dt) => { if (!dt) return false; try { const d = new Date(dt); return d >= prevStart && d <= prevEnd; } catch { return false; } };
+                const pubF = (d) => ["published","done","publicado","concluido","concluído"].includes(lc(d.stage || d.status));
+                const prodF = (d) => ["design","designing","production","producao","produção","copy","brief","briefing"].includes(lc(d.stage || d.status));
+                const pendF = (d) => ["client","approval","aguardando_aprovacao"].includes(lc(d.stage || d.status));
+                const publishedNow = demands.filter(d => pubF(d) && inR(d.published_at || d.publishedAt || d.updated_at)).length;
+                const publishedPrev = demands.filter(d => pubF(d) && inPrev(d.published_at || d.publishedAt || d.updated_at)).length;
+                const inProd = demands.filter(prodF).length;
+                const pending = demands.filter(pendF).length;
                 const mrr = clients.reduce((s, c) => s + (Number(c.monthly_value) || 0), 0);
+                const delta = (now, prev) => { if (prev === 0) return now > 0 ? "+100%" : "—"; const d = Math.round(((now - prev) / prev) * 100); return d >= 0 ? `+${d}%` : `${d}%`; };
+                const deltaColor = (now, prev) => now >= prev ? "#0D7C00" : "#DC2626";
                 const cards = [
-                  { label: "Posts publicados", value: published, sub: "total" },
-                  { label: "Em produção", value: inProd, sub: "demandas ativas" },
-                  { label: "Aprovação pendente", value: pending, sub: "aguardando cliente" },
-                  { label: "Receita mensal", value: mrr >= 1000 ? `R$ ${(mrr / 1000).toFixed(1)}k` : `R$ ${mrr}`, sub: `${clients.length} clientes` },
+                  { label: "Posts publicados", value: publishedNow, sub: `vs ${publishedPrev} no período anterior`, delta: delta(publishedNow, publishedPrev), color: deltaColor(publishedNow, publishedPrev), src: `publicados ${rangeLabel}` },
+                  { label: "Em produção", value: inProd, sub: `demandas ativas no Kanban`, src: `stage = design/copy/brief` },
+                  { label: "Aprovação pendente", value: pending, sub: `aguardando o cliente`, src: `stage = client/approval` },
+                  { label: "Receita mensal", value: mrr >= 1000 ? `R$ ${(mrr / 1000).toFixed(1)}k` : `R$ ${mrr}`, sub: `${clients.length} clientes ativos`, src: `soma de monthly_value` },
                 ];
                 return (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
-                    {cards.map((k, i) => (
-                      <div key={i} onClick={() => goSub && goSub("metrics")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "14px 16px", cursor: "pointer" }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>{k.label}</div>
-                        <div style={{ fontSize: 26, fontWeight: 900, color: "#192126", letterSpacing: "-0.03em", marginTop: 6, lineHeight: 1 }}>{k.value}</div>
-                        <div style={{ fontSize: 10, color: "#8B8F92", fontWeight: 600, marginTop: 4 }}>{k.sub}</div>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>Período: <b style={{ color: "#192126" }}>{rangeLabel}</b></div>
+                      <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.04)", borderRadius: 999, padding: 3 }}>
+                        {[{ k: "hoje", l: "Hoje" }, { k: "semana", l: "7 dias" }, { k: "mes", l: "Mês" }].map(o => (
+                          <button key={o.k} onClick={() => _uhSetMetricsPeriod(o.k)} style={{ padding: "5px 12px", borderRadius: 999, fontSize: 10.5, fontWeight: 700, background: _uhMetricsPeriod === o.k ? "#FFFFFF" : "transparent", color: _uhMetricsPeriod === o.k ? "#192126" : "#8B8F92", boxShadow: _uhMetricsPeriod === o.k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                      {cards.map((k, i) => (
+                        <div key={i} onClick={() => goSub && goSub("metrics")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px", cursor: "pointer" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 4 }}>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>{k.label}</div>
+                            {k.delta && <div style={{ fontSize: 10, fontWeight: 800, color: k.color }}>{k.delta}</div>}
+                          </div>
+                          <div style={{ fontSize: 26, fontWeight: 900, color: "#192126", letterSpacing: "-0.03em", marginTop: 6, lineHeight: 1 }}>{k.value}</div>
+                          <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 4 }}>{k.sub}</div>
+                          <div style={{ fontSize: 9, color: "#A0A4A7", fontWeight: 500, marginTop: 2, fontStyle: "italic" }}>fonte: {k.src}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
 
               {_uhActiveApp === "relatorios" && (() => {
                 const demands = Array.isArray(props.demands) ? props.demands : [];
-                const clients = Array.isArray(props.clients) ? props.clients : [];
                 const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
                 const now = new Date();
+                const monthsBack = _uhReportsPeriod === "3m" ? 3 : _uhReportsPeriod === "6m" ? 6 : 12;
                 const series = [];
-                for (let i = 2; i >= 0; i--) {
+                for (let i = monthsBack - 1; i >= 0; i--) {
                   const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
                   const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
                   const count = demands.filter(d => {
@@ -6414,30 +6501,60 @@ REGRAS DE ESTILO:
                     const dd = new Date(dt);
                     return dd >= m && dd <= mEnd;
                   }).length;
-                  series.push({ label: months[m.getMonth()], count });
+                  series.push({ label: months[m.getMonth()], year: m.getFullYear(), count });
                 }
+                const totalP = series.reduce((s, x) => s + x.count, 0);
+                const avgMonth = (totalP / monthsBack).toFixed(1);
+                const bestMonth = series.reduce((b, x) => x.count > b.count ? x : b, series[0] || { count: 0, label: "—" });
+                const lastMonth = series[series.length - 1] || { count: 0 };
+                const prevMonth = series[series.length - 2] || { count: 0 };
+                const trend = lastMonth.count > prevMonth.count ? "▲" : lastMonth.count < prevMonth.count ? "▼" : "→";
+                const trendColor = lastMonth.count > prevMonth.count ? "#0D7C00" : lastMonth.count < prevMonth.count ? "#DC2626" : "#8B8F92";
+                const max = Math.max(1, ...series.map(s => s.count));
                 return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "16px 18px", cursor: "pointer" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
-                        <div>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Publicações nos últimos 3 meses</div>
-                          <div style={{ fontSize: 26, fontWeight: 900, color: "#192126", marginTop: 4, letterSpacing: "-0.03em" }}>{series.reduce((s, x) => s + x.count, 0)}<span style={{ fontSize: 13, color: "#8B8F92", fontWeight: 500, marginLeft: 6 }}>posts</span></div>
-                        </div>
-                        <div style={{ fontSize: 11, color: "#0D7C00", fontWeight: 700 }}>{clients.length} clientes</div>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>Publicações últimos <b style={{ color: "#192126" }}>{monthsBack} meses</b></div>
+                      <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.04)", borderRadius: 999, padding: 3 }}>
+                        {[{ k: "3m", l: "3M" }, { k: "6m", l: "6M" }, { k: "12m", l: "12M" }].map(o => (
+                          <button key={o.k} onClick={() => _uhSetReportsPeriod(o.k)} style={{ padding: "5px 12px", borderRadius: 999, fontSize: 10.5, fontWeight: 700, background: _uhReportsPeriod === o.k ? "#FFFFFF" : "transparent", color: _uhReportsPeriod === o.k ? "#192126" : "#8B8F92", boxShadow: _uhReportsPeriod === o.k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
+                        ))}
                       </div>
-                      <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: 70 }}>
-                        {series.map((s, i) => {
-                          const max = Math.max(1, ...series.map(x => x.count));
-                          const h = Math.max(8, (s.count / max) * 100);
-                          return (
-                            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                              <div style={{ fontSize: 11, fontWeight: 800, color: "#192126" }}>{s.count}</div>
-                              <div style={{ width: "60%", height: h + "%", background: i === series.length - 1 ? "#BBF246" : "#0D0D0D", borderRadius: 6, transition: "height .6s cubic-bezier(0.34,1.56,0.64,1)" }}></div>
-                              <div style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase" }}>{s.label}</div>
-                            </div>
-                          );
-                        })}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 10 }}>
+                      <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px", cursor: "pointer" }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Posts por mês</div>
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 90 }}>
+                          {series.map((s, i) => {
+                            const h = Math.max(6, (s.count / max) * 100);
+                            const isLast = i === series.length - 1;
+                            return (
+                              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                                <div style={{ fontSize: 9.5, fontWeight: 800, color: "#192126" }}>{s.count}</div>
+                                <div style={{ width: "70%", height: h + "%", background: isLast ? "#BBF246" : "#0D0D0D", borderRadius: 4, transition: "height .6s cubic-bezier(0.34,1.56,0.64,1)" }}></div>
+                                <div style={{ fontSize: 8.5, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase" }}>{s.label}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>Total no período</div>
+                          <div style={{ fontSize: 20, fontWeight: 900, color: "#192126", marginTop: 2 }}>{totalP}</div>
+                        </div>
+                        <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>Média/mês</div>
+                          <div style={{ fontSize: 20, fontWeight: 900, color: "#192126", marginTop: 2 }}>{avgMonth}</div>
+                        </div>
+                        <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>Melhor mês</div>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: "#192126", marginTop: 2 }}>{bestMonth.label} <span style={{ fontSize: 11, color: "#8B8F92" }}>· {bestMonth.count}</span></div>
+                        </div>
+                        <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
+                          <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>Tendência</div>
+                          <div style={{ fontSize: 14, fontWeight: 900, color: trendColor, marginTop: 2 }}>{trend} <span style={{ color: "#192126" }}>{prevMonth.count} → {lastMonth.count}</span></div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -6449,16 +6566,29 @@ REGRAS DE ESTILO:
                 return team.length === 0 ? (
                   <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Equipe vazia</div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, maxHeight: 320, overflow: "auto" }}>
-                    {team.slice(0, 9).map((m, i) => (
-                      <div key={m.id || i} onClick={() => goSub && goSub("team")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: "14px 12px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                        <div style={{ width: 40, height: 40, borderRadius: "50%", background: m.avatar ? `url(${m.avatar}) center/cover` : "linear-gradient(135deg, #0D0D0D, #333)", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, flexShrink: 0 }}>{!m.avatar && (m.name || "?")[0].toUpperCase()}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.name || "Sem nome"}</div>
-                          <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.role || m.position || "Membro"}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, maxHeight: 360, overflow: "auto" }}>
+                    {team.slice(0, 8).map((m, i) => {
+                      const isOnline = m.status === "online" || m.online === true;
+                      return (
+                        <div key={m.id || i} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ position: "relative", flexShrink: 0 }}>
+                            <div style={{ width: 44, height: 44, borderRadius: "50%", background: m.avatar ? `url(${m.avatar}) center/cover` : "linear-gradient(135deg, #0D0D0D, #333)", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800 }}>{!m.avatar && (m.name || "?")[0].toUpperCase()}</div>
+                            {isOnline && <div style={{ position: "absolute", bottom: 0, right: 0, width: 12, height: 12, borderRadius: "50%", background: "#22C55E", border: "2px solid #FFFFFF" }}></div>}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.name || "Sem nome"}</div>
+                            <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600, marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.role || m.position || "Membro"}</div>
+                            <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
+                              <button onClick={(e) => { e.stopPropagation(); _uhOpenChat(m); }} style={{ flex: 1, background: "#BBF246", color: "#0D0D0D", border: "none", borderRadius: 8, padding: "5px 8px", fontSize: 10, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                Chat
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); goSub && goSub("team"); }} style={{ flex: 1, background: "rgba(0,0,0,0.06)", color: "#192126", border: "none", borderRadius: 8, padding: "5px 8px", fontSize: 10, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Perfil</button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })()}
@@ -6466,30 +6596,69 @@ REGRAS DE ESTILO:
               {_uhActiveApp === "financeiro" && (() => {
                 const clients = Array.isArray(props.clients) ? props.clients : [];
                 const mrr = clients.reduce((s, c) => s + (Number(c.monthly_value) || 0), 0);
+                const arr = mrr * 12;
                 const planCount = clients.reduce((a, c) => { const p = c.plan || "outro"; a[p] = (a[p] || 0) + 1; return a; }, {});
-                const topPlans = Object.entries(planCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+                const planRevenue = clients.reduce((a, c) => { const p = c.plan || "outro"; a[p] = (a[p] || 0) + (Number(c.monthly_value) || 0); return a; }, {});
+                const topClients = [...clients].sort((a, b) => (Number(b.monthly_value) || 0) - (Number(a.monthly_value) || 0)).slice(0, 5);
+                const planEntries = Object.entries(planRevenue).sort((a, b) => b[1] - a[1]);
+                const ticketAvg = clients.length > 0 ? mrr / clients.length : 0;
                 return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div onClick={() => goSub && goSub("financial")} style={{ background: "linear-gradient(135deg, #0D0D0D, #1A1A1A)", color: "#FFFFFF", borderRadius: 14, padding: "20px 24px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.5px" }}>MRR · receita mensal</div>
-                        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-0.03em", marginTop: 4, lineHeight: 1 }}>R$ {mrr.toLocaleString("pt-BR")}</div>
-                        <div style={{ fontSize: 11, color: "#BBF246", fontWeight: 700, marginTop: 6 }}>{clients.length} {clients.length === 1 ? "cliente" : "clientes"}{clients.length > 0 ? ` · ticket médio R$ ${Math.round(mrr / clients.length).toLocaleString("pt-BR")}` : ""}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {/* Hero: MRR + ARR + ticket médio */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr 1fr", gap: 10 }}>
+                      <div onClick={() => goSub && goSub("financial")} style={{ background: "linear-gradient(135deg, #0D0D0D, #1A1A1A)", color: "#FFFFFF", borderRadius: 14, padding: "16px 18px", cursor: "pointer" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.5px" }}>MRR · receita mensal</div>
+                        <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em", marginTop: 4, lineHeight: 1 }}>R$ {mrr.toLocaleString("pt-BR")}</div>
+                        <div style={{ fontSize: 10.5, color: "#BBF246", fontWeight: 700, marginTop: 6 }}>{clients.length} {clients.length === 1 ? "cliente ativo" : "clientes ativos"}</div>
                       </div>
-                      <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(187,242,70,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                      <div onClick={() => goSub && goSub("financial")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "12px 14px", cursor: "pointer" }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>ARR projetado</div>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: "#192126", marginTop: 4, letterSpacing: "-0.02em" }}>R$ {arr >= 1000 ? (arr / 1000).toFixed(1) + "k" : arr}</div>
+                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>MRR × 12</div>
+                      </div>
+                      <div onClick={() => goSub && goSub("financial")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "12px 14px", cursor: "pointer" }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Ticket médio</div>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: "#192126", marginTop: 4, letterSpacing: "-0.02em" }}>R$ {Math.round(ticketAvg).toLocaleString("pt-BR")}</div>
+                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>por cliente/mês</div>
                       </div>
                     </div>
-                    {topPlans.length > 0 && (
-                      <div style={{ display: "grid", gridTemplateColumns: `repeat(${topPlans.length}, 1fr)`, gap: 8 }}>
-                        {topPlans.map(([p, n]) => (
-                          <div key={p} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 12, padding: "10px 12px", textAlign: "center" }}>
-                            <div style={{ fontSize: 16, fontWeight: 900, color: "#192126" }}>{n}</div>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: "#8B8F92", textTransform: "capitalize", marginTop: 2 }}>{p}</div>
+                    {/* Top clientes + Plans */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 10 }}>
+                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "12px 14px" }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 8 }}>Top 5 clientes por valor</div>
+                        {topClients.length === 0 ? (
+                          <div style={{ fontSize: 11, color: "#A0A4A7", padding: "8px 0", fontStyle: "italic" }}>sem clientes ainda</div>
+                        ) : topClients.map((c, i) => (
+                          <div key={c.id || i} onClick={() => goTab && goTab("clients")} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: i === topClients.length - 1 ? "none" : "1px solid rgba(0,0,0,0.05)", cursor: "pointer", gap: 6 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
+                              <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{i + 1}.</div>
+                              <div style={{ fontSize: 11.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.name}</div>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: "#8B8F92", flexShrink: 0 }}>{c.plan ? `· ${c.plan}` : ""}</div>
+                            </div>
+                            <div style={{ fontSize: 11.5, fontWeight: 800, color: "#0D7C00", flexShrink: 0 }}>R$ {(Number(c.monthly_value) || 0).toLocaleString("pt-BR")}</div>
                           </div>
                         ))}
                       </div>
-                    )}
+                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "12px 14px" }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 8 }}>Receita por plano</div>
+                        {planEntries.length === 0 ? (
+                          <div style={{ fontSize: 11, color: "#A0A4A7", padding: "8px 0", fontStyle: "italic" }}>sem dados</div>
+                        ) : planEntries.map(([p, rev]) => {
+                          const pct = mrr > 0 ? Math.round((rev / mrr) * 100) : 0;
+                          return (
+                            <div key={p} style={{ marginBottom: 8 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, marginBottom: 2 }}>
+                                <span style={{ fontWeight: 700, color: "#192126", textTransform: "capitalize" }}>{p} <span style={{ color: "#8B8F92", fontWeight: 600 }}>· {planCount[p]}</span></span>
+                                <span style={{ fontWeight: 800, color: "#0D7C00" }}>{pct}%</span>
+                              </div>
+                              <div style={{ height: 5, background: "rgba(0,0,0,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                                <div style={{ width: `${pct}%`, height: "100%", background: "#BBF246", borderRadius: 999, transition: "width .6s cubic-bezier(0.4,0,0.2,1)" }}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
@@ -6543,42 +6712,7 @@ REGRAS DE ESTILO:
             animation: "_uhMpGlowPulse 4s ease-in-out infinite",
           }}></div>
 
-          {_uhPinnedApp ? (() => {
-            // PINNED APP no painel direito (substitui Munique)
-            const pinnedConfigs = {
-              conteudo: { name: "Conteúdo", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg> },
-              comentarios: { name: "Coment. IA", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
-              aprovacoes: { name: "Aprovações", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><circle cx="12" cy="12" r="9"/><polyline points="9 12 11 14 15 10"/></svg> },
-              agenda: { name: "Agenda", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/></svg> },
-              munique: { name: "Munique A.I.", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2"><circle cx="12" cy="12" r="3"/></svg> },
-            };
-            const cfg = pinnedConfigs[_uhPinnedApp] || pinnedConfigs.conteudo;
-            return (
-              <div style={{ display: "flex", flexDirection: "column", flex: 1, animation: "_uhPinOpen .45s cubic-bezier(0.25, 1.4, 0.5, 1) both", position: "relative", zIndex: 1 }}>
-                <div style={{ padding: "18px 20px", borderBottom: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 9, background: "#F0FAD5", display: "flex", alignItems: "center", justifyContent: "center" }}>{cfg.icon}</div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em" }}>{cfg.name}</div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: "#0D7C00", marginTop: 1, display: "flex", alignItems: "center", gap: 4 }}>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M12 17v5M9 10.76V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4.76l2.5 3.74-1 1.5h-9l-1-1.5L9 10.76z"/></svg>
-                        Fixado
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={() => _uhSetPinnedApp(null)} style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(0,0,0,0.06)", border: "none", color: "#192126", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }} title="Despinar">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
-                </div>
-                <div style={{ padding: 16, flex: 1, overflow: "auto", maxHeight: 420 }}>
-                  <div style={{ fontSize: 12, color: "#8B8F92", lineHeight: 1.5 }}>
-                    Conteúdo do <b>{cfg.name}</b> renderiza aqui quando pinado.<br/>
-                    <span style={{ fontSize: 11 }}>(Fase 5B: conectar com bodies reais ao invés de mock)</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })() : (
+          (
             // MUNIQUE IA chat
             <div style={{ display: "flex", flexDirection: "column", flex: 1, position: "relative", zIndex: 1 }}>
               {/* HEADER */}
@@ -7174,6 +7308,29 @@ REGRAS DE ESTILO:
           </div>
         );
       })()}
+
+      {/* Modal Nova Nota */}
+      {_uhNoteModalOpen && (
+        <div onClick={() => _uhSetNoteModalOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 1500, background: "rgba(13,13,13,0.55)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, animation: "_uhFadeIn .25s ease-out" }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#FFFFFF", borderRadius: 24, padding: 24, maxWidth: 480, width: "100%", boxShadow: "0 24px 80px rgba(0,0,0,0.3)", animation: "_uhPickerIn .35s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em" }}>Nova nota</div>
+                <div style={{ fontSize: 11.5, color: "#8B8F92", marginTop: 3 }}>Salva localmente, sincroniza na tab de Notas</div>
+              </div>
+              <button onClick={() => _uhSetNoteModalOpen(false)} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, color: "#8B8F92" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <input value={_uhNoteDraft.title} onChange={(e) => _uhSetNoteDraft({ ..._uhNoteDraft, title: e.target.value })} placeholder="Título" autoFocus style={{ width: "100%", padding: "10px 14px", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: "inherit", marginBottom: 8, outline: "none", boxSizing: "border-box" }} />
+            <textarea value={_uhNoteDraft.body} onChange={(e) => _uhSetNoteDraft({ ..._uhNoteDraft, body: e.target.value })} placeholder="Escreva sua nota aqui..." style={{ width: "100%", minHeight: 140, padding: "10px 14px", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 10, fontSize: 12.5, fontFamily: "inherit", resize: "vertical", outline: "none", boxSizing: "border-box", lineHeight: 1.5 }} />
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+              <button onClick={() => _uhSetNoteModalOpen(false)} style={{ background: "transparent", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 999, padding: "8px 18px", fontSize: 12, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
+              <button onClick={_uhSaveNewNote} disabled={!_uhNoteDraft.title.trim() && !_uhNoteDraft.body.trim()} style={{ background: "#0D0D0D", color: "#BBF246", border: "none", borderRadius: 999, padding: "8px 22px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", opacity: (!_uhNoteDraft.title.trim() && !_uhNoteDraft.body.trim()) ? 0.5 : 1 }}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast de ações inline */}
       {_uhActionToast && (
