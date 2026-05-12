@@ -4793,6 +4793,17 @@ try {
   else if (localStorage.getItem("uh_home") === "v2") _UH_HOME_V2 = true;
 } catch {}
 
+/* ═══════════════════════ CONTENT V2 TOGGLE ═══════════════════════
+   Ative com ?content=v2 (persiste em localStorage). Volte com ?content=v1.
+   ═══════════════════════════════════════════════════════════════ */
+let _UH_CONTENT_V2 = false;
+try {
+  const _u3 = new URLSearchParams(window.location.search);
+  if (_u3.get("content") === "v2") { localStorage.setItem("uh_content", "v2"); _UH_CONTENT_V2 = true; }
+  else if (_u3.get("content") === "v1") { localStorage.removeItem("uh_content"); _UH_CONTENT_V2 = false; }
+  else if (localStorage.getItem("uh_content") === "v2") _UH_CONTENT_V2 = true;
+} catch {}
+
 /* ═══════════════════════ HOME PAGE V2 (em construção) ═══════════════════════
    Redesign baseado em uniquehub-preview.pages.dev (dashboard v9)
    Fase 1 OK — esqueleto + toggle. Próximo: Header + Hero (Fase 2)
@@ -12937,6 +12948,248 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
         {Array.from({length:slideCount}).map((_,di) => <div key={di} style={{ width:di===cur?(compact?12:18):(compact?5:8), height:compact?5:8, borderRadius:4, background:di===cur?"#fff":"rgba(255,255,255,0.35)", transition:"all .25s" }} />)}
       </div>}
       {children}
+    </div>
+  );
+}
+
+/* ═══════════════════════ CONTENT PAGE V2 (em construção) ═══════════════════════
+   Redesign do menu Conteúdo baseado em uniquehub-preview/conteudo.html
+   Fase 1: skeleton + header + hero + pipeline split + kanban básico
+   ═════════════════════════════════════════════════════════════════════════════ */
+function ContentPageV2(props) {
+  const { user, clients, demands, setDemands, team, goTab, goSub, agencyIdentity } = props;
+
+  // ─── Stages config (8 stages do social) ───
+  const _ctStages = useMemo(() => [
+    { k: "idea", l: "Ideia", c: "#8B5CF6" },
+    { k: "briefing", l: "Briefing", c: "#3B82F6" },
+    { k: "design", l: "Criativo", c: "#EC4899" },
+    { k: "caption", l: "Legenda", c: "#F59E0B" },
+    { k: "review", l: "Revisão", c: "#06B6D4" },
+    { k: "client", l: "Cliente", c: "#10B981" },
+    { k: "scheduled", l: "Programado", c: "#0EA5E9" },
+    { k: "published", l: "Publicado", c: "#BBF246" },
+  ], []);
+
+  // ─── Filtros ───
+  const [_ctScope, _ctSetScope] = useState("all"); // all | mine | late
+  const [_ctFmt, _ctSetFmt] = useState(null);
+  const [_ctClientF, _ctSetClientF] = useState(null);
+  const [_ctSearch, _ctSetSearch] = useState("");
+
+  // ─── Identidade ───
+  const _ctFirstName = useMemo(() => {
+    const n = user?.user_metadata?.first_name || user?.name || user?.email || "";
+    return String(n).split(" ")[0].split("@")[0] || "Matheus";
+  }, [user]);
+  const _ctAgencyName = useMemo(() => agencyIdentity?.name || "Unique Marketing", [agencyIdentity]);
+
+  // ─── Demandas filtradas ───
+  const _ctFiltered = useMemo(() => {
+    const lc = (s) => (s || "").toString().toLowerCase();
+    const todayYmd = new Date().toISOString().slice(0, 10);
+    const isLate = (d) => {
+      if (["published", "done", "publicado"].includes(lc(d.stage || d.status))) return false;
+      const dt = d.scheduling?.date || d.schedule_date || d.scheduleDate;
+      return dt && dt < todayYmd;
+    };
+    let list = Array.isArray(demands) ? [...demands] : [];
+    if (_ctScope === "mine") list = list.filter(d => (d.assignees || []).some(a => a === user?.id) || lc(d.assignee) === lc(_ctFirstName));
+    if (_ctScope === "late") list = list.filter(isLate);
+    if (_ctFmt) list = list.filter(d => lc(d.format) === lc(_ctFmt));
+    if (_ctClientF) list = list.filter(d => d.clientName === _ctClientF || d.client === _ctClientF || d.client_id === _ctClientF);
+    if (_ctSearch.trim()) {
+      const s = _ctSearch.trim().toLowerCase();
+      list = list.filter(d => (d.task || d.title || "").toLowerCase().includes(s) || (d.clientName || d.client || "").toLowerCase().includes(s));
+    }
+    return list;
+  }, [demands, _ctScope, _ctFmt, _ctClientF, _ctSearch, user, _ctFirstName]);
+
+  // ─── Agrupado por stage ───
+  const _ctByStage = useMemo(() => {
+    const map = {};
+    _ctStages.forEach(s => map[s.k] = []);
+    _ctFiltered.forEach(d => {
+      const stage = (d.stage || d.status || "idea").toLowerCase();
+      if (map[stage]) map[stage].push(d);
+      else if (map.idea) map.idea.push(d); // fallback
+    });
+    return map;
+  }, [_ctFiltered, _ctStages]);
+
+  // ─── Pipeline summary ───
+  const _ctPipeline = useMemo(() => {
+    return _ctStages.map(s => ({ ...s, count: _ctByStage[s.k]?.length || 0 }));
+  }, [_ctStages, _ctByStage]);
+
+  const totalActive = _ctFiltered.filter(d => !["published", "done", "publicado"].includes((d.stage || d.status || "").toLowerCase())).length;
+  const todayYmd = new Date().toISOString().slice(0, 10);
+  const lateCount = _ctFiltered.filter(d => {
+    const lc = (s) => (s || "").toString().toLowerCase();
+    if (["published", "done", "publicado"].includes(lc(d.stage || d.status))) return false;
+    const dt = d.scheduling?.date || d.schedule_date;
+    return dt && dt < todayYmd;
+  }).length;
+
+  // ─── Banner de preview (top) ───
+  // ... usa o mesmo padrão da home V2
+
+  return (
+    <div className="ct-v2" style={{ minHeight: "100vh", background: "linear-gradient(180deg, #FAFAF7 0%, #F0F4E8 100%)", color: "#192126", fontFamily: "'Poppins', system-ui, -apple-system, sans-serif", paddingBottom: 100 }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .ct-v2 * { box-sizing: border-box; }
+        .ct-v2 ::-webkit-scrollbar { height: 10px; width: 10px; }
+        .ct-v2 ::-webkit-scrollbar-track { background: transparent; }
+        .ct-v2 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 999px; }
+        .ct-v2 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
+        @keyframes _ctCardIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+      ` }} />
+
+      {/* Banner preview (igual home V2) */}
+      <div style={{ background: "#0D0D0D", color: "#BBF246", padding: "10px 20px", textAlign: "center", fontSize: 11.5, fontWeight: 800, letterSpacing: "0.05em" }}>
+        🔒 MODO PREVIEW · Escrita bloqueada · branch redesign-v2
+        <button onClick={() => { localStorage.removeItem("uh_content"); window.location.search = "?content=v1"; }} style={{ marginLeft: 16, background: "rgba(187,242,70,0.15)", color: "#BBF246", border: "1px solid rgba(187,242,70,0.3)", borderRadius: 999, padding: "3px 12px", fontSize: 10.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>← voltar pra v1</button>
+      </div>
+
+      <div style={{ maxWidth: 1440, margin: "0 auto", padding: "0 32px" }}>
+        {/* HEADER */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 0 12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900 }}>U</div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.01em" }}>unique <span style={{ fontWeight: 500 }}>hub</span></div>
+              <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600 }}>{_ctAgencyName} · Agência</div>
+            </div>
+          </div>
+          <button onClick={() => goTab && goTab("home")} style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            Voltar
+          </button>
+        </div>
+
+        {/* HERO TITLE */}
+        <div style={{ paddingTop: 8, paddingBottom: 18 }}>
+          <h1 style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.035em", margin: 0, color: "#192126" }}>Demandas</h1>
+          <div style={{ fontSize: 14, color: "#8B8F92", fontWeight: 500, marginTop: 8, letterSpacing: "-0.005em" }}>{totalActive} ativa{totalActive === 1 ? "" : "s"} · {lateCount > 0 ? <b style={{ color: "#DC2626" }}>{lateCount} atrasada{lateCount === 1 ? "" : "s"}</b> : <span style={{ color: "#0D7C00" }}>nenhuma atrasada</span>} · pipeline completo abaixo</div>
+        </div>
+
+        {/* PIPELINE SPLIT */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, marginBottom: 24 }}>
+          <div style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 24, padding: "22px 26px", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 14 }}>Pipeline · {_ctFiltered.length} demanda{_ctFiltered.length === 1 ? "" : "s"}</div>
+            <div style={{ display: "flex", height: 14, borderRadius: 8, overflow: "hidden", background: "rgba(0,0,0,0.04)", marginBottom: 12 }}>
+              {_ctPipeline.map(s => {
+                const flex = _ctFiltered.length > 0 ? (s.count / _ctFiltered.length) * 100 : 0;
+                if (flex <= 0) return null;
+                return <div key={s.k} title={`${s.l}: ${s.count}`} style={{ flexGrow: flex, background: s.c, minWidth: 2, transition: "flex-grow .6s cubic-bezier(0.4,0,0.2,1)" }}></div>;
+              })}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 18px", fontSize: 11 }}>
+              {_ctPipeline.map(s => (
+                <span key={s.k} style={{ display: "inline-flex", alignItems: "center", gap: 5, opacity: s.count > 0 ? 1 : 0.4 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></span>
+                  <span style={{ fontWeight: 600, color: "#8B8F92" }}>{s.l}</span>
+                  <b style={{ color: "#192126" }}>{s.count}</b>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ background: lateCount > 0 ? "linear-gradient(135deg, rgba(220,38,38,0.08), rgba(255,255,255,0.85))" : "rgba(240,250,213,0.6)", border: "1px solid " + (lateCount > 0 ? "rgba(220,38,38,0.2)" : "rgba(187,242,70,0.4)"), borderRadius: 24, padding: "22px 26px", display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 14, background: lateCount > 0 ? "#DC2626" : "#BBF246", color: lateCount > 0 ? "#FFFFFF" : "#0D0D0D", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {lateCount > 0 ? (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              ) : (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>{lateCount > 0 ? "Atenção" : "Tudo em dia"}</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em", marginTop: 2 }}>{lateCount > 0 ? `${lateCount} demanda${lateCount === 1 ? "" : "s"} atrasada${lateCount === 1 ? "" : "s"}` : "Nenhuma demanda atrasada"}</div>
+              {lateCount > 0 && <button onClick={() => _ctSetScope("late")} style={{ marginTop: 6, background: "transparent", border: "none", color: "#DC2626", fontWeight: 700, fontSize: 11, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Ver todas →</button>}
+            </div>
+          </div>
+        </div>
+
+        {/* TOOLBAR de filtros */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 18 }}>
+          <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.7)", borderRadius: 999, padding: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            {[{ k: "all", l: "Todas" }, { k: "mine", l: "Minhas" }, { k: "late", l: "Atrasadas" }].map(o => (
+              <button key={o.k} onClick={() => _ctSetScope(o.k)} style={{ padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: _ctScope === o.k ? "#0D0D0D" : "transparent", color: _ctScope === o.k ? "#BBF246" : "#192126", border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>{o.l}</button>
+            ))}
+          </div>
+          <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.7)", borderRadius: 999, padding: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            {[{ k: null, l: "Tudo" }, { k: "Feed", l: "Feed" }, { k: "Reels", l: "Reels" }, { k: "Carrossel", l: "Carrossel" }, { k: "Stories", l: "Stories" }].map(o => (
+              <button key={o.l} onClick={() => _ctSetFmt(o.k)} style={{ padding: "7px 12px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: _ctFmt === o.k ? "#FFFFFF" : "transparent", color: _ctFmt === o.k ? "#192126" : "#8B8F92", boxShadow: _ctFmt === o.k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
+            ))}
+          </div>
+          <input value={_ctSearch} onChange={(e) => _ctSetSearch(e.target.value)} placeholder="Buscar por título ou cliente…" style={{ flex: 1, minWidth: 200, padding: "8px 14px", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, background: "rgba(255,255,255,0.7)", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
+          <button style={{ background: "#BBF246", color: "#0D0D0D", border: "none", borderRadius: 999, padding: "9px 18px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova demanda
+          </button>
+        </div>
+
+        {/* KANBAN — 8 colunas scroll horizontal */}
+        <div style={{ display: "flex", gap: 12, overflowX: "auto", overflowY: "hidden", padding: "4px 4px 14px", scrollSnapType: "x mandatory" }}>
+          {_ctStages.map(s => {
+            const items = _ctByStage[s.k] || [];
+            return (
+              <section key={s.k} style={{ flex: "0 0 280px", display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 22, padding: "14px 12px 12px", maxHeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.04)", scrollSnapAlign: "start" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px 12px", flexShrink: 0, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: s.c, boxShadow: `0 0 8px ${s.c}80`, flexShrink: 0 }}></div>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>{s.l}</div>
+                  <div style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "2px 9px", borderRadius: 999, fontVariantNumeric: "tabular-nums" }}>{items.length}</div>
+                  <button style={{ width: 22, height: 22, borderRadius: 7, background: "transparent", border: "none", color: "#8B8F92", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }} title="Adicionar">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </button>
+                </div>
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingTop: 10, paddingRight: 2 }}>
+                  {items.length === 0 ? (
+                    <div style={{ fontSize: 10.5, color: "#A0A4A7", fontStyle: "italic", textAlign: "center", padding: "20px 0" }}>nada por aqui</div>
+                  ) : items.slice(0, 30).map((d, i) => {
+                    const lc = (x) => (x || "").toString().toLowerCase();
+                    const isLatePost = d.stage !== "published" && d.scheduling?.date && d.scheduling.date < todayYmd;
+                    const date = d.scheduling?.date || d.schedule_date;
+                    const time = d.scheduling?.time || d.schedule_time;
+                    const dateLabel = date ? (() => {
+                      const dd = new Date(date + "T12:00:00");
+                      if (date === todayYmd) return "hoje";
+                      const ms = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+                      return `${dd.getDate()}/${ms[dd.getMonth()]}`;
+                    })() : null;
+                    const priority = lc(d.priority) === "alta" ? "alta" : lc(d.priority) === "baixa" ? "baixa" : null;
+                    return (
+                      <div key={d.id || d.supaId || i} style={{ background: "#FFFFFF", borderRadius: 14, padding: "11px 13px", boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 6px 16px rgba(0,0,0,0.05)", cursor: "pointer", animation: `_ctCardIn .25s ease-out ${i * 0.02}s both`, transition: "transform .15s, box-shadow .15s" }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05), 0 12px 28px rgba(0,0,0,0.08)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.03), 0 6px 16px rgba(0,0,0,0.05)"; }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{d.clientName || d.client || "—"}</span>
+                          {d.format && <span style={{ background: "rgba(0,0,0,0.06)", padding: "1px 6px", borderRadius: 5, fontSize: 8.5, color: "#192126", flexShrink: 0 }}>{d.format}</span>}
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#192126", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 8 }}>{d.task || d.title || "Sem título"}</div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                          {dateLabel && (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: isLatePost ? "#DC2626" : "#8B8F92" }}>
+                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                              {dateLabel}{time ? ` · ${time.slice(0, 5)}` : ""}
+                            </span>
+                          )}
+                          {priority && (
+                            <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 7px", borderRadius: 999, background: priority === "alta" ? "#FEE2E2" : "#F0F0F0", color: priority === "alta" ? "#B91C1C" : "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>{priority}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {items.length > 30 && <div style={{ fontSize: 10, color: "#8B8F92", textAlign: "center", padding: "8px 0", fontWeight: 600 }}>+ {items.length - 30} no pipeline</div>}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -35339,7 +35592,10 @@ html.uh-desktop .content>div.content-wide{max-width:1400px;margin-left:auto;marg
           const HC = _UH_HOME_V2 ? HomePageV2 : HomePage;
           return <HC user={user} goSub={goSub} goTab={goTab} clients={sharedClients} notifCount={notifCount} team={sharedTeam} demands={sharedDemands} setDemands={setSharedDemands} articles={sharedArticles} articlesLoaded={articlesLoaded} agencyIdentity={agencyIdentity} cloudDash={cloudDash} savePrefsToCloud={savePrefsToCloud} canAccess={canAccess} isDesktop={isDesktop} />;
         })()}
-        {!sub && tab === "content" && <ContentPage user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} />}
+        {!sub && tab === "content" && (() => {
+          const CC = _UH_CONTENT_V2 ? ContentPageV2 : ContentPage;
+          return <CC user={user} clients={sharedClients} demands={sharedDemands} setDemands={setSharedDemands} team={sharedTeam} initialDemandId={pendingOpenId} onOpenIdConsumed={() => setPendingOpenId(null)} canAccess={canAccess} goTab={goTab} goSub={goSub} agencyIdentity={agencyIdentity} />;
+        })()}
         {!sub && tab === "clients" && <ClientsPage onBack={() => goTab("home")} onNavigate={(to) => { if(to==="content") goTab("content"); else if(to==="chat") goTab("chat"); }} clients={sharedClients} setClients={setSharedClients} user={user} canAccess={canAccess} />}
 
         {sub === "checkin" && <CheckinPage onBack={() => setSub(null)} user={user} />}
