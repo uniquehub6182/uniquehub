@@ -13532,6 +13532,9 @@ function ContentPageV2(props) {
     @keyframes _ctNewBtnShimmer { 0%, 100% { transform: translateX(-110%); } 50% { transform: translateX(110%); } }
     .ct-new-btn:hover { box-shadow: 0 16px 38px rgba(187,242,70,0.7), 0 0 0 6px rgba(187,242,70,0.2), inset 0 1px 0 rgba(255,255,255,0.45) !important; }
 
+    .ct-cal-chip:hover { transform: translateX(2px); background: linear-gradient(90deg, currentColor, transparent) !important; }
+    .ct-cal-chip:hover { transform: translateY(-1px); }
+
     .ct-shimmer {
       background: linear-gradient(90deg, rgba(187,242,70,0.0) 0%, rgba(187,242,70,0.32) 50%, rgba(187,242,70,0.0) 100%);
       background-size: 300px 100%;
@@ -13860,48 +13863,140 @@ function ContentPageV2(props) {
                 if (!byDay[dt]) byDay[dt] = [];
                 byDay[dt].push(d);
               });
+              const monthName = monthStart.toLocaleString("pt-BR", { month: "long" });
+              const monthTotal = Object.keys(byDay).filter(d => d.startsWith(monthStart.toISOString().slice(0, 7))).reduce((s, k) => s + byDay[k].length, 0);
               return (
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <button onClick={() => _ctSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1))} className="ct-btn" style={{ width: 32, height: 32, borderRadius: 10, background: "rgba(255,255,255,0.78)", border: "1px solid rgba(255,255,255,0.7)", cursor: "pointer", color: "#192126", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(14px)" }}>
+                <div style={{ minWidth: 0, overflow: "hidden" }}>
+                  {/* Nav row */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.78)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 14, padding: 4, backdropFilter: "blur(14px)" }}>
+                      <button onClick={() => _ctSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() - 1, 1))} className="ct-btn" style={{ width: 32, height: 32, borderRadius: 10, background: "transparent", border: "none", cursor: "pointer", color: "#192126", display: "flex", alignItems: "center", justifyContent: "center" }} title="Mês anterior">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><polyline points="15 18 9 12 15 6"/></svg>
                       </button>
-                      <button onClick={() => _ctSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1))} className="ct-btn" style={{ width: 32, height: 32, borderRadius: 10, background: "rgba(255,255,255,0.78)", border: "1px solid rgba(255,255,255,0.7)", cursor: "pointer", color: "#192126", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(14px)" }}>
+                      <button onClick={() => { const n = new Date(); _ctSetCalMonth(new Date(n.getFullYear(), n.getMonth(), 1)); }} className="ct-btn" style={{ padding: "6px 14px", borderRadius: 10, background: "#0D0D0D", color: "#BBF246", border: "none", fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", letterSpacing: "-0.005em" }}>Hoje</button>
+                      <button onClick={() => _ctSetCalMonth(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1))} className="ct-btn" style={{ width: 32, height: 32, borderRadius: 10, background: "transparent", border: "none", cursor: "pointer", color: "#192126", display: "flex", alignItems: "center", justifyContent: "center" }} title="Próximo mês">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><polyline points="9 18 15 12 9 6"/></svg>
                       </button>
-                      <button onClick={() => { const n = new Date(); _ctSetCalMonth(new Date(n.getFullYear(), n.getMonth(), 1)); }} className="ct-btn" style={{ marginLeft: 4, padding: "7px 14px", borderRadius: 999, background: "rgba(255,255,255,0.78)", border: "1px solid rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit", backdropFilter: "blur(14px)" }}>Hoje</button>
+                    </div>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span className="tabnum" style={{ fontSize: 11.5, fontWeight: 700, color: "#192126", padding: "5px 12px", borderRadius: 999, background: "rgba(187,242,70,0.4)", letterSpacing: "-0.005em" }}>{monthTotal} {monthTotal === 1 ? "post" : "posts"}</span>
                     </div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
-                    {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map(d => (
-                      <div key={d} style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.08em", padding: "6px 10px" }}>{d}</div>
+
+                  {/* Big month name (estilo Apple Calendar) */}
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 20, paddingLeft: 4 }}>
+                    <h2 style={{ fontSize: 36, fontWeight: 800, color: "#192126", letterSpacing: "-0.035em", margin: 0, textTransform: "capitalize", lineHeight: 1 }}>{monthName}</h2>
+                    <div className="tabnum" style={{ fontSize: 22, fontWeight: 500, color: "#8B8F92", letterSpacing: "-0.02em" }}>{monthStart.getFullYear()}</div>
+                  </div>
+
+                  {/* Weekday labels */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8, marginBottom: 8 }}>
+                    {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map((d, i) => (
+                      <div key={d} style={{ fontSize: 10, fontWeight: 800, color: i === 0 || i === 6 ? "#A0A4A7" : "#8B8F92", textTransform: "uppercase", letterSpacing: "0.1em", padding: "4px 8px", textAlign: "center" }}>{d}</div>
                     ))}
+                  </div>
+
+                  {/* Grid */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
                     {cells.map((cell, i) => {
-                      if (!cell) return <div key={i} style={{ minHeight: 120 }}></div>;
+                      if (!cell) return <div key={i} style={{ minHeight: 138, borderRadius: 14 }}></div>;
                       const cellYmd = ymd(cell);
                       const items = byDay[cellYmd] || [];
                       const isToday = cellYmd === todayYmd;
                       const isWeekend = cell.getDay() === 0 || cell.getDay() === 6;
+                      const isPast = cellYmd < todayYmd;
                       return (
-                        <div key={i} style={{ background: isToday ? "rgba(187,242,70,0.18)" : "rgba(255,255,255,0.75)", border: isToday ? "1.5px solid #BBF246" : "1px solid rgba(255,255,255,0.7)", borderRadius: 12, padding: 9, minHeight: 120, display: "flex", flexDirection: "column", gap: 3, backdropFilter: "blur(14px)" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                            <div className="tabnum" style={{ fontSize: 12.5, fontWeight: isToday ? 800 : 700, color: isWeekend && !isToday ? "#A0A4A7" : "#192126", letterSpacing: "-0.02em" }}>{cell.getDate()}</div>
-                            {items.length > 0 && <span className="tabnum" style={{ fontSize: 9, fontWeight: 800, padding: "1px 6px", borderRadius: 999, background: "rgba(13,13,13,0.85)", color: "#BBF246" }}>{items.length}</span>}
+                        <div key={i} style={{
+                          background: isToday ? "linear-gradient(135deg, rgba(187,242,70,0.22), rgba(187,242,70,0.08))" : isWeekend ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.82)",
+                          border: isToday ? "2px solid #BBF246" : "1px solid rgba(255,255,255,0.7)",
+                          borderRadius: 14, padding: "10px 8px 8px",
+                          minHeight: 138,
+                          display: "flex", flexDirection: "column", gap: 4,
+                          backdropFilter: "blur(14px)",
+                          minWidth: 0, overflow: "hidden",
+                          boxShadow: isToday ? "0 8px 24px rgba(187,242,70,0.32)" : "0 1px 2px rgba(0,0,0,0.02)",
+                          transition: "transform .2s",
+                          position: "relative",
+                          opacity: isPast && !isToday ? 0.65 : 1,
+                        }}>
+                          {/* Header dia + count */}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 2px", marginBottom: 2 }}>
+                            <div className="tabnum" style={{
+                              display: "inline-flex", alignItems: "center", justifyContent: "center",
+                              width: isToday ? 26 : "auto", height: isToday ? 26 : "auto",
+                              borderRadius: isToday ? "50%" : 0,
+                              background: isToday ? "#0D0D0D" : "transparent",
+                              color: isToday ? "#BBF246" : isWeekend ? "#A0A4A7" : "#192126",
+                              fontSize: isToday ? 13 : 14, fontWeight: 800,
+                              letterSpacing: "-0.02em",
+                              padding: isToday ? 0 : "0 4px",
+                            }}>{cell.getDate()}</div>
+                            {items.length > 0 && (
+                              <span className="tabnum" style={{
+                                fontSize: 9, fontWeight: 800,
+                                padding: "2px 7px", borderRadius: 999,
+                                background: isToday ? "rgba(13,13,13,0.85)" : "rgba(13,13,13,0.08)",
+                                color: isToday ? "#BBF246" : "#192126",
+                                letterSpacing: "0.02em",
+                              }}>{items.length}</span>
+                            )}
                           </div>
+
+                          {/* Demanda chips coloridas tonais */}
                           {items.slice(0, 3).map((d, j) => {
                             const stage = lc(d.stage || d.status);
                             const sCfg = _ctStages.find(s => s.k === stage) || _ctStages[0];
+                            const time = d.scheduling?.time || d.schedule_time;
+                            const client = d.clientName || d.client || "";
+                            const [c1, c2] = clientHue(client);
                             return (
-                              <div key={d.id || d.supaId || j} onClick={(e) => { e.stopPropagation(); _ctSetSheet(d); }} style={{ background: "rgba(255,255,255,0.7)", borderRadius: 7, padding: "4px 7px", fontSize: 10, fontWeight: 700, color: "#192126", cursor: "pointer", borderLeft: `2.5px solid ${sCfg.c}`, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", lineHeight: 1.3, letterSpacing: "-0.005em" }} title={`${d.task || d.title} · ${d.clientName || d.client || ""}`}>
-                                {(d.scheduling?.time || d.schedule_time || "").slice(0, 5)} {d.task || d.title || "—"}
+                              <div key={d.id || d.supaId || j} onClick={(e) => { e.stopPropagation(); _ctSetSheet(d); }}
+                                className="ct-cal-chip"
+                                style={{
+                                  background: `linear-gradient(90deg, ${sCfg.c}28, ${sCfg.c}12)`,
+                                  border: `1px solid ${sCfg.c}40`,
+                                  borderRadius: 8, padding: "4px 7px",
+                                  cursor: "pointer",
+                                  display: "flex", alignItems: "center", gap: 5,
+                                  overflow: "hidden",
+                                  minWidth: 0,
+                                  transition: "transform .15s, background .2s",
+                                }}
+                                title={`${d.task || d.title || "—"} · ${client}`}
+                              >
+                                {/* Avatar mini do cliente */}
+                                <div style={{
+                                  width: 14, height: 14, borderRadius: "50%",
+                                  background: `linear-gradient(135deg, ${c1}, ${c2})`,
+                                  color: "#FFFFFF", fontSize: 7.5, fontWeight: 800,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  flexShrink: 0,
+                                }}>{(client || "?")[0].toUpperCase()}</div>
+                                {/* Texto: hora + título */}
+                                <div style={{ minWidth: 0, flex: 1, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                                  {time && <span className="tabnum" style={{ fontSize: 9.5, fontWeight: 800, color: sCfg.c, marginRight: 4 }}>{time.slice(0, 5)}</span>}
+                                  <span style={{ fontSize: 10, fontWeight: 600, color: "#192126", letterSpacing: "-0.005em" }}>{d.task || d.title || "—"}</span>
+                                </div>
                               </div>
                             );
                           })}
-                          {items.length > 3 && <div style={{ fontSize: 9.5, fontWeight: 700, color: "#8B8F92", padding: "1px 6px" }}>+ {items.length - 3}</div>}
+                          {items.length > 3 && (
+                            <div style={{ fontSize: 9.5, fontWeight: 700, color: "#8B8F92", padding: "2px 4px", marginTop: 2 }}>+ {items.length - 3} mais</div>
+                          )}
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Legenda stages no rodapé */}
+                  <div style={{ marginTop: 24, padding: "14px 18px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 14, backdropFilter: "blur(14px)", display: "flex", flexWrap: "wrap", gap: "8px 16px", alignItems: "center" }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.08em", marginRight: 4 }}>Legenda</span>
+                    {_ctStages.map(s => (
+                      <span key={s.k} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.c, boxShadow: `0 0 0 2px ${s.c}25` }}></span>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: "#192126", letterSpacing: "-0.005em" }}>{s.l}</span>
+                      </span>
+                    ))}
                   </div>
                 </div>
               );
