@@ -13035,7 +13035,16 @@ function ContentPageV2(props) {
   // ... usa o mesmo padrão da home V2
 
   return (
-    <div className="ct-v2" style={{ minHeight: "100vh", background: "linear-gradient(180deg, #FAFAF7 0%, #F0F4E8 100%)", color: "#192126", fontFamily: "'Poppins', system-ui, -apple-system, sans-serif", paddingBottom: 100 }}>
+    <div className="ct-v2" style={{
+      minHeight: "calc(100vh - 26px)",
+      width: "100%",
+      maxWidth: "none",
+      padding: 0,
+      background: "linear-gradient(180deg, #FAFAF7 0%, #F0F4E8 100%)",
+      color: "#192126",
+      fontFamily: "'Inter','Poppins',-apple-system,BlinkMacSystemFont,sans-serif",
+      letterSpacing: "-0.01em",
+    }}>
       <style dangerouslySetInnerHTML={{ __html: `
         .ct-v2 * { box-sizing: border-box; }
         .ct-v2 ::-webkit-scrollbar { height: 10px; width: 10px; }
@@ -13044,14 +13053,7 @@ function ContentPageV2(props) {
         .ct-v2 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
         @keyframes _ctCardIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
       ` }} />
-
-      {/* Banner preview (igual home V2) */}
-      <div style={{ background: "#0D0D0D", color: "#BBF246", padding: "10px 20px", textAlign: "center", fontSize: 11.5, fontWeight: 800, letterSpacing: "0.05em" }}>
-        🔒 MODO PREVIEW · Escrita bloqueada · branch redesign-v2
-        <button onClick={() => { localStorage.removeItem("uh_content"); window.location.search = "?content=v1"; }} style={{ marginLeft: 16, background: "rgba(187,242,70,0.15)", color: "#BBF246", border: "1px solid rgba(187,242,70,0.3)", borderRadius: 999, padding: "3px 12px", fontSize: 10.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>← voltar pra v1</button>
-      </div>
-
-      <div style={{ maxWidth: 1440, margin: "0 auto", padding: "0 32px" }}>
+      <div style={{ maxWidth: 1560, margin: "0 auto", padding: "32px 48px 160px" }}>
         {/* HEADER */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 0 12px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -13061,15 +13063,18 @@ function ContentPageV2(props) {
               <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600 }}>{_ctAgencyName} · Agência</div>
             </div>
           </div>
-          <button onClick={() => goTab && goTab("home")} style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            Voltar
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => { localStorage.removeItem("uh_content"); window.location.search = "?content=v1"; }} title="Voltar pro Conteúdo v1" style={{ background: "rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "7px 14px", fontSize: 11, fontWeight: 700, color: "#8B8F92", cursor: "pointer", fontFamily: "inherit" }}>v1</button>
+            <button onClick={() => goTab && goTab("home")} style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "8px 14px", fontSize: 12, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              Home
+            </button>
+          </div>
         </div>
 
         {/* HERO TITLE */}
         <div style={{ paddingTop: 8, paddingBottom: 18 }}>
-          <h1 style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.035em", margin: 0, color: "#192126" }}>Demandas</h1>
+          <h1 style={{ fontSize: 72, fontWeight: 800, lineHeight: 0.98, letterSpacing: "-0.035em", margin: 0, color: "#192126" }}>Demandas</h1>
           <div style={{ fontSize: 14, color: "#8B8F92", fontWeight: 500, marginTop: 8, letterSpacing: "-0.005em" }}>{totalActive} ativa{totalActive === 1 ? "" : "s"} · {lateCount > 0 ? <b style={{ color: "#DC2626" }}>{lateCount} atrasada{lateCount === 1 ? "" : "s"}</b> : <span style={{ color: "#0D7C00" }}>nenhuma atrasada</span>} · pipeline completo abaixo</div>
         </div>
 
