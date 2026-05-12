@@ -1177,26 +1177,51 @@ function useBillingStatus(orgId) {
 }
 
 
-/* ── Helper: detecta HEVC/H.265 client-side via byte sniffing nos primeiros 5MB.
-   Procura pelos FourCC "hvc1", "hev1" ou "hvcC" no MP4/MOV header. Detecção
-   funciona em ~95% dos casos: false positives são raros (sem custo extra além de
-   uma transcoda desnecessária); false negatives são possíveis se o moov estiver
-   no fim do arquivo (raro pra vídeos novos do iPhone). */
+/* ── Helper: detecta HEVC/H.265 client-side via byte sniffing.
+   Procura FourCC "hvc1" (0x68766331), "hev1" (0x68657631) ou "hvcC" (0x68766343).
+   Checa HEAD (primeiros 5MB) E TAIL (últimos 4MB) porque iPhone grava .MOV com
+   moov atom no FIM do arquivo (não no início). Sem esse fix, vídeos do iPhone
+   passavam batido pelo detector e iam pro Instagram em HEVC → erro 2207085.
+   Heurística extra: arquivos .mov de iPhone (type=video/quicktime) com tamanho
+   > 5MB são tratados como suspeitos e sempre vão pra transcoda (no-op rápido
+   no server-side se já forem H.264). */
 const _isHEVCVideo = async (file) => {
   if (!file?.type?.startsWith?.("video/")) return false;
   try {
-    const slice = file.slice ? file.slice(0, 5 * 1024 * 1024) : file;
-    const buf = await slice.arrayBuffer();
-    const v = new Uint8Array(buf);
-    /* Procura FourCC "hvc1"=0x68766331, "hev1"=0x68657631, "hvcC"=0x68766343 */
-    for (let i = 0, n = v.length - 4; i < n; i++) {
-      if (v[i] !== 0x68) continue;
-      const b1 = v[i+1], b2 = v[i+2], b3 = v[i+3];
-      if (b1 === 0x76 && b2 === 0x63 && (b3 === 0x31 || b3 === 0x43)) return true; /* hvc1 / hvcC */
-      if (b1 === 0x65 && b2 === 0x76 && b3 === 0x31) return true; /* hev1 */
+    const scanForHEVC = (v) => {
+      for (let i = 0, n = v.length - 4; i < n; i++) {
+        if (v[i] !== 0x68) continue;
+        const b1 = v[i+1], b2 = v[i+2], b3 = v[i+3];
+        if (b1 === 0x76 && b2 === 0x63 && (b3 === 0x31 || b3 === 0x43)) return true; /* hvc1 / hvcC */
+        if (b1 === 0x65 && b2 === 0x76 && b3 === 0x31) return true; /* hev1 */
+      }
+      return false;
+    };
+    /* 1. HEAD scan: primeiros 5MB */
+    const headSize = Math.min(5 * 1024 * 1024, file.size);
+    const head = await file.slice(0, headSize).arrayBuffer();
+    if (scanForHEVC(new Uint8Array(head))) {
+      console.log("[HEVC detect] match no HEAD:", file.name);
+      return true;
+    }
+    /* 2. TAIL scan: últimos 4MB — captura iPhones onde moov atom fica no FIM */
+    if (file.size > headSize) {
+      const tailSize = Math.min(4 * 1024 * 1024, file.size - headSize);
+      const tail = await file.slice(file.size - tailSize).arrayBuffer();
+      if (scanForHEVC(new Uint8Array(tail))) {
+        console.log("[HEVC detect] match no TAIL:", file.name);
+        return true;
+      }
+    }
+    /* 3. Heurística iPhone: .mov ≥10MB com type=video/quicktime é suspeito.
+       Force transcoda (server-side detecta codec real e faz no-op se já for H.264). */
+    const isQuickTime = file.type === "video/quicktime" || /\.mov$/i.test(file.name || "");
+    if (isQuickTime && file.size >= 10 * 1024 * 1024) {
+      console.log("[HEVC detect] heurística iPhone .mov ≥10MB:", file.name, "— force transcoda");
+      return true;
     }
     return false;
-  } catch { return false; }
+  } catch (e) { console.warn("[HEVC detect] erro:", e?.message); return false; }
 };
 
 /* ── Helper: chama edge function transcode-video se file for HEVC.
@@ -13243,6 +13268,83 @@ function ContentPageV2(props) {
     return matches;
   }, [demands, _ctSearch]);
 
+  // ─── Card COMPACTO pra Kanban ───
+  const renderDemandCardCompact = (d, i) => {
+    const stage = lc(d.stage || d.status);
+    const sCfg = _ctStages.find(s => s.k === stage) || _ctStages[0];
+    const isLate = isLatePost(d);
+    const date = d.scheduling?.date || d.schedule_date;
+    const time = d.scheduling?.time || d.schedule_time;
+    const client = d.clientName || d.client || "—";
+    const fmt = d.format || (d.type === "video" ? "Reels" : "Post");
+    const priority = lc(d.priority);
+    const assigneeName = d.assigneeName || d.assignee || d.assignees?.[0];
+    const isAjuste = stage === "ajuste";
+    const isExpired = isLate && stage === "scheduled";
+    const [c1, c2] = clientHue(client);
+    const coverUrl = getDemandCover(d);
+    const isDragging = _ctDragId === (d.supaId || d.id);
+    const fmtTint = lc(fmt) === "reels" ? "linear-gradient(135deg, #FCE7F3, #F9A8D4)"
+      : lc(fmt) === "stories" ? "linear-gradient(135deg, #FEF3C7, #FBBF24)"
+      : lc(fmt) === "carrossel" ? "linear-gradient(135deg, #DBEAFE, #93C5FD)"
+      : "linear-gradient(135deg, #D1FAE5, #6EE7B7)";
+    return (
+      <div
+        key={d.id || d.supaId || i}
+        draggable
+        onDragStart={(e) => onDragStart(e, d)}
+        onDragEnd={() => { _ctSetDragId(null); _ctSetDragOver(null); }}
+        onClick={() => _ctSetSheet(d)}
+        className={"ct-card-compact" + (isLate ? " ct-card-late" : "")}
+        style={{
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(12px)",
+          border: isExpired ? "1.5px solid rgba(220,38,38,0.5)" : isAjuste ? "1.5px solid rgba(249,115,22,0.5)" : "1px solid rgba(255,255,255,0.7)",
+          borderRadius: 12, padding: "8px 10px", cursor: "pointer",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 4px 12px rgba(25,33,38,0.04)",
+          flexShrink: 0,
+          animation: `_ctFadeIn .3s cubic-bezier(0.32, 0.72, 0, 1) ${i * 0.015}s both`,
+          opacity: isDragging ? 0.4 : 1,
+          display: "flex", gap: 9, alignItems: "stretch",
+        }}
+      >
+        <div style={{
+          width: 44, height: 44, borderRadius: 8, flexShrink: 0,
+          background: coverUrl ? `url(${coverUrl}) center/cover no-repeat` : fmtTint,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          position: "relative", overflow: "hidden",
+        }}>
+          {!coverUrl && (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(255,255,255,0.95)">
+              {lc(fmt) === "reels" || lc(fmt) === "stories" ? <polygon points="5 3 19 12 5 21 5 3"/>
+                : lc(fmt) === "carrossel" ? <><rect x="3" y="3" width="14" height="14" rx="2" fill="none" stroke="#FFFFFF" strokeWidth="2"/><path d="M7 21h10a2 2 0 0 0 2-2V8" fill="none" stroke="#FFFFFF" strokeWidth="2"/></>
+                : <><rect x="3" y="3" width="18" height="18" rx="3" fill="none" stroke="#FFFFFF" strokeWidth="2"/><circle cx="9" cy="9" r="2" fill="#FFFFFF"/><path d="m21 15-4.35-4.35a1 1 0 0 0-1.41 0L7 19" fill="none" stroke="#FFFFFF" strokeWidth="2"/></>
+              }
+            </svg>
+          )}
+        </div>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 1 }}>
+            <div style={{ width: 12, height: 12, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 7, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{client[0].toUpperCase()}</div>
+            <span style={{ fontSize: 10, color: "#8B8F92", fontWeight: 700, letterSpacing: "-0.005em", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{client}</span>
+            {priority === "alta" && <span style={{ fontSize: 8, fontWeight: 800, color: "#E1483F", letterSpacing: "0.04em" }}>!</span>}
+            {isExpired && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#DC2626" }}></span>}
+            {isAjuste && <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#F97316" }}></span>}
+          </div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#192126", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", letterSpacing: "-0.012em" }}>{d.task || d.title || "Sem título"}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto", paddingTop: 3, gap: 4 }}>
+            {date ? (
+              <span className="tabnum" style={{ fontSize: 9.5, fontWeight: 700, color: isLate ? "#E1483F" : "#A0A4A7", letterSpacing: "-0.005em" }}>{relDate(date)}{time ? ` · ${time.slice(0, 5)}` : ""}</span>
+            ) : (
+              <span style={{ fontSize: 9.5, fontWeight: 600, color: "#C7C7CC", fontStyle: "italic" }}>sem data</span>
+            )}
+            {assigneeName && <div title={assigneeName} style={{ width: 16, height: 16, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", fontSize: 8, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{assigneeName[0].toUpperCase()}</div>}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ─── Card Instagram-mockup ───
   const renderDemandCard = (d, i, opts = {}) => {
     const stage = lc(d.stage || d.status);
@@ -13475,13 +13577,13 @@ function ContentPageV2(props) {
     }
     .ct-bg-mesh::before {
       width: 600px; height: 600px; top: -200px; left: -200px;
-      background: radial-gradient(circle, rgba(187,242,70,0.25), transparent 70%);
-      animation: _ctBgFloat1 20s ease-in-out infinite alternate;
+      background: radial-gradient(circle, rgba(187,242,70,0.16), transparent 70%);
+      animation: _ctBgFloat1 24s ease-in-out infinite alternate;
     }
     .ct-bg-mesh::after {
       width: 500px; height: 500px; bottom: -150px; right: -100px;
-      background: radial-gradient(circle, rgba(124,107,254,0.18), transparent 70%);
-      animation: _ctBgFloat2 25s ease-in-out infinite alternate;
+      background: radial-gradient(circle, rgba(124,107,254,0.11), transparent 70%);
+      animation: _ctBgFloat2 28s ease-in-out infinite alternate;
     }
     @keyframes _ctBgFloat1 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(80px, 60px) scale(1.15); } }
     @keyframes _ctBgFloat2 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-60px, -40px) scale(1.1); } }
@@ -13499,13 +13601,15 @@ function ContentPageV2(props) {
     .ct-side-item:hover { background: rgba(255,255,255,0.7) !important; }
     .ct-side-item.active { background: #0D0D0D !important; }
     .ct-side-item.active .ct-side-label { color: #FFFFFF !important; font-weight: 700; }
-    .ct-side-item.active .ct-side-count { color: #BBF246 !important; }
-    .ct-side-item.active .ct-side-icon { color: #BBF246 !important; }
+    .ct-side-item.active .ct-side-count { color: #BBF246 !important; background: rgba(187,242,70,0.15) !important; }
 
     .ct-card { transition: transform .45s cubic-bezier(0.32, 0.72, 0, 1), box-shadow .35s ease; transform-origin: center bottom; }
     .ct-card:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 8px 20px rgba(0,0,0,0.05), 0 24px 56px rgba(25,33,38,0.16); }
     .ct-card:hover .ct-card-overlay { opacity: 1; }
     .ct-card.dragging { opacity: 0.4; transform: rotate(1.5deg); }
+    .ct-card-compact { transition: transform .25s cubic-bezier(0.32, 0.72, 0, 1), box-shadow .25s ease; }
+    .ct-card-compact:hover { transform: translateX(2px) translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.04), 0 10px 24px rgba(25,33,38,0.10) !important; }
+    .ct-card-compact:active { transform: scale(0.98); }
     .ct-card-late { animation: _ctPulseBorder 2.4s ease-in-out infinite; }
     @keyframes _ctPulseBorder { 0%, 100% { box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 10px 28px rgba(25,33,38,0.06); } 50% { box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 10px 28px rgba(220,38,38,0.18); } }
 
@@ -13606,19 +13710,19 @@ function ContentPageV2(props) {
         </button>
 
         {[
-          { k: "hoje", l: "Hoje", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>, count: counts.hoje },
-          { k: "semana", l: "Próximos 7 dias", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, count: counts.semana },
-          { k: "todas", l: "Todas as ativas", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>, count: counts.todas },
-          { k: "atrasadas", l: "Atrasadas", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, count: counts.atrasadas, isAlert: true },
-          { k: "publicadas", l: "Publicadas", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6 9 17l-5-5"/></svg>, count: counts.publicadas },
+          { k: "hoje", l: "Hoje", color: "#FBBF24", iconBg: "linear-gradient(135deg, #FBBF24, #F59E0B)", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFFFFF"><circle cx="12" cy="12" r="9" fill="#FFFFFF" opacity="0.95"/><circle cx="12" cy="12" r="3.5" fill="#F59E0B"/></svg>, count: counts.hoje },
+          { k: "semana", l: "Próximos 7 dias", color: "#A78BFA", iconBg: "linear-gradient(135deg, #A78BFA, #7C6BFE)", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, count: counts.semana },
+          { k: "todas", l: "Todas as ativas", color: "#60A5FA", iconBg: "linear-gradient(135deg, #60A5FA, #3B82F6)", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>, count: counts.todas },
+          { k: "atrasadas", l: "Atrasadas", color: "#E1483F", iconBg: "linear-gradient(135deg, #FB7185, #E1483F)", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13" stroke="#E1483F" strokeWidth="2.5"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="#E1483F" strokeWidth="2.5"/></svg>, count: counts.atrasadas, isAlert: true },
+          { k: "publicadas", l: "Publicadas", color: "#88C200", iconBg: "linear-gradient(135deg, #BBF246, #88C200)", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D0D0D" strokeWidth="2.6"><path d="M20 6 9 17l-5-5"/></svg>, count: counts.publicadas },
         ].map(item => {
           const isActive = _ctView === item.k;
           return (
             <button key={item.k} onClick={() => _ctSetView(item.k)} className={"ct-side-item" + (isActive ? " active" : "")}
-              style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "9px 12px", border: "none", background: "transparent", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-              <span className="ct-side-icon" style={{ color: item.isAlert && item.count > 0 ? "#DC2626" : "#8B8F92", display: "flex", flexShrink: 0 }}>{item.icon}</span>
+              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "8px 10px", border: "none", background: "transparent", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+              <span style={{ width: 26, height: 26, borderRadius: 8, background: item.iconBg, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 3px 8px ${item.color}45` }}>{item.icon}</span>
               <span className="ct-side-label" style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#192126", letterSpacing: "-0.005em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.l}</span>
-              {(item.count > 0 || item.isAlert) && <span className="tabnum ct-side-count" style={{ fontSize: 11, fontWeight: 700, color: item.isAlert && item.count > 0 ? "#DC2626" : "#8B8F92", flexShrink: 0 }}>{item.count}</span>}
+              {(item.count > 0 || item.isAlert) && <span className="tabnum ct-side-count" style={{ fontSize: 11, fontWeight: 800, color: item.isAlert && item.count > 0 ? "#E1483F" : "#8B8F92", flexShrink: 0, padding: "1px 6px", borderRadius: 999, background: item.isAlert && item.count > 0 ? "rgba(225,72,63,0.12)" : "transparent" }}>{item.count}</span>}
             </button>
           );
         })}
@@ -13794,8 +13898,18 @@ function ContentPageV2(props) {
           </div>
         </div>
 
-        {/* HERO + Today's featured cards */}
+        {/* HERO com greeting personalizado */}
         <div style={{ paddingBottom: 28, marginTop: 8 }}>
+          {_ctView === "hoje" && (() => {
+            const h = new Date().getHours();
+            const greeting = h < 5 ? "Boa madrugada" : h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+            return (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "5px 14px 5px 5px", borderRadius: 999, background: "rgba(255,255,255,0.7)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", marginBottom: 14 }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg, #0D0D0D, #2A2A2D)", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800 }}>{_ctFirstName[0].toUpperCase()}</div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#192126", letterSpacing: "-0.008em" }}>{greeting}, {_ctFirstName} 👋</span>
+              </div>
+            );
+          })()}
           <div style={{ fontSize: 11, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#BBF246", animation: "_ctPulse 1.6s ease-in-out infinite" }}></span>
             {viewLabel.kicker}
@@ -13836,10 +13950,10 @@ function ContentPageV2(props) {
                       <span style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.012em" }}>{s.l}</span>
                       <span className="tabnum" style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "2px 7px", borderRadius: 999 }}>{items.length}</span>
                     </div>
-                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: "0 2px" }}>
+                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, padding: "0 2px" }}>
                       {items.length === 0 ? (
                         <div style={{ fontSize: 11.5, color: "#A0A4A7", fontStyle: "italic", textAlign: "center", padding: "20px 0" }}>vazio</div>
-                      ) : items.slice(0, 60).map((d, i) => renderDemandCard(d, i))}
+                      ) : items.slice(0, 60).map((d, i) => renderDemandCardCompact(d, i))}
                       {items.length > 60 && <div style={{ fontSize: 10.5, color: "#A0A4A7", textAlign: "center", padding: "6px 0", fontWeight: 700 }}>+ {items.length - 60} mais</div>}
                     </div>
                   </section>
