@@ -4990,6 +4990,7 @@ function HomePageV2(props) {
   const [_uhActionToast, _uhSetActionToast] = useState("");
   const [_uhNews, _uhSetNews] = useState(null); // null = nao carregado
   const [_uhLibFiles, _uhSetLibFiles] = useState(null);
+  const [_uhLibFolders, _uhSetLibFolders] = useState(null);
   const [_uhNoteModalOpen, _uhSetNoteModalOpen] = useState(false);
   const [_uhNoteDraft, _uhSetNoteDraft] = useState({ title: "", body: "" });
   const [_uhNotesVersion, _uhSetNotesVersion] = useState(0);
@@ -5018,7 +5019,22 @@ function HomePageV2(props) {
         .then(({ data }) => _uhSetNews(Array.isArray(data) ? data : []))
         .catch(() => _uhSetNews([]));
     }
-    if (_uhActiveApp === "biblioteca" && _uhLibFiles === null && supabase) {
+    if (_uhActiveApp === "biblioteca" && _uhLibFolders === null && supabase) {
+      // Pastas root (uma por cliente)
+      orgScope(supabase.from("library_files").select("*")).eq("is_folder", true).is("parent_id", null).order("name", { ascending: true }).limit(20)
+        .then(async ({ data: folders }) => {
+          const fs = Array.isArray(folders) ? folders : [];
+          // Pra cada pasta, conta filhos
+          const counts = await Promise.all(fs.map(async f => {
+            try {
+              const { count } = await orgScope(supabase.from("library_files").select("*", { count: "exact", head: true })).eq("parent_id", f.id);
+              return count || 0;
+            } catch { return 0; }
+          }));
+          _uhSetLibFolders(fs.map((f, i) => ({ ...f, _childCount: counts[i] })));
+        })
+        .catch(() => _uhSetLibFolders([]));
+      // Também carrega arquivos recentes (sem pasta) — usado em algumas views
       orgScope(supabase.from("library_files").select("*")).eq("is_folder", false).order("created_at", { ascending: false }).limit(12)
         .then(({ data }) => _uhSetLibFiles(Array.isArray(data) ? data : []))
         .catch(() => _uhSetLibFiles([]));
@@ -6304,48 +6320,40 @@ REGRAS DE ESTILO:
               })()}
 
               {_uhActiveApp === "biblioteca" && (() => {
-                if (_uhLibFiles === null) return <div style={{ textAlign: "center", padding: 24, color: "#8B8F92", fontSize: 12 }}>Carregando…</div>;
-                if (_uhLibFiles.length === 0) return <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Biblioteca vazia</div>;
-                const fmtSize = (b) => { if (!b) return ""; if (b < 1024) return b + "B"; if (b < 1048576) return (b / 1024).toFixed(0) + "KB"; return (b / 1048576).toFixed(1) + "MB"; };
-                const fileMeta = (f) => {
-                  const m = (f.mime_type || "").toLowerCase();
-                  const n = (f.name || "").toLowerCase();
-                  const ext = n.split(".").pop() || "";
-                  if (m.startsWith("image/") && !["heic", "heif"].includes(ext)) return { color: "#192126", bg: "#F4F4F5", label: ext.toUpperCase(), isImg: true };
-                  if (m.startsWith("video/") || ["mp4", "mov", "avi", "webm"].includes(ext)) return { color: "#FFFFFF", bg: "#0D0D0D", label: ext.toUpperCase() };
-                  if (m === "application/pdf" || ext === "pdf") return { color: "#FFFFFF", bg: "#DC2626", label: "PDF" };
-                  if (["doc", "docx"].includes(ext)) return { color: "#FFFFFF", bg: "#2563EB", label: ext.toUpperCase() };
-                  if (["xls", "xlsx", "csv"].includes(ext)) return { color: "#FFFFFF", bg: "#16A34A", label: ext.toUpperCase() };
-                  if (["heic", "heif"].includes(ext)) return { color: "#FFFFFF", bg: "#7C3AED", label: "HEIC" };
-                  return { color: "#FFFFFF", bg: "#404040", label: ext.toUpperCase() || "FILE" };
-                };
+                if (_uhLibFolders === null) return <div style={{ textAlign: "center", padding: 24, color: "#8B8F92", fontSize: 12 }}>Carregando…</div>;
+                if (_uhLibFolders.length === 0) return <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Nenhuma pasta criada</div>;
+                // Paleta de gradientes por pasta (rotaciona)
+                const folderColors = [
+                  "linear-gradient(135deg, #BBF246, #88C200)",
+                  "linear-gradient(135deg, #FFB347, #FF7F00)",
+                  "linear-gradient(135deg, #06B6D4, #0891B2)",
+                  "linear-gradient(135deg, #A855F7, #7C3AED)",
+                  "linear-gradient(135deg, #EC4899, #BE185D)",
+                  "linear-gradient(135deg, #22C55E, #16A34A)",
+                  "linear-gradient(135deg, #3B82F6, #1D4ED8)",
+                  "linear-gradient(135deg, #F59E0B, #D97706)",
+                  "linear-gradient(135deg, #EF4444, #B91C1C)",
+                  "linear-gradient(135deg, #14B8A6, #0F766E)",
+                  "linear-gradient(135deg, #6366F1, #4338CA)",
+                ];
                 return (
-                  <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, overflow: "hidden", maxHeight: 360 }}>
-                    <div style={{ overflowY: "auto", maxHeight: 360 }}>
-                      {_uhLibFiles.slice(0, 12).map((f, i) => {
-                        const meta = fileMeta(f);
-                        const when = f.created_at ? new Date(f.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "";
-                        return (
-                          <div key={f.id || i} onClick={() => goSub && goSub("library")} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", cursor: "pointer", borderBottom: i === Math.min(11, _uhLibFiles.length - 1) ? "none" : "1px solid rgba(0,0,0,0.05)", transition: "background .15s" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(187,242,70,0.08)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-                          >
-                            <div style={{
-                              width: 38, height: 38, borderRadius: 9, flexShrink: 0,
-                              background: meta.isImg && f.url ? `url(${f.url}) center/cover no-repeat` : meta.bg,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              fontSize: 9, fontWeight: 800, color: meta.color, letterSpacing: "0.3px"
-                            }}>
-                              {!meta.isImg && meta.label}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name || "arquivo"}</div>
-                              <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600, marginTop: 1 }}>{meta.label}{f.size_bytes ? ` · ${fmtSize(f.size_bytes)}` : ""}{when ? ` · ${when}` : ""}</div>
-                            </div>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>Pastas dos clientes · <b style={{ color: "#192126" }}>{_uhLibFolders.length}</b></div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, maxHeight: 360, overflow: "auto" }}>
+                      {_uhLibFolders.slice(0, 12).map((f, i) => (
+                        <div key={f.id} onClick={() => goSub && goSub("library")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: 12, cursor: "pointer", display: "flex", flexDirection: "column", gap: 8, transition: "transform .15s, box-shadow .15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                        >
+                          <div style={{ aspectRatio: "4 / 3", borderRadius: 10, background: folderColors[i % folderColors.length], display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.95 }}><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                            <div style={{ position: "absolute", top: 6, right: 6, padding: "3px 8px", borderRadius: 999, background: "rgba(0,0,0,0.35)", fontSize: 9.5, fontWeight: 800, color: "#FFFFFF" }}>{f._childCount} {f._childCount === 1 ? "item" : "itens"}</div>
                           </div>
-                        );
-                      })}
+                          <div style={{ fontSize: 12, fontWeight: 800, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.01em" }}>{f.name || "pasta"}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
@@ -6453,13 +6461,17 @@ REGRAS DE ESTILO:
                 const delta = (now, prev) => { if (prev === 0) return now > 0 ? "+100%" : "—"; const d = Math.round(((now - prev) / prev) * 100); return d >= 0 ? `+${d}%` : `${d}%`; };
                 const deltaColor = (now, prev) => now >= prev ? "#0D7C00" : "#DC2626";
                 const cards = [
-                  { label: "Posts publicados", value: publishedNow, sub: `vs ${publishedPrev} no período anterior`, delta: delta(publishedNow, publishedPrev), color: deltaColor(publishedNow, publishedPrev), src: `publicados ${rangeLabel}` },
-                  { label: "Em produção", value: inProd, sub: `demandas ativas no Kanban`, src: `stage = design/copy/brief` },
-                  { label: "Aprovação pendente", value: pending, sub: `aguardando o cliente`, src: `stage = client/approval` },
-                  { label: "Receita mensal", value: mrr >= 1000 ? `R$ ${(mrr / 1000).toFixed(1)}k` : `R$ ${mrr}`, sub: `${clients.length} clientes ativos`, src: `soma de monthly_value` },
+                  { label: "Posts publicados", value: publishedNow, sub: `vs ${publishedPrev} no período anterior`, delta: delta(publishedNow, publishedPrev), color: deltaColor(publishedNow, publishedPrev), src: `Pipeline da sua agência (demandas com stage=published)` },
+                  { label: "Em produção", value: inProd, sub: `demandas ativas no seu Kanban`, src: `Pipeline da sua agência (briefing/design/copy)` },
+                  { label: "Aprovação pendente", value: pending, sub: `aguardando o cliente`, src: `Pipeline da sua agência (stage=cliente)` },
+                  { label: "Receita mensal", value: mrr >= 1000 ? `R$ ${(mrr / 1000).toFixed(1)}k` : `R$ ${mrr}`, sub: `${clients.length} clientes na sua carteira`, src: `Cadastro dos seus clientes (monthly_value)` },
                 ];
                 return (
                   <div>
+                    <div style={{ background: "rgba(187,242,70,0.08)", border: "1px solid rgba(153,209,36,0.25)", borderRadius: 10, padding: "8px 12px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B7300" strokeWidth="2.2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                      <div style={{ fontSize: 10.5, color: "#2F4F06", fontWeight: 600, lineHeight: 1.4 }}>Tudo aqui é da <b>sua agência</b> no UniqueHub — pipeline interno (demandas, stages, clientes cadastrados). Não vem do Instagram/Facebook dos clientes nem do Meta Business.</div>
+                    </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                       <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>Período: <b style={{ color: "#192126" }}>{rangeLabel}</b></div>
                       <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.04)", borderRadius: 999, padding: 3 }}>
@@ -6487,15 +6499,18 @@ REGRAS DE ESTILO:
 
               {_uhActiveApp === "relatorios" && (() => {
                 const demands = Array.isArray(props.demands) ? props.demands : [];
+                const clients = Array.isArray(props.clients) ? props.clients : [];
+                const lc = (s) => (s || "").toString().toLowerCase();
                 const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
                 const now = new Date();
                 const monthsBack = _uhReportsPeriod === "3m" ? 3 : _uhReportsPeriod === "6m" ? 6 : 12;
+                // Série de publicados por mês
                 const series = [];
                 for (let i = monthsBack - 1; i >= 0; i--) {
                   const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
                   const mEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
                   const count = demands.filter(d => {
-                    if (!["published", "done", "publicado"].includes((d.stage || d.status || "").toLowerCase())) return false;
+                    if (!["published", "done", "publicado"].includes(lc(d.stage || d.status))) return false;
                     const dt = d.published_at || d.publishedAt || d.updated_at || d.created_at;
                     if (!dt) return false;
                     const dd = new Date(dt);
@@ -6504,57 +6519,135 @@ REGRAS DE ESTILO:
                   series.push({ label: months[m.getMonth()], year: m.getFullYear(), count });
                 }
                 const totalP = series.reduce((s, x) => s + x.count, 0);
-                const avgMonth = (totalP / monthsBack).toFixed(1);
+                const avgMonth = monthsBack > 0 ? totalP / monthsBack : 0;
                 const bestMonth = series.reduce((b, x) => x.count > b.count ? x : b, series[0] || { count: 0, label: "—" });
                 const lastMonth = series[series.length - 1] || { count: 0 };
                 const prevMonth = series[series.length - 2] || { count: 0 };
-                const trend = lastMonth.count > prevMonth.count ? "▲" : lastMonth.count < prevMonth.count ? "▼" : "→";
-                const trendColor = lastMonth.count > prevMonth.count ? "#0D7C00" : lastMonth.count < prevMonth.count ? "#DC2626" : "#8B8F92";
+                const trendUp = lastMonth.count > prevMonth.count;
+                const trendDelta = prevMonth.count > 0 ? Math.round(((lastMonth.count - prevMonth.count) / prevMonth.count) * 100) : (lastMonth.count > 0 ? 100 : 0);
                 const max = Math.max(1, ...series.map(s => s.count));
+
+                // Top clientes por publicações no período
+                const startRange = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1);
+                const inRange = (dt) => { if (!dt) return false; try { const d = new Date(dt); return d >= startRange && d <= now; } catch { return false; } };
+                const pubByClient = {};
+                demands.forEach(d => {
+                  if (!["published", "done", "publicado"].includes(lc(d.stage || d.status))) return;
+                  const dt = d.published_at || d.publishedAt || d.updated_at;
+                  if (!inRange(dt)) return;
+                  const cn = d.clientName || d.client || "—";
+                  pubByClient[cn] = (pubByClient[cn] || 0) + 1;
+                });
+                const topClients = Object.entries(pubByClient).sort((a, b) => b[1] - a[1]).slice(0, 4);
+                const maxClient = Math.max(1, ...topClients.map(c => c[1]));
+
+                // Taxa de aprovação: published vs total que saiu do design
+                const totalEverPub = demands.filter(d => ["published", "done", "publicado"].includes(lc(d.stage || d.status))).length;
+                const totalPipeline = demands.length;
+                const approvalRate = totalPipeline > 0 ? Math.round((totalEverPub / totalPipeline) * 100) : 0;
+
+                // Distribuição por stage atual
+                const stageColors = { idea: "#A8DF33", design: "#F59E0B", client: "#EF4444", scheduled: "#0EA5E9", published: "#22C55E" };
+                const stageDist = ["idea", "design", "client", "scheduled", "published"].map(s => ({
+                  k: s,
+                  l: s === "idea" ? "Ideia" : s === "design" ? "Produção" : s === "client" ? "Cliente" : s === "scheduled" ? "Agendado" : "Publicado",
+                  c: stageColors[s],
+                  count: demands.filter(d => lc(d.stage || d.status) === s).length,
+                }));
+
                 return (
                   <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>Publicações últimos <b style={{ color: "#192126" }}>{monthsBack} meses</b></div>
+                    {/* Header period */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>Período: <b style={{ color: "#192126" }}>últimos {monthsBack} meses</b></div>
                       <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.04)", borderRadius: 999, padding: 3 }}>
                         {[{ k: "3m", l: "3M" }, { k: "6m", l: "6M" }, { k: "12m", l: "12M" }].map(o => (
                           <button key={o.k} onClick={() => _uhSetReportsPeriod(o.k)} style={{ padding: "5px 12px", borderRadius: 999, fontSize: 10.5, fontWeight: 700, background: _uhReportsPeriod === o.k ? "#FFFFFF" : "transparent", color: _uhReportsPeriod === o.k ? "#192126" : "#8B8F92", boxShadow: _uhReportsPeriod === o.k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
                         ))}
                       </div>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 10 }}>
-                      <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px", cursor: "pointer" }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Posts por mês</div>
-                        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 90 }}>
+
+                    {/* 4 KPI cards no topo */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 10 }}>
+                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "12px 14px" }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Total publicado</div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: "#192126", marginTop: 2, letterSpacing: "-0.02em" }}>{totalP}</div>
+                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>posts em {monthsBack}M</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "12px 14px" }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Média/mês</div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: "#192126", marginTop: 2, letterSpacing: "-0.02em" }}>{avgMonth.toFixed(1)}</div>
+                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>posts/mês</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "12px 14px" }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Taxa entrega</div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: "#0D7C00", marginTop: 2, letterSpacing: "-0.02em" }}>{approvalRate}%</div>
+                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>{totalEverPub}/{totalPipeline} demandas</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "12px 14px" }}>
+                        <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>Tendência</div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: trendUp ? "#0D7C00" : "#DC2626", marginTop: 2, letterSpacing: "-0.02em" }}>{trendUp ? "▲" : trendDelta < 0 ? "▼" : "—"} {trendDelta >= 0 ? "+" : ""}{trendDelta}%</div>
+                        <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, marginTop: 2 }}>vs mês anterior</div>
+                      </div>
+                    </div>
+
+                    {/* Chart de barras + Top clientes lado a lado */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 10, marginBottom: 10 }}>
+                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Posts publicados por mês</div>
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 110 }}>
                           {series.map((s, i) => {
-                            const h = Math.max(6, (s.count / max) * 100);
+                            const h = Math.max(8, (s.count / max) * 100);
                             const isLast = i === series.length - 1;
                             return (
-                              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 0 }}>
                                 <div style={{ fontSize: 9.5, fontWeight: 800, color: "#192126" }}>{s.count}</div>
-                                <div style={{ width: "70%", height: h + "%", background: isLast ? "#BBF246" : "#0D0D0D", borderRadius: 4, transition: "height .6s cubic-bezier(0.34,1.56,0.64,1)" }}></div>
+                                <div style={{ width: "65%", height: h + "%", background: isLast ? "linear-gradient(180deg, #BBF246, #88C200)" : "linear-gradient(180deg, #404040, #0D0D0D)", borderRadius: "4px 4px 2px 2px", transition: "height .6s cubic-bezier(0.34,1.56,0.64,1)" }}></div>
                                 <div style={{ fontSize: 8.5, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase" }}>{s.label}</div>
                               </div>
                             );
                           })}
                         </div>
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>Total no período</div>
-                          <div style={{ fontSize: 20, fontWeight: 900, color: "#192126", marginTop: 2 }}>{totalP}</div>
-                        </div>
-                        <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>Média/mês</div>
-                          <div style={{ fontSize: 20, fontWeight: 900, color: "#192126", marginTop: 2 }}>{avgMonth}</div>
-                        </div>
-                        <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>Melhor mês</div>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: "#192126", marginTop: 2 }}>{bestMonth.label} <span style={{ fontSize: 11, color: "#8B8F92" }}>· {bestMonth.count}</span></div>
-                        </div>
-                        <div onClick={() => goSub && goSub("reports")} style={{ background: "rgba(255,255,255,0.92)", borderRadius: 12, padding: "10px 12px", cursor: "pointer" }}>
-                          <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>Tendência</div>
-                          <div style={{ fontSize: 14, fontWeight: 900, color: trendColor, marginTop: 2 }}>{trend} <span style={{ color: "#192126" }}>{prevMonth.count} → {lastMonth.count}</span></div>
-                        </div>
+                      <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Top 4 clientes (publicações)</div>
+                        {topClients.length === 0 ? (
+                          <div style={{ fontSize: 10.5, color: "#A0A4A7", fontStyle: "italic", padding: "8px 0" }}>sem dados no período</div>
+                        ) : topClients.map(([name, count], i) => {
+                          const pct = (count / maxClient) * 100;
+                          return (
+                            <div key={name} style={{ marginBottom: 8 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, marginBottom: 3 }}>
+                                <span style={{ fontWeight: 700, color: "#192126", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", maxWidth: "70%" }}>{name}</span>
+                                <span style={{ fontWeight: 800, color: "#0D7C00", flexShrink: 0 }}>{count}</span>
+                              </div>
+                              <div style={{ height: 5, background: "rgba(0,0,0,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                                <div style={{ width: `${pct}%`, height: "100%", background: "#BBF246", borderRadius: 999, transition: "width .6s cubic-bezier(0.4,0,0.2,1)" }}></div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Distribuição por stage */}
+                    <div style={{ background: "rgba(255,255,255,0.92)", borderRadius: 14, padding: "14px 16px" }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 10 }}>Status atual de TODAS as demandas</div>
+                      <div style={{ display: "flex", height: 24, borderRadius: 8, overflow: "hidden", background: "rgba(0,0,0,0.04)", marginBottom: 8 }}>
+                        {stageDist.map(s => {
+                          const flex = (s.count / Math.max(1, totalPipeline)) * 100;
+                          if (flex <= 0) return null;
+                          return <div key={s.k} title={`${s.l}: ${s.count}`} style={{ flexGrow: flex, background: s.c, minWidth: 2, transition: "flex-grow .6s cubic-bezier(0.4,0,0.2,1)" }}></div>;
+                        })}
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 14px", fontSize: 10.5 }}>
+                        {stageDist.map(s => (
+                          <span key={s.k} style={{ display: "inline-flex", alignItems: "center", gap: 5, opacity: s.count > 0 ? 1 : 0.4 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></span>
+                            <span style={{ fontWeight: 600, color: "#8B8F92" }}>{s.l}</span>
+                            <b style={{ color: "#192126" }}>{s.count}</b>
+                          </span>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -6712,9 +6805,8 @@ REGRAS DE ESTILO:
             animation: "_uhMpGlowPulse 4s ease-in-out infinite",
           }}></div>
 
-          (
-            // MUNIQUE IA chat
-            <div style={{ display: "flex", flexDirection: "column", flex: 1, position: "relative", zIndex: 1 }}>
+          {/* MUNIQUE IA chat */}
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, position: "relative", zIndex: 1 }}>
               {/* HEADER */}
               <div style={{ padding: "18px 20px", borderBottom: "1px solid rgba(0,0,0,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -6884,7 +6976,6 @@ REGRAS DE ESTILO:
                 </div>
               </div>
             </div>
-          )}
         </div>{/* close .main-panel */}
       </div>{/* close grid 2 cols */}
 
