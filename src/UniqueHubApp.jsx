@@ -1102,26 +1102,51 @@ function useBillingStatus(orgId) {
 }
 
 
-/* ── Helper: detecta HEVC/H.265 client-side via byte sniffing nos primeiros 5MB.
-   Procura pelos FourCC "hvc1", "hev1" ou "hvcC" no MP4/MOV header. Detecção
-   funciona em ~95% dos casos: false positives são raros (sem custo extra além de
-   uma transcoda desnecessária); false negatives são possíveis se o moov estiver
-   no fim do arquivo (raro pra vídeos novos do iPhone). */
+/* ── Helper: detecta HEVC/H.265 client-side via byte sniffing.
+   Procura FourCC "hvc1" (0x68766331), "hev1" (0x68657631) ou "hvcC" (0x68766343).
+   Checa HEAD (primeiros 5MB) E TAIL (últimos 4MB) porque iPhone grava .MOV com
+   moov atom no FIM do arquivo (não no início). Sem esse fix, vídeos do iPhone
+   passavam batido pelo detector e iam pro Instagram em HEVC → erro 2207085.
+   Heurística extra: arquivos .mov de iPhone (type=video/quicktime) com tamanho
+   > 5MB são tratados como suspeitos e sempre vão pra transcoda (no-op rápido
+   no server-side se já forem H.264). */
 const _isHEVCVideo = async (file) => {
   if (!file?.type?.startsWith?.("video/")) return false;
   try {
-    const slice = file.slice ? file.slice(0, 5 * 1024 * 1024) : file;
-    const buf = await slice.arrayBuffer();
-    const v = new Uint8Array(buf);
-    /* Procura FourCC "hvc1"=0x68766331, "hev1"=0x68657631, "hvcC"=0x68766343 */
-    for (let i = 0, n = v.length - 4; i < n; i++) {
-      if (v[i] !== 0x68) continue;
-      const b1 = v[i+1], b2 = v[i+2], b3 = v[i+3];
-      if (b1 === 0x76 && b2 === 0x63 && (b3 === 0x31 || b3 === 0x43)) return true; /* hvc1 / hvcC */
-      if (b1 === 0x65 && b2 === 0x76 && b3 === 0x31) return true; /* hev1 */
+    const scanForHEVC = (v) => {
+      for (let i = 0, n = v.length - 4; i < n; i++) {
+        if (v[i] !== 0x68) continue;
+        const b1 = v[i+1], b2 = v[i+2], b3 = v[i+3];
+        if (b1 === 0x76 && b2 === 0x63 && (b3 === 0x31 || b3 === 0x43)) return true; /* hvc1 / hvcC */
+        if (b1 === 0x65 && b2 === 0x76 && b3 === 0x31) return true; /* hev1 */
+      }
+      return false;
+    };
+    /* 1. HEAD scan: primeiros 5MB */
+    const headSize = Math.min(5 * 1024 * 1024, file.size);
+    const head = await file.slice(0, headSize).arrayBuffer();
+    if (scanForHEVC(new Uint8Array(head))) {
+      console.log("[HEVC detect] match no HEAD:", file.name);
+      return true;
+    }
+    /* 2. TAIL scan: últimos 4MB — captura iPhones onde moov atom fica no FIM */
+    if (file.size > headSize) {
+      const tailSize = Math.min(4 * 1024 * 1024, file.size - headSize);
+      const tail = await file.slice(file.size - tailSize).arrayBuffer();
+      if (scanForHEVC(new Uint8Array(tail))) {
+        console.log("[HEVC detect] match no TAIL:", file.name);
+        return true;
+      }
+    }
+    /* 3. Heurística iPhone: .mov ≥10MB com type=video/quicktime é suspeito.
+       Force transcoda (server-side detecta codec real e faz no-op se já for H.264). */
+    const isQuickTime = file.type === "video/quicktime" || /\.mov$/i.test(file.name || "");
+    if (isQuickTime && file.size >= 10 * 1024 * 1024) {
+      console.log("[HEVC detect] heurística iPhone .mov ≥10MB:", file.name, "— force transcoda");
+      return true;
     }
     return false;
-  } catch { return false; }
+  } catch (e) { console.warn("[HEVC detect] erro:", e?.message); return false; }
 };
 
 /* ── Helper: chama edge function transcode-video se file for HEVC.
