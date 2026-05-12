@@ -6273,21 +6273,41 @@ REGRAS DE ESTILO:
 
               {_uhActiveApp === "biblioteca" && (() => {
                 if (_uhLibFiles === null) return <div style={{ textAlign: "center", padding: 24, color: "#8B8F92", fontSize: 12 }}>Carregando…</div>;
-                return _uhLibFiles.length === 0 ? (
-                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Biblioteca vazia</div>
-                ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, maxHeight: 320, overflow: "auto" }}>
-                    {_uhLibFiles.slice(0, 12).map((f, i) => {
-                      const isImg = (f.mime_type || "").startsWith("image/");
-                      const isVid = (f.mime_type || "").startsWith("video/");
+                if (_uhLibFiles.length === 0) return <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Biblioteca vazia</div>;
+                const fileMeta = (f) => {
+                  const m = (f.mime_type || "").toLowerCase();
+                  const n = (f.name || "").toLowerCase();
+                  const ext = n.split(".").pop() || "";
+                  if (m.startsWith("image/") && !["heic", "heif"].includes(ext)) return { kind: "img", color: "#8B8F92", bg: "#F4F4F5", label: ext.toUpperCase() };
+                  if (m.startsWith("video/") || ["mp4", "mov", "avi", "webm"].includes(ext)) return { kind: "vid", color: "#BBF246", bg: "linear-gradient(135deg, #0D0D0D, #333)", label: ext.toUpperCase() };
+                  if (m === "application/pdf" || ext === "pdf") return { kind: "pdf", color: "#FFFFFF", bg: "linear-gradient(135deg, #DC2626, #991B1B)", label: "PDF" };
+                  if (["doc", "docx"].includes(ext)) return { kind: "doc", color: "#FFFFFF", bg: "linear-gradient(135deg, #2563EB, #1E40AF)", label: ext.toUpperCase() };
+                  if (["xls", "xlsx", "csv"].includes(ext)) return { kind: "xls", color: "#FFFFFF", bg: "linear-gradient(135deg, #16A34A, #15803D)", label: ext.toUpperCase() };
+                  if (["heic", "heif"].includes(ext)) return { kind: "heic", color: "#FFFFFF", bg: "linear-gradient(135deg, #7C3AED, #5B21B6)", label: "HEIC" };
+                  return { kind: "file", color: "#FFFFFF", bg: "linear-gradient(135deg, #404040, #1F1F1F)", label: ext.toUpperCase() || "FILE" };
+                };
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, maxHeight: 320, overflow: "auto", padding: 2, margin: -2 }}>
+                    {_uhLibFiles.slice(0, 8).map((f, i) => {
+                      const meta = fileMeta(f);
                       return (
-                        <div key={f.id || i} onClick={() => goSub && goSub("library")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 12, padding: 8, cursor: "pointer", display: "flex", flexDirection: "column", gap: 6 }}>
-                          <div style={{ aspectRatio: "1 / 1", borderRadius: 8, background: isImg ? "#F4F4F5" : "linear-gradient(135deg, #0D0D0D, #333)", backgroundImage: isImg && f.url ? `url(${f.url})` : "none", backgroundSize: "cover", backgroundPosition: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            {!isImg && (
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={isVid ? "#BBF246" : "#FFFFFF"} strokeWidth="2"><path d={isVid ? "M23 7l-7 5 7 5V7z M1 5h15v14H1z" : "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"}/></svg>
+                        <div key={f.id || i} onClick={() => goSub && goSub("library")} style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 10, cursor: "pointer", display: "flex", flexDirection: "column", gap: 8, transition: "transform .15s, box-shadow .15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                        >
+                          <div style={{ aspectRatio: "4 / 3", borderRadius: 10, background: meta.kind === "img" && f.url ? `#F4F4F5 url(${f.url}) center/cover no-repeat` : meta.bg, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                            {meta.kind === "img" ? null : (
+                              <>
+                                {meta.kind === "vid" ? (
+                                  <svg width="34" height="34" viewBox="0 0 24 24" fill={meta.color}><polygon points="6 4 20 12 6 20 6 4"/></svg>
+                                ) : (
+                                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={meta.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                )}
+                                <div style={{ position: "absolute", bottom: 6, right: 6, padding: "2px 6px", borderRadius: 5, background: "rgba(0,0,0,0.55)", fontSize: 8.5, fontWeight: 800, color: "#FFFFFF", letterSpacing: "0.5px" }}>{meta.label}</div>
+                              </>
                             )}
                           </div>
-                          <div style={{ fontSize: 9.5, fontWeight: 600, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.name || "arquivo"}</div>
+                          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }}>{f.name || "arquivo"}</div>
                         </div>
                       );
                     })}
@@ -6297,19 +6317,33 @@ REGRAS DE ESTILO:
 
               {_uhActiveApp === "noticias" && (() => {
                 if (_uhNews === null) return <div style={{ textAlign: "center", padding: 24, color: "#8B8F92", fontSize: 12 }}>Carregando…</div>;
-                return _uhNews.length === 0 ? (
-                  <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Sem comunicados</div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflow: "auto" }}>
+                if (_uhNews.length === 0) return <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 14, padding: 24, textAlign: "center", color: "#8B8F92", fontSize: 12.5, fontWeight: 600 }}>Sem comunicados</div>;
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflow: "auto", paddingRight: 4 }}>
                     {_uhNews.slice(0, 6).map((n, i) => {
                       const when = n.created_at ? new Date(n.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }) : "";
+                      const hasPhoto = !!n.photo;
                       return (
-                        <div key={n.id || i} onClick={() => goSub && goSub("news")} style={{ background: n.pinned ? "linear-gradient(135deg, rgba(187,242,70,0.18), rgba(255,255,255,0.9))" : "rgba(255,255,255,0.9)", borderRadius: 14, padding: "12px 14px", cursor: "pointer", borderLeft: n.pinned ? "3px solid #BBF246" : "3px solid transparent" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4, gap: 8 }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 800, color: "#192126", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.pinned ? "📌 " : ""}{n.title || "Sem título"}</div>
-                            <div style={{ fontSize: 10, color: "#8B8F92", fontWeight: 600, flexShrink: 0 }}>{when}</div>
+                        <div key={n.id || i} onClick={() => goSub && goSub("news")} style={{ background: n.pinned ? "linear-gradient(135deg, rgba(187,242,70,0.18), rgba(255,255,255,0.92))" : "rgba(255,255,255,0.92)", borderRadius: 16, padding: 0, cursor: "pointer", borderLeft: n.pinned ? "3px solid #BBF246" : "3px solid transparent", display: "flex", gap: 0, overflow: "hidden", transition: "transform .15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
+                        >
+                          <div style={{
+                            flexShrink: 0, width: 90, alignSelf: "stretch", minHeight: 70,
+                            background: hasPhoto ? `#F4F4F5 url(${n.photo}) center/cover no-repeat` : "linear-gradient(135deg, #0D0D0D, #2A2A2A)",
+                            display: "flex", alignItems: "center", justifyContent: "center"
+                          }}>
+                            {!hasPhoto && (
+                              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-8v18l-18-8z"/><path d="M11.6 16.8L11 22a1 1 0 0 1-1.7.7L7 19"/></svg>
+                            )}
                           </div>
-                          <div style={{ fontSize: 11.5, color: "#3A3A3A", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{n.summary || n.body || ""}</div>
+                          <div style={{ flex: 1, minWidth: 0, padding: "12px 14px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4, gap: 8 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 800, color: "#192126", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.01em" }}>{n.pinned ? "📌 " : ""}{n.title || "Sem título"}</div>
+                              <div style={{ fontSize: 10, color: "#8B8F92", fontWeight: 600, flexShrink: 0 }}>{when}</div>
+                            </div>
+                            <div style={{ fontSize: 11.5, color: "#3A3A3A", lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{n.summary || n.body || ""}</div>
+                          </div>
                         </div>
                       );
                     })}
