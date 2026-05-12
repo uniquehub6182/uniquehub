@@ -13188,9 +13188,11 @@ function ContentPageV2(props) {
             </div>
             {(() => {
               const byAssignee = {};
+              const fakeAssignees = ["planejamento ia", "ia", "automatic", "system", "não atribuído", "nao atribuido", ""];
               _ctFiltered.forEach(d => {
                 if (["published", "done", "publicado"].includes(lc(d.stage || d.status))) return;
                 const a = d.assigneeName || d.assignee || d.assignees?.[0] || "Não atribuído";
+                if (fakeAssignees.includes(lc(a))) return; // ignora placeholders/IA
                 byAssignee[a] = (byAssignee[a] || 0) + 1;
               });
               const top = Object.entries(byAssignee).sort((a, b) => b[1] - a[1]).slice(0, 4);
@@ -13499,14 +13501,16 @@ function ContentPageV2(props) {
                             animation: `_ctCardIn .25s ease-out ${i * 0.015}s both`,
                             border: isExpired ? "1px solid #DC2626" : isAjuste ? "1px solid #F97316" : "1px solid rgba(0,0,0,0.04)",
                             position: "relative",
+                            flexShrink: 0,
                           }}
                         >
                           {/* THUMB VISUAL no topo do card (gradient ou imagem real) */}
                           <div className="ct-thumb" style={{
-                            height: 72,
+                            height: 64,
                             background: coverUrl ? `url(${coverUrl}) center/cover no-repeat` : fmtGrad,
                             display: "flex", alignItems: "center", justifyContent: "center",
                             position: "relative",
+                            flexShrink: 0,
                           }}>
                             {!coverUrl && <div style={{ opacity: 0.85 }}>{fmtIcon}</div>}
                             {/* Overlay: pills topo */}
