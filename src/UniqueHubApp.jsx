@@ -12959,7 +12959,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
 function ContentPageV2(props) {
   const { user, clients, demands, setDemands, team, goTab, goSub, agencyIdentity } = props;
 
-  // ─── STAGES (mesmas cores stages do V1, vibrantes) ───
+  // ─── STAGES ───
   const _ctStages = useMemo(() => [
     { k: "idea",      l: "Ideia",      c: "#A78BFA" },
     { k: "briefing",  l: "Briefing",   c: "#3B82F6" },
@@ -12977,9 +12977,11 @@ function ContentPageV2(props) {
   const [_ctSearch, _ctSetSearch] = useState("");
   const [_ctSheet, _ctSetSheet] = useState(null);
   const [_ctQuickAddOpen, _ctSetQuickAddOpen] = useState(false);
+  const [_ctSpotlightOpen, _ctSetSpotlightOpen] = useState(false);
   const [_ctDragId, _ctSetDragId] = useState(null);
   const [_ctDragOver, _ctSetDragOver] = useState(null);
   const [_ctToast, _ctSetToast] = useState("");
+  const [_ctConfetti, _ctSetConfetti] = useState(null);
   const [_ctCalMonth, _ctSetCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [_ctExp, _ctSetExp] = useState({ stages: true, clientes: false });
   const [_ctActionsOpen, _ctSetActionsOpen] = useState(false);
@@ -13026,6 +13028,21 @@ function ContentPageV2(props) {
     return palette[Math.abs(h) % palette.length];
   };
 
+  // ─── Listener Cmd+K pra Spotlight ───
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        _ctSetSpotlightOpen(v => !v);
+      }
+      if (e.key === "Escape") {
+        _ctSetSpotlightOpen(false); _ctSetSheet(null); _ctSetQuickAddOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // ─── DEMANDS BY VIEW ───
   const visibleDemands = useMemo(() => {
     let list = Array.isArray(demands) ? [...demands] : [];
@@ -13059,7 +13076,7 @@ function ContentPageV2(props) {
     return list;
   }, [demands, _ctView, _ctSearch]);
 
-  // ─── COUNTS pra sidebar ───
+  // ─── COUNTS ───
   const counts = useMemo(() => {
     const dArr = Array.isArray(demands) ? demands : [];
     const isToday = (d) => (d.scheduling?.date || d.schedule_date) === todayYmd && !["published", "done"].includes(lc(d.stage || d.status));
@@ -13114,6 +13131,10 @@ function ContentPageV2(props) {
     const target = (demands || []).find(d => (d.supaId || d.id) === id);
     if (!target || lc(target.stage || target.status) === stageK) return;
     setDemands && setDemands(prev => prev.map(d => ((d.supaId || d.id) === id ? { ...d, stage: stageK } : d)));
+    if (stageK === "published") {
+      _ctSetConfetti(Date.now());
+      setTimeout(() => _ctSetConfetti(null), 1800);
+    }
     _ctSetToast(`→ ${_ctStages.find(s => s.k === stageK)?.l}`);
     setTimeout(() => _ctSetToast(""), 2000);
     if (target.supaId && typeof supaUpdateDemand === "function") {
@@ -13128,23 +13149,27 @@ function ContentPageV2(props) {
     if (!tgt) return;
     setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === (d.supaId || d.id) ? { ...x, stage: tgt.k } : x)));
     _ctSetSheet(prev => prev && (prev.supaId || prev.id) === (d.supaId || d.id) ? { ...prev, stage: tgt.k } : prev);
+    if (tgt.k === "published") {
+      _ctSetConfetti(Date.now());
+      setTimeout(() => _ctSetConfetti(null), 1800);
+    }
     _ctSetToast(`${dir > 0 ? "→" : "←"} ${tgt.l}`);
     setTimeout(() => _ctSetToast(""), 1800);
     if (d.supaId && typeof supaUpdateDemand === "function") await supaUpdateDemand(d.supaId, { stage: tgt.k });
   };
 
   const viewLabel = (() => {
-    if (_ctView === "hoje") return { kicker: "Hoje", title: "Foco do dia", subtitle: counts.hoje === 0 ? "Nenhuma demanda pra hoje. Aproveita pra adiantar a semana." : `${counts.hoje} ${counts.hoje === 1 ? "demanda agendada pra hoje" : "demandas agendadas pra hoje"}` };
-    if (_ctView === "semana") return { kicker: "Próximos 7 dias", title: "Esta semana", subtitle: `${counts.semana} ${counts.semana === 1 ? "demanda" : "demandas"} no horizonte` };
-    if (_ctView === "todas") return { kicker: "Todas as ativas", title: "Pipeline completo", subtitle: `${counts.todas} ${counts.todas === 1 ? "demanda" : "demandas"} em produção` };
-    if (_ctView === "atrasadas") return { kicker: "Atenção", title: "Atrasadas", subtitle: counts.atrasadas === 0 ? "Tudo em dia 🎉" : `${counts.atrasadas} ${counts.atrasadas === 1 ? "precisa" : "precisam"} de atenção` };
-    if (_ctView === "publicadas") return { kicker: "Logbook", title: "Publicadas", subtitle: `${counts.publicadas} ${counts.publicadas === 1 ? "demanda" : "demandas"} no ar` };
-    if (_ctView === "kanban") return { kicker: "Pipeline", title: "Kanban", subtitle: `${counts.todas} ativas distribuídas em ${_ctStages.filter(s => counts.byStage[s.k] > 0).length} stages` };
+    if (_ctView === "hoje") return { kicker: "Hoje", title: "Foco do dia", subtitle: counts.hoje === 0 ? "Nenhuma demanda agendada pra hoje. Aproveita pra adiantar." : `${counts.hoje} ${counts.hoje === 1 ? "demanda" : "demandas"} esperando você` };
+    if (_ctView === "semana") return { kicker: "Próximos 7 dias", title: "Esta semana", subtitle: `${counts.semana} no horizonte` };
+    if (_ctView === "todas") return { kicker: "Todas as ativas", title: "Pipeline", subtitle: `${counts.todas} em produção` };
+    if (_ctView === "atrasadas") return { kicker: "Atenção", title: "Atrasadas", subtitle: counts.atrasadas === 0 ? "Tudo em dia ✨" : `${counts.atrasadas} ${counts.atrasadas === 1 ? "precisa" : "precisam"} de atenção` };
+    if (_ctView === "publicadas") return { kicker: "Logbook", title: "Publicadas", subtitle: `${counts.publicadas} no ar` };
+    if (_ctView === "kanban") return { kicker: "Pipeline", title: "Kanban", subtitle: `${counts.todas} ativas em ${_ctStages.filter(s => counts.byStage[s.k] > 0).length} stages` };
     if (_ctView === "calendar") return { kicker: "Cronograma", title: "Calendário", subtitle: _ctCalMonth.toLocaleString("pt-BR", { month: "long", year: "numeric" }) };
     if (_ctView.startsWith("stage:")) {
       const k = _ctView.slice(6);
       const sc = _ctStages.find(s => s.k === k);
-      return { kicker: "Stage", title: sc?.l || "Stage", subtitle: `${counts.byStage[k] || 0} ${(counts.byStage[k] || 0) === 1 ? "demanda neste stage" : "demandas neste stage"}` };
+      return { kicker: "Etapa", title: sc?.l || "Stage", subtitle: `${counts.byStage[k] || 0} demandas neste stage` };
     }
     if (_ctView.startsWith("cliente:")) {
       const cn = _ctView.slice(8);
@@ -13153,7 +13178,24 @@ function ContentPageV2(props) {
     return { kicker: "Produção", title: "Demandas", subtitle: "" };
   })();
 
-  // ─── Group demands by date for grouped views ───
+  // ─── Mini-stats / sparkline ───
+  const sparkData = useMemo(() => {
+    // Throughput last 7 days (demands publicadas por dia)
+    const arr = Array.isArray(demands) ? demands : [];
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const y = ymd(d);
+      const count = arr.filter(x => {
+        const dt = x.scheduling?.date || x.schedule_date;
+        return dt === y && ["published", "done"].includes(lc(x.stage || x.status));
+      }).length;
+      days.push({ y, count });
+    }
+    return days;
+  }, [demands]);
+
+  // ─── Group por data ───
   const groupByDate = (list) => {
     const groups = { Hoje: [], Amanhã: [], "Esta semana": [], "Próximas semanas": [], "Sem data": [] };
     list.forEach(d => {
@@ -13169,7 +13211,18 @@ function ContentPageV2(props) {
     return groups;
   };
 
-  // ─── Render Card (estilo Home V2 — glass + cover) ───
+  // ─── Spotlight results ───
+  const spotlightResults = useMemo(() => {
+    if (!_ctSearch.trim()) return [];
+    const q = _ctSearch.trim().toLowerCase();
+    const matches = (Array.isArray(demands) ? demands : []).filter(d =>
+      (d.task || d.title || "").toLowerCase().includes(q) ||
+      (d.clientName || d.client || "").toLowerCase().includes(q)
+    ).slice(0, 8);
+    return matches;
+  }, [demands, _ctSearch]);
+
+  // ─── Card Instagram-mockup ───
   const renderDemandCard = (d, i, opts = {}) => {
     const stage = lc(d.stage || d.status);
     const sCfg = _ctStages.find(s => s.k === stage) || _ctStages[0];
@@ -13184,16 +13237,21 @@ function ContentPageV2(props) {
     const networks = d.networks || d.platforms || ["ig"];
     const isAjuste = stage === "ajuste";
     const isExpired = isLate && stage === "scheduled";
-    const aspectRatio = lc(fmt) === "reels" || lc(fmt) === "stories" ? "9:16" : ["feed", "carrossel", "post"].includes(lc(fmt)) ? "3:4" : null;
-    const coverUrl = d.cover_url || d.coverUrl || d.thumbnail_url || d.thumbnail;
     const stageIdx = _ctStages.findIndex(st => st.k === stage);
     const [c1, c2] = clientHue(client);
+    const coverUrl = d.cover_url || d.coverUrl || d.thumbnail_url || d.thumbnail;
+    const handle = (client || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 18) || "marca";
 
-    // Gradient sutil pra cover quando não tem imagem
-    const fmtGrad = lc(fmt) === "reels" ? "linear-gradient(135deg, rgba(236,72,153,0.18), rgba(236,72,153,0.05))"
-      : lc(fmt) === "stories" ? "linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.05))"
-      : lc(fmt) === "carrossel" ? "linear-gradient(135deg, rgba(59,130,246,0.18), rgba(59,130,246,0.05))"
-      : "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.05))";
+    // Aspect ratio segue o format (Instagram real)
+    const aspectRatio = lc(fmt) === "reels" || lc(fmt) === "stories" ? "9 / 16"
+      : lc(fmt) === "feed" ? "4 / 5"
+      : lc(fmt) === "carrossel" ? "1 / 1"
+      : "4 / 5";
+
+    const fmtGrad = lc(fmt) === "reels" ? "linear-gradient(135deg, #FCE7F3 0%, #FBCFE8 35%, #F9A8D4 100%)"
+      : lc(fmt) === "stories" ? "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 35%, #FBBF24 100%)"
+      : lc(fmt) === "carrossel" ? "linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 35%, #93C5FD 100%)"
+      : "linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 35%, #6EE7B7 100%)";
 
     return (
       <div
@@ -13202,81 +13260,106 @@ function ContentPageV2(props) {
         draggable={!opts.noDrag}
         onDragStart={(e) => onDragStart(e, d)}
         onDragEnd={() => { _ctSetDragId(null); _ctSetDragOver(null); }}
-        className="ct-card"
+        className={"ct-card" + (isLate ? " ct-card-late" : "")}
         style={{
-          background: "rgba(255,255,255,0.78)",
+          background: "rgba(255,255,255,0.82)",
           backdropFilter: "saturate(180%) blur(14px)",
           WebkitBackdropFilter: "saturate(180%) blur(14px)",
-          border: isExpired ? "1.5px solid rgba(220,38,38,0.5)" : isAjuste ? "1.5px solid rgba(249,115,22,0.5)" : "1px solid rgba(255,255,255,0.7)",
-          borderRadius: 18,
+          border: isExpired ? "1.5px solid rgba(220,38,38,0.6)" : isAjuste ? "1.5px solid rgba(249,115,22,0.55)" : "1px solid rgba(255,255,255,0.7)",
+          borderRadius: 20,
           overflow: "hidden",
           cursor: "pointer",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 8px 28px rgba(25,33,38,0.06)",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 10px 28px rgba(25,33,38,0.06)",
           flexShrink: 0,
-          animation: `_ctFadeIn .35s cubic-bezier(0.32, 0.72, 0, 1) ${i * 0.018}s both`,
+          animation: `_ctFadeIn .4s cubic-bezier(0.32, 0.72, 0, 1) ${i * 0.025}s both`,
           position: "relative",
+          willChange: "transform",
         }}
       >
-        {/* COVER 68px */}
+        {/* Instagram-style header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+          <div style={{ width: 26, height: 26, borderRadius: "50%", background: `conic-gradient(from 180deg, ${c1}, ${c2}, ${c1})`, padding: 2, flexShrink: 0 }}>
+            <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", color: c1, fontSize: 10, fontWeight: 800 }}>{client[0].toUpperCase()}</div>
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: "#192126", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{client}</div>
+            <div style={{ fontSize: 9.5, color: "#8B8F92", fontWeight: 600, letterSpacing: "-0.005em" }}>@{handle}</div>
+          </div>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: sCfg.c, boxShadow: `0 0 0 3px ${sCfg.c}25`, flexShrink: 0 }} title={sCfg.l}></span>
+        </div>
+
+        {/* Instagram-style square cover */}
         <div style={{
-          height: 68,
+          aspectRatio,
+          maxHeight: 280,
           background: coverUrl ? `url(${coverUrl}) center/cover no-repeat` : fmtGrad,
           position: "relative",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
-          borderBottom: "1px solid rgba(0,0,0,0.04)",
+          overflow: "hidden",
         }}>
           {!coverUrl && (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sCfg.c} strokeWidth="1.4" style={{ opacity: 0.65 }}>
-              {lc(fmt) === "reels" || lc(fmt) === "stories" ? <polygon points="5 3 19 12 5 21 5 3"/>
-                : lc(fmt) === "carrossel" ? <><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 21h10a2 2 0 0 0 2-2V8"/></>
-                : <><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.35-4.35a1 1 0 0 0-1.41 0L7 19"/></>
-              }
-            </svg>
-          )}
-          {/* Pills top-left */}
-          {(priority === "alta" || isAjuste || isExpired) && (
-            <div style={{ position: "absolute", top: 8, left: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
-              {priority === "alta" && <span style={{ fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "rgba(255,255,255,0.95)", color: "#B91C1C", letterSpacing: "0.04em", backdropFilter: "blur(8px)" }}>ALTA</span>}
-              {isAjuste && <span style={{ fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "rgba(249,115,22,0.95)", color: "#FFFFFF", letterSpacing: "0.04em" }}>AJUSTE</span>}
-              {isExpired && <span style={{ fontSize: 9, fontWeight: 800, padding: "3px 7px", borderRadius: 999, background: "rgba(220,38,38,0.95)", color: "#FFFFFF", letterSpacing: "0.04em" }}>EXPIRADO</span>}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, opacity: 0.7 }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="1.5">
+                {lc(fmt) === "reels" || lc(fmt) === "stories" ? <polygon points="5 3 19 12 5 21 5 3" fill="#FFFFFF"/>
+                  : lc(fmt) === "carrossel" ? <><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 21h10a2 2 0 0 0 2-2V8"/></>
+                  : <><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.35-4.35a1 1 0 0 0-1.41 0L7 19"/></>
+                }
+              </svg>
+              <span style={{ fontSize: 9.5, fontWeight: 800, color: "rgba(255,255,255,0.85)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{fmt}</span>
             </div>
           )}
-          {/* Bottom-right: aspect + fmt */}
-          <div style={{ position: "absolute", bottom: 7, right: 7, display: "flex", gap: 3 }}>
-            {aspectRatio && <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 5, background: "rgba(13,13,13,0.6)", color: "#FFFFFF", backdropFilter: "blur(6px)" }}>{aspectRatio}</span>}
-          </div>
+          {/* Pills */}
+          {(priority === "alta" || isAjuste || isExpired) && (
+            <div style={{ position: "absolute", top: 10, left: 10, display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {priority === "alta" && <span style={{ fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(255,255,255,0.95)", color: "#B91C1C", letterSpacing: "0.04em", backdropFilter: "blur(8px)", boxShadow: "0 4px 12px rgba(185,28,28,0.2)" }}>ALTA</span>}
+              {isAjuste && <span style={{ fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(249,115,22,0.95)", color: "#FFFFFF", letterSpacing: "0.04em", boxShadow: "0 4px 12px rgba(249,115,22,0.32)" }}>AJUSTE</span>}
+              {isExpired && <span style={{ fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(220,38,38,0.95)", color: "#FFFFFF", letterSpacing: "0.04em", boxShadow: "0 4px 12px rgba(220,38,38,0.32)" }}>EXPIRADO</span>}
+            </div>
+          )}
+          {/* Format tag bottom-right */}
+          <span style={{ position: "absolute", bottom: 10, right: 10, fontSize: 9, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "rgba(13,13,13,0.55)", color: "#FFFFFF", backdropFilter: "blur(8px)", letterSpacing: "0.04em", textTransform: "uppercase" }}>{fmt}</span>
           {/* Hover overlay */}
-          <div className="ct-card-overlay" style={{ position: "absolute", inset: 0, background: "rgba(13,13,13,0.62)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: 0, transition: "opacity .25s ease" }}>
+          <div className="ct-card-overlay" style={{ position: "absolute", inset: 0, background: "rgba(13,13,13,0.62)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, opacity: 0, transition: "opacity .3s cubic-bezier(0.32, 0.72, 0, 1)" }}>
             {stageIdx < _ctStages.length - 1 && (
-              <button onClick={(e) => { e.stopPropagation(); advanceDemand(d, 1); }} title="Avançar stage" style={{ width: 32, height: 32, borderRadius: "50%", background: "#BBF246", border: "none", color: "#0D0D0D", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><polyline points="20 6 9 17 4 12"/></svg>
+              <button onClick={(e) => { e.stopPropagation(); advanceDemand(d, 1); }} title="Avançar" style={{ width: 38, height: 38, borderRadius: "50%", background: "#BBF246", border: "none", color: "#0D0D0D", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 20px rgba(187,242,70,0.4)", transform: "scale(0.9)" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><polyline points="20 6 9 17 4 12"/></svg>
               </button>
             )}
-            <button onClick={(e) => { e.stopPropagation(); _ctSetSheet(d); }} title="Detalhes" style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.96)", border: "none", color: "#0D0D0D", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><polyline points="9 18 15 12 9 6"/></svg>
+            <button onClick={(e) => { e.stopPropagation(); _ctSetSheet(d); }} title="Detalhes" style={{ width: 38, height: 38, borderRadius: "50%", background: "rgba(255,255,255,0.96)", border: "none", color: "#0D0D0D", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 20px rgba(13,13,13,0.32)", transform: "scale(0.9)" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           </div>
         </div>
 
-        {/* BODY */}
-        <div style={{ padding: "10px 12px 12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-            <div style={{ width: 16, height: 16, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 8.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{client[0].toUpperCase()}</div>
-            <span style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.005em" }}>{client}</span>
+        {/* Instagram-style action bar */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "8px 12px 4px", color: "#192126" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          <div style={{ marginLeft: "auto" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
           </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#192126", lineHeight: 1.32, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 9, letterSpacing: "-0.015em" }}>{d.task || d.title || "Sem título"}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5 }}>
+        </div>
+
+        {/* Caption */}
+        <div style={{ padding: "0 12px 12px" }}>
+          <div style={{ fontSize: 12.5, lineHeight: 1.4, color: "#192126", letterSpacing: "-0.012em" }}>
+            <b style={{ fontWeight: 700 }}>{handle}</b>{" "}
+            <span style={{ fontWeight: 500, color: "#3C3F44" }}>
+              {(d.task || d.title || "Sem título").length > 70 ? (d.task || d.title || "").slice(0, 70) + "…" : (d.task || d.title || "Sem título")}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 8, fontSize: 10.5 }}>
             {date && (
-              <span className="tabnum" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 700, color: isLate ? "#DC2626" : "#8B8F92" }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                {relDate(date)}{time ? `, ${time.slice(0, 5)}` : ""}
+              <span className="tabnum" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 700, color: isLate ? "#DC2626" : "#8B8F92", letterSpacing: "-0.005em", textTransform: "uppercase" }}>
+                {relDate(date)}{time ? ` · ${time.slice(0, 5)}` : ""}
               </span>
             )}
             <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, color: "#A0A4A7" }}>
               {networks.includes("ig") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>}
               {networks.includes("fb") && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>}
-              {assigneeName && <div title={assigneeName} style={{ width: 16, height: 16, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", fontSize: 8, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{assigneeName[0].toUpperCase()}</div>}
+              {assigneeName && <div title={assigneeName} style={{ width: 18, height: 18, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", fontSize: 8.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{assigneeName[0].toUpperCase()}</div>}
             </div>
           </div>
         </div>
@@ -13284,37 +13367,167 @@ function ContentPageV2(props) {
     );
   };
 
-  // ─── CSS local ───
+  // ─── Card grande FEATURED pra Today's Focus ───
+  const renderFeatured = (d, i) => {
+    const stage = lc(d.stage || d.status);
+    const sCfg = _ctStages.find(s => s.k === stage) || _ctStages[0];
+    const time = d.scheduling?.time || d.schedule_time;
+    const client = d.clientName || d.client || "—";
+    const fmt = d.format || "Post";
+    const [c1, c2] = clientHue(client);
+    const handle = (client || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 18) || "marca";
+    const coverUrl = d.cover_url || d.coverUrl || d.thumbnail_url;
+    const fmtGrad = lc(fmt) === "reels" ? "linear-gradient(135deg, #FCE7F3, #F472B6)"
+      : lc(fmt) === "stories" ? "linear-gradient(135deg, #FEF3C7, #FBBF24)"
+      : lc(fmt) === "carrossel" ? "linear-gradient(135deg, #DBEAFE, #60A5FA)"
+      : "linear-gradient(135deg, #D1FAE5, #34D399)";
+    return (
+      <div key={d.id || d.supaId || i} onClick={() => _ctSetSheet(d)} className="ct-featured" style={{
+        flex: "0 0 320px",
+        background: "linear-gradient(135deg, rgba(13,13,13,0.95), rgba(13,13,13,0.85))",
+        borderRadius: 24,
+        padding: 20,
+        cursor: "pointer",
+        position: "relative",
+        overflow: "hidden",
+        color: "#FFFFFF",
+        boxShadow: "0 12px 40px rgba(13,13,13,0.25), 0 1px 2px rgba(0,0,0,0.05)",
+        animation: `_ctFadeIn .5s cubic-bezier(0.32, 0.72, 0, 1) ${i * 0.08}s both`,
+      }}>
+        {/* Decorative blob */}
+        <div style={{ position: "absolute", top: -30, right: -30, width: 180, height: 180, borderRadius: "50%", background: fmtGrad, opacity: 0.35, filter: "blur(40px)" }}></div>
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 999, background: "rgba(187,242,70,0.18)", color: "#BBF246" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#BBF246", animation: "_ctPulse 1.6s ease-in-out infinite" }}></span>
+              <span className="tabnum" style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: "0.04em" }}>{time ? time.slice(0, 5) : "AGORA"}</span>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 700, color: sCfg.c, padding: "3px 9px", borderRadius: 999, background: `${sCfg.c}1F`, letterSpacing: "0.04em" }}>{sCfg.l}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{client[0].toUpperCase()}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.01em" }}>{client}</div>
+              <div style={{ fontSize: 10.5, color: "rgba(255,255,255,0.6)", fontWeight: 600 }}>@{handle} · {fmt}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "#FFFFFF", lineHeight: 1.3, letterSpacing: "-0.018em", marginBottom: 16, minHeight: 44, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{d.task || d.title || "Sem título"}</div>
+          {/* Mini cover */}
+          <div style={{
+            height: 110, borderRadius: 14, background: coverUrl ? `url(${coverUrl}) center/cover no-repeat` : fmtGrad,
+            position: "relative", overflow: "hidden", marginBottom: 12,
+          }}>
+            {!coverUrl && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.5">
+                {lc(fmt) === "reels" || lc(fmt) === "stories" ? <polygon points="5 3 19 12 5 21 5 3" fill="rgba(255,255,255,0.85)"/>
+                  : lc(fmt) === "carrossel" ? <><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 21h10a2 2 0 0 0 2-2V8"/></>
+                  : <><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.35-4.35a1 1 0 0 0-1.41 0L7 19"/></>
+                }
+              </svg>
+            </div>}
+          </div>
+          <button onClick={(e) => { e.stopPropagation(); advanceDemand(d, 1); }} className="ct-btn" style={{ width: "100%", padding: "10px 0", borderRadius: 12, background: "#BBF246", color: "#0D0D0D", border: "none", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, letterSpacing: "-0.005em" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><polyline points="20 6 9 17 4 12"/></svg>
+            Avançar pra {_ctStages[_ctStages.findIndex(s => s.k === stage) + 1]?.l || "concluir"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // ─── CSS ───
   const css = `
-    .ct { font-family: 'Inter','Poppins',-apple-system,BlinkMacSystemFont,sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #192126; letter-spacing: -0.01em; }
+    .ct { font-family: 'Inter','Poppins',-apple-system,BlinkMacSystemFont,sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #192126; letter-spacing: -0.01em; position: relative; }
     .ct * { box-sizing: border-box; }
     .ct .tabnum { font-variant-numeric: tabular-nums; }
     .ct ::-webkit-scrollbar { width: 8px; height: 10px; }
     .ct ::-webkit-scrollbar-track { background: transparent; }
     .ct ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.10); border-radius: 999px; }
     .ct ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
-    @keyframes _ctFadeIn { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
+
+    /* Background mesh sutil */
+    .ct-bg-mesh {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+    }
+    .ct-bg-mesh::before, .ct-bg-mesh::after {
+      content: ""; position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5;
+    }
+    .ct-bg-mesh::before {
+      width: 600px; height: 600px; top: -200px; left: -200px;
+      background: radial-gradient(circle, rgba(187,242,70,0.25), transparent 70%);
+      animation: _ctBgFloat1 20s ease-in-out infinite alternate;
+    }
+    .ct-bg-mesh::after {
+      width: 500px; height: 500px; bottom: -150px; right: -100px;
+      background: radial-gradient(circle, rgba(124,107,254,0.18), transparent 70%);
+      animation: _ctBgFloat2 25s ease-in-out infinite alternate;
+    }
+    @keyframes _ctBgFloat1 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(80px, 60px) scale(1.15); } }
+    @keyframes _ctBgFloat2 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-60px, -40px) scale(1.1); } }
+
+    @keyframes _ctFadeIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
     @keyframes _ctSheetIn { 0% { transform: translateX(100%); opacity: 0.4; } 100% { transform: translateX(0); opacity: 1; } }
+    @keyframes _ctSpotlightIn { 0% { transform: translate(-50%, -50%) scale(0.92); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
     @keyframes _ctBackdrop { 0% { opacity: 0; } 100% { opacity: 1; } }
     @keyframes _ctToastIn { 0% { transform: translateX(-50%) translateY(10px); opacity: 0; } 100% { transform: translateX(-50%) translateY(0); opacity: 1; } }
+    @keyframes _ctPulse { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
+    @keyframes _ctConfetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(180px) rotate(720deg); opacity: 0; } }
+    @keyframes _ctShimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
+
     .ct-side-item { transition: background .14s ease, transform .14s ease; }
     .ct-side-item:hover { background: rgba(255,255,255,0.7) !important; }
     .ct-side-item.active { background: #0D0D0D !important; }
     .ct-side-item.active .ct-side-label { color: #FFFFFF !important; font-weight: 700; }
     .ct-side-item.active .ct-side-count { color: #BBF246 !important; }
     .ct-side-item.active .ct-side-icon { color: #BBF246 !important; }
-    .ct-card { transition: transform .35s cubic-bezier(0.32, 0.72, 0, 1), box-shadow .25s ease; }
-    .ct-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.04), 0 16px 40px rgba(25,33,38,0.10); }
+
+    .ct-card { transition: transform .45s cubic-bezier(0.32, 0.72, 0, 1), box-shadow .35s ease; transform-origin: center bottom; }
+    .ct-card:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 8px 20px rgba(0,0,0,0.05), 0 24px 56px rgba(25,33,38,0.16); }
     .ct-card:hover .ct-card-overlay { opacity: 1; }
     .ct-card.dragging { opacity: 0.4; transform: rotate(1.5deg); }
+    .ct-card-late { animation: _ctPulseBorder 2.4s ease-in-out infinite; }
+    @keyframes _ctPulseBorder { 0%, 100% { box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 10px 28px rgba(25,33,38,0.06); } 50% { box-shadow: 0 1px 2px rgba(0,0,0,0.03), 0 10px 28px rgba(220,38,38,0.18); } }
+
+    .ct-featured { transition: transform .5s cubic-bezier(0.32, 0.72, 0, 1), box-shadow .4s ease; }
+    .ct-featured:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 8px 24px rgba(13,13,13,0.18), 0 30px 80px rgba(13,13,13,0.32); }
+
     .ct-col.dragover { background: rgba(187,242,70,0.10) !important; box-shadow: inset 0 0 0 2px rgba(187,242,70,0.7); }
-    .ct-plus { transition: transform .25s cubic-bezier(0.32, 0.72, 0, 1), box-shadow .25s; }
-    .ct-plus:hover { transform: scale(1.06); box-shadow: 0 14px 32px rgba(0,0,0,0.22), 0 0 0 4px rgba(187,242,70,0.15); }
-    .ct-plus:active { transform: scale(0.95); }
+
+    .ct-plus { transition: transform .3s cubic-bezier(0.32, 0.72, 0, 1), box-shadow .3s, background .25s; }
+    .ct-plus:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 16px 36px rgba(13,13,13,0.32), 0 0 0 6px rgba(187,242,70,0.2); }
+    .ct-plus:active { transform: scale(0.95) rotate(90deg); }
+
     .ct-btn { transition: all .15s ease; }
-    .ct-btn:hover { transform: translateY(-0.5px); }
+    .ct-btn:hover { transform: translateY(-1px); }
     .ct-btn:active { transform: translateY(0); opacity: 0.88; }
+
+    .ct-confetti { position: fixed; top: 20%; left: 50%; pointer-events: none; z-index: 1000; }
+    .ct-confetti span { position: absolute; width: 8px; height: 8px; display: block; animation: _ctConfetti 1.8s ease-out forwards; }
+
+    .ct-shimmer {
+      background: linear-gradient(90deg, rgba(187,242,70,0.0) 0%, rgba(187,242,70,0.32) 50%, rgba(187,242,70,0.0) 100%);
+      background-size: 300px 100%;
+      animation: _ctShimmer 2.4s linear infinite;
+    }
   `;
+
+  // Confetti particles (lime variants when published)
+  const confettiParticles = useMemo(() => {
+    if (!_ctConfetti) return [];
+    const particles = [];
+    const colors = ["#BBF246", "#88C200", "#A0E83C", "#9AE010", "#FFFFFF"];
+    for (let i = 0; i < 24; i++) {
+      particles.push({
+        i,
+        left: (Math.random() - 0.5) * 360,
+        color: colors[i % colors.length],
+        size: 6 + Math.random() * 6,
+        delay: Math.random() * 0.3,
+        rot: Math.random() * 360,
+      });
+    }
+    return particles;
+  }, [_ctConfetti]);
 
   // ─── RENDER ───
   return (
@@ -13323,15 +13536,18 @@ function ContentPageV2(props) {
       width: "100%",
       maxWidth: "none",
       padding: 0,
-      position: "relative",
       display: "flex",
+      overflow: "hidden",
     }}>
       <style dangerouslySetInnerHTML={{ __html: css }} />
 
-      {/* ═══════ SIDEBAR (glass, identidade Home V2) ═══════ */}
+      {/* Background mesh */}
+      <div className="ct-bg-mesh"></div>
+
+      {/* ═══════ SIDEBAR ═══════ */}
       <aside style={{
         width: 260, flexShrink: 0,
-        background: "rgba(255,255,255,0.55)",
+        background: "rgba(255,255,255,0.5)",
         backdropFilter: "saturate(180%) blur(20px)",
         WebkitBackdropFilter: "saturate(180%) blur(20px)",
         borderRight: "1px solid rgba(255,255,255,0.6)",
@@ -13341,17 +13557,23 @@ function ContentPageV2(props) {
         height: "calc(100vh - 26px)",
         overflowY: "auto",
         display: "flex", flexDirection: "column", gap: 4,
+        zIndex: 1,
       }}>
-        {/* Brand */}
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "4px 10px 18px" }}>
           <div style={{ width: 36, height: 36, borderRadius: 11, background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, boxShadow: "0 6px 18px rgba(13,13,13,0.18)" }}>U</div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.012em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>unique <span style={{ fontWeight: 500, color: "#8B8F92" }}>hub</span></div>
-            <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.005em" }}>{_ctAgencyName} · Agência</div>
+            <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.005em" }}>{_ctAgencyName}</div>
           </div>
         </div>
 
-        {/* Smart views */}
+        {/* Cmd+K trigger no topo */}
+        <button onClick={() => _ctSetSpotlightOpen(true)} className="ct-btn" style={{ display: "flex", alignItems: "center", gap: 9, width: "calc(100% - 8px)", margin: "0 4px 12px", padding: "9px 12px", border: "1px solid rgba(0,0,0,0.06)", background: "rgba(255,255,255,0.7)", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span style={{ flex: 1, fontSize: 12, color: "#8B8F92", fontWeight: 500 }}>Buscar tudo</span>
+          <kbd style={{ fontSize: 10, padding: "1px 6px", background: "rgba(0,0,0,0.06)", borderRadius: 5, color: "#8B8F92", fontFamily: "inherit", fontWeight: 700 }}>⌘K</kbd>
+        </button>
+
         {[
           { k: "hoje", l: "Hoje", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>, count: counts.hoje },
           { k: "semana", l: "Próximos 7 dias", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, count: counts.semana },
@@ -13361,8 +13583,7 @@ function ContentPageV2(props) {
         ].map(item => {
           const isActive = _ctView === item.k;
           return (
-            <button key={item.k} onClick={() => _ctSetView(item.k)}
-              className={"ct-side-item" + (isActive ? " active" : "")}
+            <button key={item.k} onClick={() => _ctSetView(item.k)} className={"ct-side-item" + (isActive ? " active" : "")}
               style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "9px 12px", border: "none", background: "transparent", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
               <span className="ct-side-icon" style={{ color: item.isAlert && item.count > 0 ? "#DC2626" : "#8B8F92", display: "flex", flexShrink: 0 }}>{item.icon}</span>
               <span className="ct-side-label" style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#192126", letterSpacing: "-0.005em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.l}</span>
@@ -13371,10 +13592,8 @@ function ContentPageV2(props) {
           );
         })}
 
-        {/* Divider */}
         <div style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "14px 12px 8px" }}></div>
 
-        {/* Etapas */}
         <button onClick={() => _ctSetExp(p => ({ ...p, stages: !p.stages }))} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2.4" style={{ transform: _ctExp.stages ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .22s" }}><polyline points="6 9 12 15 18 9"/></svg>
           <span style={{ fontSize: 10.5, fontWeight: 800, color: "#8B8F92", letterSpacing: "0.06em", textTransform: "uppercase" }}>Etapas</span>
@@ -13383,8 +13602,7 @@ function ContentPageV2(props) {
           const isActive = _ctView === `stage:${s.k}`;
           const cnt = counts.byStage[s.k] || 0;
           return (
-            <button key={s.k} onClick={() => _ctSetView(`stage:${s.k}`)}
-              className={"ct-side-item" + (isActive ? " active" : "")}
+            <button key={s.k} onClick={() => _ctSetView(`stage:${s.k}`)} className={"ct-side-item" + (isActive ? " active" : "")}
               style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "7px 12px", border: "none", background: "transparent", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", textAlign: "left", opacity: cnt === 0 ? 0.55 : 1 }}>
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: s.c, flexShrink: 0, boxShadow: `0 0 0 2px ${s.c}25` }}></span>
               <span className="ct-side-label" style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#192126", letterSpacing: "-0.005em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.l}</span>
@@ -13393,7 +13611,6 @@ function ContentPageV2(props) {
           );
         })}
 
-        {/* Clientes */}
         {sidebarClientes.length > 0 && (<>
           <button onClick={() => _ctSetExp(p => ({ ...p, clientes: !p.clientes }))} style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", padding: "6px 12px", border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left", marginTop: 10 }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2.4" style={{ transform: _ctExp.clientes ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .22s" }}><polyline points="6 9 12 15 18 9"/></svg>
@@ -13403,8 +13620,7 @@ function ContentPageV2(props) {
             const isActive = _ctView === `cliente:${cn}`;
             const [c1, c2] = clientHue(cn);
             return (
-              <button key={cn} onClick={() => _ctSetView(`cliente:${cn}`)}
-                className={"ct-side-item" + (isActive ? " active" : "")}
+              <button key={cn} onClick={() => _ctSetView(`cliente:${cn}`)} className={"ct-side-item" + (isActive ? " active" : "")}
                 style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "7px 12px", border: "none", background: "transparent", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
                 <div style={{ width: 20, height: 20, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 9.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{cn[0].toUpperCase()}</div>
                 <span className="ct-side-label" style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: "#192126", letterSpacing: "-0.005em", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cn}</span>
@@ -13416,34 +13632,47 @@ function ContentPageV2(props) {
 
         <div style={{ flex: 1 }}></div>
 
-        {/* Footer */}
-        <div style={{ padding: "10px 8px 4px", display: "flex", gap: 6 }}>
+        {/* Mini stats — throughput last 7 days */}
+        <div style={{ padding: "12px 14px", margin: "0 4px 8px", background: "rgba(255,255,255,0.7)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.7)" }}>
+          <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Últimos 7 dias</div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 28, marginBottom: 6 }}>
+            {(() => {
+              const max = Math.max(1, ...sparkData.map(s => s.count));
+              return sparkData.map((s, i) => (
+                <div key={i} title={`${s.y}: ${s.count}`} style={{ flex: 1, height: `${Math.max(8, (s.count / max) * 100)}%`, background: i === sparkData.length - 1 ? "#BBF246" : "rgba(13,13,13,0.18)", borderRadius: 2 }}></div>
+              ));
+            })()}
+          </div>
+          <div className="tabnum" style={{ fontSize: 18, fontWeight: 800, color: "#192126", letterSpacing: "-0.03em", lineHeight: 1 }}>{sparkData.reduce((s, x) => s + x.count, 0)}</div>
+          <div style={{ fontSize: 10, color: "#8B8F92", fontWeight: 600 }}>posts publicados</div>
+        </div>
+
+        <div style={{ padding: "0 4px 4px", display: "flex", gap: 6 }}>
           <button onClick={() => { localStorage.removeItem("uh_content"); window.location.search = "?content=v1"; }} style={{ flex: 1, padding: "8px 0", borderRadius: 10, background: "rgba(255,255,255,0.7)", border: "1px solid rgba(0,0,0,0.05)", fontSize: 11, fontWeight: 600, color: "#8B8F92", cursor: "pointer", fontFamily: "inherit" }}>v1</button>
           <button onClick={() => goTab && goTab("home")} style={{ flex: 2, padding: "8px 0", borderRadius: 10, background: "rgba(255,255,255,0.7)", border: "1px solid rgba(0,0,0,0.05)", fontSize: 11.5, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>← Home</button>
         </div>
       </aside>
 
       {/* ═══════ MAIN CONTENT ═══════ */}
-      <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", padding: "0 40px" }}>
-        {/* Top sticky: search + view switcher */}
+      <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", padding: "0 40px", position: "relative", zIndex: 1 }}>
+        {/* Top sticky */}
         <div style={{ position: "sticky", top: 0, zIndex: 30, padding: "20px 0 14px", marginBottom: 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ flex: 1, position: "relative", maxWidth: 480 }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2.2" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input value={_ctSearch} onChange={(e) => _ctSetSearch(e.target.value)} placeholder="Buscar demandas, clientes..." style={{ width: "100%", padding: "10px 16px 10px 40px", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 999, background: "rgba(255,255,255,0.78)", backdropFilter: "blur(14px)", fontSize: 12.5, fontFamily: "inherit", outline: "none", color: "#192126", letterSpacing: "-0.005em", fontWeight: 500 }} />
+              <input value={_ctSearch} onChange={(e) => _ctSetSearch(e.target.value)} placeholder="Buscar nesta visão..." style={{ width: "100%", padding: "10px 16px 10px 40px", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 999, background: "rgba(255,255,255,0.78)", backdropFilter: "blur(14px)", fontSize: 12.5, fontFamily: "inherit", outline: "none", color: "#192126", letterSpacing: "-0.005em", fontWeight: 500 }} />
               {_ctSearch && <button onClick={() => _ctSetSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "rgba(0,0,0,0.18)", border: "none", borderRadius: "50%", width: 17, height: 17, padding: 0, cursor: "pointer", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>}
             </div>
 
-            {/* View segmented */}
             <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.78)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 999, padding: 3 }}>
               {[
-                { k: "list", l: "Lista", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> },
+                { k: "grid", l: "Grade", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> },
                 { k: "kanban", l: "Kanban", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="11" rx="1.5"/></svg> },
                 { k: "calendar", l: "Cal", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
               ].map(o => {
-                const isActive = (o.k === "kanban" && _ctView === "kanban") || (o.k === "calendar" && _ctView === "calendar") || (o.k === "list" && _ctView !== "kanban" && _ctView !== "calendar");
+                const isActive = (o.k === "kanban" && _ctView === "kanban") || (o.k === "calendar" && _ctView === "calendar") || (o.k === "grid" && _ctView !== "kanban" && _ctView !== "calendar");
                 return (
                   <button key={o.k} onClick={() => {
                     if (o.k === "kanban") _ctSetView("kanban");
@@ -13456,7 +13685,6 @@ function ContentPageV2(props) {
               })}
             </div>
 
-            {/* Ações rápidas */}
             <div style={{ position: "relative" }}>
               <button onClick={() => _ctSetActionsOpen(v => !v)} className="ct-btn" style={{ background: "rgba(255,255,255,0.78)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 999, padding: "9px 11px", cursor: "pointer", fontFamily: "inherit", color: "#192126", display: "inline-flex", alignItems: "center" }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
@@ -13465,15 +13693,15 @@ function ContentPageV2(props) {
                 <div onClick={() => _ctSetActionsOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 35 }}></div>
                 <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, background: "rgba(255,255,255,0.96)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 14, padding: 6, boxShadow: "0 14px 40px rgba(25,33,38,0.14)", zIndex: 36, minWidth: 240 }}>
                   {[
-                    { l: "Publicação Rápida", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.2"><path d="m22 2-7 20-4-9-9-4Z"/></svg>, msg: "Publicação Rápida em breve" },
-                    { l: "Importar com Munique", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#88C200" strokeWidth="2.4"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, msg: "Munique Importer em breve" },
-                    { l: "Gerar de Notícias", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" strokeWidth="2.2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/></svg>, msg: "Gerar de Notícias em breve" },
+                    { l: "Publicação Rápida", icon: "🚀", msg: "Publicação Rápida em breve" },
+                    { l: "Importar com Munique", icon: "✨", msg: "Munique Importer em breve" },
+                    { l: "Gerar de Notícias", icon: "📰", msg: "Gerar de Notícias em breve" },
                   ].map((a, i) => (
-                    <button key={i} onClick={() => { _ctSetActionsOpen(false); _ctSetToast(a.msg); setTimeout(() => _ctSetToast(""), 2200); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 10px", background: "transparent", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                    <button key={i} onClick={() => { _ctSetActionsOpen(false); _ctSetToast(a.msg); setTimeout(() => _ctSetToast(""), 2200); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 10px", background: "transparent", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                     >
-                      <div style={{ width: 26, height: 26, borderRadius: 7, background: "rgba(0,0,0,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{a.icon}</div>
+                      <span style={{ fontSize: 16, width: 26, height: 26, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.04)", borderRadius: 7 }}>{a.icon}</span>
                       <span style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", letterSpacing: "-0.005em" }}>{a.l}</span>
                     </button>
                   ))}
@@ -13481,25 +13709,39 @@ function ContentPageV2(props) {
               </>)}
             </div>
 
-            {/* Nova demanda */}
             <button onClick={() => _ctSetQuickAddOpen(true)} className="ct-btn" style={{ background: "#0D0D0D", color: "#BBF246", border: "none", borderRadius: 999, padding: "10px 16px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 6px 18px rgba(13,13,13,0.18)" }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nova demanda
+              Nova
             </button>
           </div>
         </div>
 
-        {/* HERO (escala Home V2 — gigante) */}
+        {/* HERO + Today's featured cards */}
         <div style={{ paddingBottom: 28, marginTop: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>{viewLabel.kicker}</div>
-          <h1 style={{ fontSize: 72, fontWeight: 800, lineHeight: 0.95, letterSpacing: "-0.045em", margin: 0, color: "#192126" }}>{viewLabel.title}</h1>
-          {viewLabel.subtitle && <div style={{ fontSize: 14.5, color: "#8B8F92", fontWeight: 500, marginTop: 14, letterSpacing: "-0.005em" }}>{viewLabel.subtitle}</div>}
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#BBF246", animation: "_ctPulse 1.6s ease-in-out infinite" }}></span>
+            {viewLabel.kicker}
+          </div>
+          <h1 style={{ fontSize: 80, fontWeight: 800, lineHeight: 0.94, letterSpacing: "-0.048em", margin: 0, color: "#192126" }}>{viewLabel.title}</h1>
+          {viewLabel.subtitle && <div style={{ fontSize: 15, color: "#8B8F92", fontWeight: 500, marginTop: 16, letterSpacing: "-0.008em" }}>{viewLabel.subtitle}</div>}
         </div>
+
+        {/* Today's Focus carousel (apenas view "hoje") */}
+        {_ctView === "hoje" && visibleDemands.length > 0 && (
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#192126", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 8 }}>
+              Próximas entregas
+              <span style={{ flex: "0 0 50px", height: 1, background: "linear-gradient(90deg, rgba(13,13,13,0.2), transparent)" }}></span>
+            </div>
+            <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 8, marginLeft: -4, marginRight: -4, padding: "4px 4px 14px" }}>
+              {visibleDemands.slice(0, 5).map((d, i) => renderFeatured(d, i))}
+            </div>
+          </div>
+        )}
 
         {/* MAIN VIEW */}
         <div style={{ paddingBottom: 160 }}>
           {_ctView === "kanban" ? (
-            // ── KANBAN ──
             <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
               {_ctStages.map(s => {
                 const items = visibleDemands.filter(d => lc(d.stage || d.status) === s.k);
@@ -13510,13 +13752,13 @@ function ContentPageV2(props) {
                     onDragLeave={() => _ctSetDragOver(null)}
                     onDrop={(e) => onDrop(e, s.k)}
                     className={"ct-col" + (isOver ? " dragover" : "")}
-                    style={{ flex: "0 0 288px", display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.55)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 18, padding: "14px 10px", maxHeight: 800, transition: "background .15s" }}>
+                    style={{ flex: "0 0 288px", display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.55)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 18, padding: "14px 10px", maxHeight: 860, transition: "background .15s" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 6px 12px", flexShrink: 0 }}>
                       <span style={{ width: 9, height: 9, borderRadius: "50%", background: s.c, boxShadow: `0 0 0 2px ${s.c}25` }}></span>
                       <span style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.012em" }}>{s.l}</span>
                       <span className="tabnum" style={{ marginLeft: "auto", fontSize: 11, fontWeight: 700, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "2px 7px", borderRadius: 999 }}>{items.length}</span>
                     </div>
-                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 9, padding: "0 2px" }}>
+                    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: "0 2px" }}>
                       {items.length === 0 ? (
                         <div style={{ fontSize: 11.5, color: "#A0A4A7", fontStyle: "italic", textAlign: "center", padding: "20px 0" }}>vazio</div>
                       ) : items.slice(0, 60).map((d, i) => renderDemandCard(d, i))}
@@ -13527,7 +13769,6 @@ function ContentPageV2(props) {
               })}
             </div>
           ) : _ctView === "calendar" ? (
-            // ── CALENDAR ──
             (() => {
               const monthStart = _ctCalMonth;
               const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
@@ -13591,7 +13832,6 @@ function ContentPageV2(props) {
               );
             })()
           ) : (
-            // ── LIST/GRID DEFAULT ──
             visibleDemands.length === 0 ? (
               <div style={{ textAlign: "center", padding: "80px 24px", color: "#A0A4A7" }}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" style={{ opacity: 0.5, marginBottom: 14 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -13602,20 +13842,20 @@ function ContentPageV2(props) {
               if (shouldGroup) {
                 const groups = groupByDate(visibleDemands);
                 return Object.entries(groups).filter(([_, items]) => items.length > 0).map(([label, items]) => (
-                  <section key={label} style={{ marginBottom: 32 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 4px 12px" }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: "#192126", letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</span>
+                  <section key={label} style={{ marginBottom: 36 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 4px 14px" }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 800, color: "#192126", letterSpacing: "0.05em", textTransform: "uppercase" }}>{label}</span>
                       <span className="tabnum" style={{ fontSize: 11, fontWeight: 700, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "2px 8px", borderRadius: 999 }}>{items.length}</span>
                       <span style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.06)" }}></span>
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(244px, 1fr))", gap: 12 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(258px, 1fr))", gap: 16 }}>
                       {items.map((d, i) => renderDemandCard(d, i, { noDrag: true }))}
                     </div>
                   </section>
                 ));
               }
               return (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(244px, 1fr))", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(258px, 1fr))", gap: 16 }}>
                   {visibleDemands.map((d, i) => renderDemandCard(d, i, { noDrag: true }))}
                 </div>
               );
@@ -13626,29 +13866,76 @@ function ContentPageV2(props) {
 
       {/* ═══════ MAGIC PLUS ═══════ */}
       <button onClick={() => _ctSetQuickAddOpen(true)} className="ct-plus" style={{
-        position: "fixed", bottom: 30, right: 32, zIndex: 50,
+        position: "fixed", bottom: 110, right: 32, zIndex: 50,
         width: 58, height: 58, borderRadius: "50%",
         background: "#0D0D0D", color: "#BBF246", border: "none",
         cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-        boxShadow: "0 10px 28px rgba(13,13,13,0.32), 0 0 0 0 rgba(187,242,70,0)",
+        boxShadow: "0 10px 28px rgba(13,13,13,0.32)",
       }}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
 
+      {/* ═══════ SPOTLIGHT (Cmd+K) ═══════ */}
+      {_ctSpotlightOpen && (<>
+        <div onClick={() => _ctSetSpotlightOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(13,13,13,0.45)", backdropFilter: "blur(14px)", animation: "_ctBackdrop .25s ease" }}></div>
+        <div style={{ position: "fixed", top: "30%", left: "50%", width: 600, maxWidth: "92vw", background: "rgba(255,255,255,0.96)", backdropFilter: "blur(28px)", borderRadius: 20, boxShadow: "0 32px 80px rgba(13,13,13,0.45)", zIndex: 301, border: "1px solid rgba(255,255,255,0.7)", animation: "_ctSpotlightIn .35s cubic-bezier(0.32, 0.72, 0, 1)", overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 20px", borderBottom: spotlightResults.length > 0 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input autoFocus value={_ctSearch} onChange={(e) => _ctSetSearch(e.target.value)} placeholder="Buscar demandas, clientes, qualquer coisa..." style={{ flex: 1, border: "none", outline: "none", fontSize: 16, fontWeight: 500, color: "#192126", fontFamily: "inherit", letterSpacing: "-0.015em", background: "transparent" }} />
+            <kbd style={{ fontSize: 10, padding: "2px 7px", background: "rgba(0,0,0,0.06)", borderRadius: 5, color: "#8B8F92", fontFamily: "inherit", fontWeight: 700 }}>ESC</kbd>
+          </div>
+          {spotlightResults.length > 0 && (
+            <div style={{ maxHeight: 420, overflowY: "auto", padding: 8 }}>
+              {spotlightResults.map((d, i) => {
+                const stage = lc(d.stage || d.status);
+                const sCfg = _ctStages.find(s => s.k === stage) || _ctStages[0];
+                const client = d.clientName || d.client || "—";
+                const [c1, c2] = clientHue(client);
+                return (
+                  <button key={d.id || d.supaId || i} onClick={() => { _ctSetSpotlightOpen(false); _ctSetSheet(d); }} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "10px 12px", background: "transparent", border: "none", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 9, background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{client[0].toUpperCase()}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#192126", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.task || d.title || "Sem título"}</div>
+                      <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600, letterSpacing: "-0.005em" }}>{client} · {d.format || "Post"}</div>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: sCfg.c, padding: "3px 9px", borderRadius: 999, background: `${sCfg.c}1F`, letterSpacing: "0.02em", flexShrink: 0 }}>{sCfg.l}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {_ctSearch && spotlightResults.length === 0 && (
+            <div style={{ padding: 30, textAlign: "center", color: "#A0A4A7", fontSize: 13, fontWeight: 500 }}>Nada encontrado pra "{_ctSearch}"</div>
+          )}
+          {!_ctSearch && (
+            <div style={{ padding: "14px 20px", display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 4 }}>Atalhos</span>
+              {[
+                { l: "Hoje", k: "hoje" },
+                { l: "Atrasadas", k: "atrasadas" },
+                { l: "Kanban", k: "kanban" },
+                { l: "Calendário", k: "calendar" },
+              ].map(s => (
+                <button key={s.k} onClick={() => { _ctSetView(s.k); _ctSetSpotlightOpen(false); }} className="ct-btn" style={{ padding: "5px 11px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 11.5, fontWeight: 700, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>{s.l}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      </>)}
+
       {/* ═══════ QUICK ADD ═══════ */}
       {_ctQuickAddOpen && (<>
         <div onClick={() => _ctSetQuickAddOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(13,13,13,0.4)", backdropFilter: "blur(8px)", animation: "_ctBackdrop .25s ease" }}></div>
-        <div style={{ position: "fixed", top: "26%", left: "50%", transform: "translateX(-50%)", width: 500, maxWidth: "92vw", background: "rgba(255,255,255,0.96)", backdropFilter: "blur(20px)", borderRadius: 18, boxShadow: "0 24px 64px rgba(13,13,13,0.32)", zIndex: 201, padding: 0, animation: "_ctFadeIn .3s cubic-bezier(0.32, 0.72, 0, 1)", border: "1px solid rgba(255,255,255,0.7)" }}>
+        <div style={{ position: "fixed", top: "26%", left: "50%", transform: "translateX(-50%)", width: 500, maxWidth: "92vw", background: "rgba(255,255,255,0.96)", backdropFilter: "blur(20px)", borderRadius: 18, boxShadow: "0 24px 64px rgba(13,13,13,0.32)", zIndex: 201, padding: 0, animation: "_ctSpotlightIn .3s cubic-bezier(0.32, 0.72, 0, 1)", border: "1px solid rgba(255,255,255,0.7)" }}>
           <div style={{ padding: "22px 24px 16px" }}>
             <input autoFocus placeholder="Nova demanda..." style={{ width: "100%", border: "none", outline: "none", fontSize: 22, fontWeight: 700, color: "#192126", fontFamily: "inherit", letterSpacing: "-0.025em", background: "transparent" }} />
             <input placeholder="Notas..." style={{ width: "100%", marginTop: 8, border: "none", outline: "none", fontSize: 14, color: "#8B8F92", fontFamily: "inherit", letterSpacing: "-0.005em", background: "transparent", fontWeight: 500 }} />
           </div>
           <div style={{ padding: "12px 24px 16px", borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <button style={{ padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 600, color: "#192126", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Quando
-            </button>
-            <button style={{ padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 600, color: "#192126", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>Cliente</button>
+            <button style={{ padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 600, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>Quando</button>
+            <button style={{ padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 600, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>Cliente</button>
             <button style={{ padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 600, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>Formato</button>
             <div style={{ flex: 1 }}></div>
             <button onClick={() => _ctSetQuickAddOpen(false)} style={{ padding: "8px 14px", borderRadius: 999, background: "transparent", border: "none", fontSize: 12, fontWeight: 700, color: "#8B8F92", cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
@@ -13657,7 +13944,7 @@ function ContentPageV2(props) {
         </div>
       </>)}
 
-      {/* ═══════ DETAIL SHEET (right, glass) ═══════ */}
+      {/* ═══════ DETAIL SHEET ═══════ */}
       {_ctSheet && (() => {
         const d = _ctSheet;
         const sCfg = _ctStages.find(s => s.k === lc(d.stage || d.status)) || _ctStages[0];
@@ -13679,9 +13966,7 @@ function ContentPageV2(props) {
             animation: "_ctSheetIn .4s cubic-bezier(0.32, 0.72, 0, 1)",
             overflow: "hidden",
           }}>
-            {/* Cover (se tem) */}
-            {coverUrl && <div style={{ height: 180, background: `url(${coverUrl}) center/cover no-repeat`, flexShrink: 0 }}></div>}
-
+            {coverUrl && <div style={{ height: 200, background: `url(${coverUrl}) center/cover no-repeat`, flexShrink: 0 }}></div>}
             <div style={{ padding: "22px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexShrink: 0 }}>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 999, background: `${sCfg.c}1A`, marginBottom: 12 }}>
@@ -13698,23 +13983,19 @@ function ContentPageV2(props) {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-
             <div style={{ padding: "20px 24px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, borderBottom: "1px solid rgba(0,0,0,0.05)", flexShrink: 0 }}>
               {[
-                { l: "Quando", v: date ? fmtDate(date, time) : "Sem data", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-                { l: "Formato", v: fmt, icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg> },
-                { l: "Prioridade", v: d.priority || "Média", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2"><path d="M12 2v4"/><path d="M12 18v4"/><circle cx="12" cy="12" r="4"/></svg> },
-                { l: "Atribuído", v: d.assigneeName || d.assignee || d.assignees?.[0] || "Sem atribuição", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                { l: "Quando", v: date ? fmtDate(date, time) : "Sem data" },
+                { l: "Formato", v: fmt },
+                { l: "Prioridade", v: d.priority || "Média" },
+                { l: "Atribuído", v: d.assigneeName || d.assignee || d.assignees?.[0] || "Sem atribuição" },
               ].map(p => (
-                <div key={p.l} style={{ background: "rgba(0,0,0,0.03)", borderRadius: 10, padding: "9px 11px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 3 }}>
-                    {p.icon}{p.l}
-                  </div>
+                <div key={p.l} style={{ background: "rgba(0,0,0,0.03)", borderRadius: 10, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{p.l}</div>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", letterSpacing: "-0.005em", lineHeight: 1.3 }}>{p.v}</div>
                 </div>
               ))}
             </div>
-
             <div style={{ flex: 1, overflowY: "auto", padding: "18px 24px" }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>Workflow</div>
               {_ctStages.map((s, i) => {
@@ -13722,7 +14003,7 @@ function ContentPageV2(props) {
                 const current = i === stageIdx;
                 return (
                   <div key={s.k} style={{ display: "flex", alignItems: "center", gap: 13, padding: "9px 0" }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? s.c : current ? "transparent" : "transparent", border: current ? `2px solid ${s.c}` : done ? "none" : "1.5px solid #D1D5DB", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? s.c : "transparent", border: current ? `2px solid ${s.c}` : done ? "none" : "1.5px solid #D1D5DB", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       {done && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
                       {current && <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></div>}
                     </div>
@@ -13732,7 +14013,6 @@ function ContentPageV2(props) {
                 );
               })}
             </div>
-
             <div style={{ padding: "14px 24px 22px", borderTop: "1px solid rgba(0,0,0,0.05)", display: "flex", gap: 8, flexShrink: 0 }}>
               {stageIdx > 0 && (
                 <button onClick={() => advanceDemand(d, -1)} className="ct-btn" style={{ flex: 1, background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 12, padding: "11px 0", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: "#192126" }}>← {_ctStages[stageIdx - 1].l}</button>
@@ -13745,9 +14025,18 @@ function ContentPageV2(props) {
         </>);
       })()}
 
+      {/* ═══════ CONFETTI ═══════ */}
+      {_ctConfetti && (
+        <div className="ct-confetti">
+          {confettiParticles.map(p => (
+            <span key={p.i} style={{ background: p.color, left: p.left, top: 0, width: p.size, height: p.size, borderRadius: 2, animationDelay: `${p.delay}s`, transform: `rotate(${p.rot}deg)` }}></span>
+          ))}
+        </div>
+      )}
+
       {/* ═══════ TOAST ═══════ */}
       {_ctToast && (
-        <div style={{ position: "fixed", bottom: 110, left: "50%", transform: "translateX(-50%)", background: "rgba(13,13,13,0.94)", color: "#BBF246", padding: "10px 18px", borderRadius: 999, fontSize: 12, fontWeight: 700, zIndex: 250, backdropFilter: "blur(12px)", boxShadow: "0 12px 32px rgba(13,13,13,0.32)", letterSpacing: "-0.005em", animation: "_ctToastIn .3s cubic-bezier(0.32, 0.72, 0, 1)" }}>{_ctToast}</div>
+        <div style={{ position: "fixed", bottom: 180, left: "50%", transform: "translateX(-50%)", background: "rgba(13,13,13,0.94)", color: "#BBF246", padding: "10px 18px", borderRadius: 999, fontSize: 12, fontWeight: 700, zIndex: 250, backdropFilter: "blur(12px)", boxShadow: "0 12px 32px rgba(13,13,13,0.32)", letterSpacing: "-0.005em", animation: "_ctToastIn .3s cubic-bezier(0.32, 0.72, 0, 1)" }}>{_ctToast}</div>
       )}
     </div>
   );
