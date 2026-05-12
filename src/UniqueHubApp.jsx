@@ -12959,7 +12959,7 @@ function PostPreview({ format, client, slides, compact, children, uploadedFiles 
 function ContentPageV2(props) {
   const { user, clients, demands, setDemands, team, goTab, goSub, agencyIdentity } = props;
 
-  // ─── Stages config (8 stages do social) ───
+  // ─── Stages: 9 colunas reais (igual V1, incluindo "ajuste" entre client e scheduled) ───
   const _ctStages = useMemo(() => [
     { k: "idea", l: "Ideia", c: "#8B5CF6" },
     { k: "briefing", l: "Briefing", c: "#3B82F6" },
@@ -12967,15 +12967,24 @@ function ContentPageV2(props) {
     { k: "caption", l: "Legenda", c: "#F59E0B" },
     { k: "review", l: "Revisão", c: "#06B6D4" },
     { k: "client", l: "Cliente", c: "#10B981" },
+    { k: "ajuste", l: "Alterações", c: "#F97316" },
     { k: "scheduled", l: "Programado", c: "#0EA5E9" },
     { k: "published", l: "Publicado", c: "#BBF246" },
   ], []);
 
   // ─── Filtros ───
-  const [_ctScope, _ctSetScope] = useState("all"); // all | mine | late
+  const [_ctScope, _ctSetScope] = useState("all");
   const [_ctFmt, _ctSetFmt] = useState(null);
   const [_ctClientF, _ctSetClientF] = useState(null);
   const [_ctSearch, _ctSetSearch] = useState("");
+  const [_ctView, _ctSetView] = useState("kanban"); // kanban | pipeline
+  const [_ctClientPickerOpen, _ctSetClientPickerOpen] = useState(false);
+  const [_ctDateF, _ctSetDateF] = useState(null);
+  const [_ctDatePickerOpen, _ctSetDatePickerOpen] = useState(false);
+  const [_ctDrawerOpen, _ctSetDrawerOpen] = useState(null); // demand or null
+  const [_ctDragId, _ctSetDragId] = useState(null);
+  const [_ctDragOverCol, _ctSetDragOverCol] = useState(null);
+  const [_ctToast, _ctSetToast] = useState("");
 
   // ─── Identidade ───
   const _ctFirstName = useMemo(() => {
@@ -12984,56 +12993,145 @@ function ContentPageV2(props) {
   }, [user]);
   const _ctAgencyName = useMemo(() => agencyIdentity?.name || "Unique Marketing", [agencyIdentity]);
 
+  // ─── Helpers ───
+  const lc = (s) => (s || "").toString().toLowerCase();
+  const todayYmd = new Date().toISOString().slice(0, 10);
+  const isLatePost = (d) => {
+    if (["published", "done", "publicado"].includes(lc(d.stage || d.status))) return false;
+    const dt = d.scheduling?.date || d.schedule_date || d.scheduleDate;
+    return dt && dt < todayYmd;
+  };
+  const fmtDate = (date, time) => {
+    if (!date) return null;
+    const dd = new Date(date + "T12:00:00");
+    if (isNaN(dd.getTime())) return null;
+    const ms = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+    let s = `${dd.getDate()}/${ms[dd.getMonth()]}`;
+    if (time) s += ` · ${time.slice(0, 5)}`;
+    return s;
+  };
+  const relDate = (date) => {
+    if (!date) return null;
+    if (date === todayYmd) return "hoje";
+    const d1 = new Date(date + "T12:00:00"); const d2 = new Date(todayYmd + "T12:00:00");
+    const diff = Math.round((d1 - d2) / 86400000);
+    if (diff === 1) return "amanhã";
+    if (diff === -1) return "ontem";
+    if (diff < 0) return `${Math.abs(diff)}d atrás`;
+    if (diff < 7) return `em ${diff}d`;
+    return fmtDate(date);
+  };
+
   // ─── Demandas filtradas ───
   const _ctFiltered = useMemo(() => {
-    const lc = (s) => (s || "").toString().toLowerCase();
-    const todayYmd = new Date().toISOString().slice(0, 10);
-    const isLate = (d) => {
-      if (["published", "done", "publicado"].includes(lc(d.stage || d.status))) return false;
-      const dt = d.scheduling?.date || d.schedule_date || d.scheduleDate;
-      return dt && dt < todayYmd;
-    };
     let list = Array.isArray(demands) ? [...demands] : [];
     if (_ctScope === "mine") list = list.filter(d => (d.assignees || []).some(a => a === user?.id) || lc(d.assignee) === lc(_ctFirstName));
-    if (_ctScope === "late") list = list.filter(isLate);
+    if (_ctScope === "late") list = list.filter(isLatePost);
     if (_ctFmt) list = list.filter(d => lc(d.format) === lc(_ctFmt));
     if (_ctClientF) list = list.filter(d => d.clientName === _ctClientF || d.client === _ctClientF || d.client_id === _ctClientF);
+    if (_ctDateF) list = list.filter(d => {
+      const dt = d.scheduling?.date || d.schedule_date;
+      return dt === _ctDateF;
+    });
     if (_ctSearch.trim()) {
       const s = _ctSearch.trim().toLowerCase();
       list = list.filter(d => (d.task || d.title || "").toLowerCase().includes(s) || (d.clientName || d.client || "").toLowerCase().includes(s));
     }
     return list;
-  }, [demands, _ctScope, _ctFmt, _ctClientF, _ctSearch, user, _ctFirstName]);
+  }, [demands, _ctScope, _ctFmt, _ctClientF, _ctDateF, _ctSearch, user, _ctFirstName]);
 
   // ─── Agrupado por stage ───
   const _ctByStage = useMemo(() => {
     const map = {};
     _ctStages.forEach(s => map[s.k] = []);
     _ctFiltered.forEach(d => {
-      const stage = (d.stage || d.status || "idea").toLowerCase();
+      const stage = lc(d.stage || d.status || "idea");
       if (map[stage]) map[stage].push(d);
-      else if (map.idea) map.idea.push(d); // fallback
+      else if (map.idea) map.idea.push(d);
     });
     return map;
   }, [_ctFiltered, _ctStages]);
 
-  // ─── Pipeline summary ───
   const _ctPipeline = useMemo(() => {
     return _ctStages.map(s => ({ ...s, count: _ctByStage[s.k]?.length || 0 }));
   }, [_ctStages, _ctByStage]);
 
-  const totalActive = _ctFiltered.filter(d => !["published", "done", "publicado"].includes((d.stage || d.status || "").toLowerCase())).length;
-  const todayYmd = new Date().toISOString().slice(0, 10);
-  const lateCount = _ctFiltered.filter(d => {
-    const lc = (s) => (s || "").toString().toLowerCase();
-    if (["published", "done", "publicado"].includes(lc(d.stage || d.status))) return false;
+  // ─── KPIs ───
+  const totalActive = _ctFiltered.filter(d => !["published", "done", "publicado"].includes(lc(d.stage || d.status))).length;
+  const lateCount = _ctFiltered.filter(isLatePost).length;
+  const thisWeekCount = _ctFiltered.filter(d => {
     const dt = d.scheduling?.date || d.schedule_date;
-    return dt && dt < todayYmd;
+    if (!dt) return false;
+    const d1 = new Date(dt + "T12:00:00"); const d2 = new Date(todayYmd + "T12:00:00");
+    const diff = Math.round((d1 - d2) / 86400000);
+    return diff >= 0 && diff < 7 && !["published", "done"].includes(lc(d.stage || d.status));
   }).length;
+  const pendingClient = _ctFiltered.filter(d => lc(d.stage || d.status) === "client").length;
 
-  // ─── Banner de preview (top) ───
-  // ... usa o mesmo padrão da home V2
+  // ─── Lista de clientes únicos pro picker ───
+  const _ctClientList = useMemo(() => {
+    const names = new Set();
+    (Array.isArray(clients) ? clients : []).forEach(c => c.name && names.add(c.name));
+    (Array.isArray(demands) ? demands : []).forEach(d => {
+      const n = d.clientName || d.client; if (n) names.add(n);
+    });
+    return Array.from(names).sort();
+  }, [clients, demands]);
 
+  // ─── Drag & drop ───
+  const onDragStart = (e, d) => {
+    const id = d.supaId || d.id;
+    _ctSetDragId(id);
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", id); } catch {}
+  };
+  const onDragOver = (e, stageK) => {
+    e.preventDefault();
+    if (_ctDragOverCol !== stageK) _ctSetDragOverCol(stageK);
+  };
+  const onDragLeaveCol = (e, stageK) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) _ctSetDragOverCol(null);
+  };
+  const onDrop = async (e, stageK) => {
+    e.preventDefault();
+    _ctSetDragOverCol(null);
+    const id = _ctDragId;
+    _ctSetDragId(null);
+    if (!id) return;
+    const target = (demands || []).find(d => (d.supaId || d.id) === id);
+    if (!target) return;
+    if (lc(target.stage || target.status) === stageK) return;
+    // Update otimista
+    setDemands && setDemands(prev => prev.map(d => ((d.supaId || d.id) === id ? { ...d, stage: stageK } : d)));
+    _ctSetToast(`Movido pra "${_ctStages.find(s => s.k === stageK)?.l}"`);
+    setTimeout(() => _ctSetToast(""), 2500);
+    // Persiste se tem supaId
+    if (target.supaId && typeof supaUpdateDemand === "function") {
+      try { await supaUpdateDemand(target.supaId, { stage: stageK }); } catch (err) { console.warn("supaUpdateDemand fail", err); }
+    }
+  };
+
+  const clearFilters = () => {
+    _ctSetScope("all"); _ctSetFmt(null); _ctSetClientF(null); _ctSetDateF(null); _ctSetSearch("");
+  };
+
+  // ─── CSS local ───
+  const cssLocal = `
+    .ct-v2 * { box-sizing: border-box; }
+    .ct-v2 ::-webkit-scrollbar { height: 10px; width: 8px; }
+    .ct-v2 ::-webkit-scrollbar-track { background: transparent; }
+    .ct-v2 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.14); border-radius: 999px; }
+    .ct-v2 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.26); }
+    @keyframes _ctCardIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes _ctDrawerIn { 0% { transform: translateX(100%); } 100% { transform: translateX(0); } }
+    @keyframes _ctToastIn { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+    .ct-card { transition: transform .15s, box-shadow .15s, opacity .15s; }
+    .ct-card:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 14px 32px rgba(0,0,0,0.10); }
+    .ct-card.dragging { opacity: 0.35; transform: rotate(2deg); }
+    .ct-col.dragover { background: rgba(187,242,70,0.16) !important; outline: 2px dashed #BBF246; }
+  `;
+
+  // ═══════════════════════ RENDER ═══════════════════════
   return (
     <div className="ct-v2" style={{
       minHeight: "calc(100vh - 26px)",
@@ -13044,18 +13142,13 @@ function ContentPageV2(props) {
       color: "#192126",
       fontFamily: "'Inter','Poppins',-apple-system,BlinkMacSystemFont,sans-serif",
       letterSpacing: "-0.01em",
+      position: "relative",
     }}>
-      <style dangerouslySetInnerHTML={{ __html: `
-        .ct-v2 * { box-sizing: border-box; }
-        .ct-v2 ::-webkit-scrollbar { height: 10px; width: 10px; }
-        .ct-v2 ::-webkit-scrollbar-track { background: transparent; }
-        .ct-v2 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 999px; }
-        .ct-v2 ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.22); }
-        @keyframes _ctCardIn { 0% { opacity: 0; transform: translateY(8px); } 100% { opacity: 1; transform: translateY(0); } }
-      ` }} />
-      <div style={{ maxWidth: 1560, margin: "0 auto", padding: "32px 48px 160px" }}>
-        {/* HEADER */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 0 12px" }}>
+      <style dangerouslySetInnerHTML={{ __html: cssLocal }} />
+      <div style={{ maxWidth: 1560, margin: "0 auto", padding: "28px 40px 160px" }}>
+
+        {/* ═══════ TOPBAR ═══════ */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{ width: 42, height: 42, borderRadius: 12, background: "#0D0D0D", color: "#BBF246", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900 }}>U</div>
             <div>
@@ -13072,27 +13165,61 @@ function ContentPageV2(props) {
           </div>
         </div>
 
-        {/* HERO TITLE */}
-        <div style={{ paddingTop: 8, paddingBottom: 18 }}>
-          <h1 style={{ fontSize: 72, fontWeight: 800, lineHeight: 0.98, letterSpacing: "-0.035em", margin: 0, color: "#192126" }}>Demandas</h1>
-          <div style={{ fontSize: 14, color: "#8B8F92", fontWeight: 500, marginTop: 8, letterSpacing: "-0.005em" }}>{totalActive} ativa{totalActive === 1 ? "" : "s"} · {lateCount > 0 ? <b style={{ color: "#DC2626" }}>{lateCount} atrasada{lateCount === 1 ? "" : "s"}</b> : <span style={{ color: "#0D7C00" }}>nenhuma atrasada</span>} · pipeline completo abaixo</div>
+        {/* ═══════ HERO ═══════ */}
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 32, paddingBottom: 22 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Produção</div>
+            <h1 style={{ fontSize: 76, fontWeight: 800, lineHeight: 0.95, letterSpacing: "-0.04em", margin: 0, color: "#192126" }}>Demandas</h1>
+          </div>
+          {/* 4 KPI cards micro */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 130px))", gap: 8, flexShrink: 0 }}>
+            {[
+              { label: "Ativas", value: totalActive, color: "#192126" },
+              { label: "Atrasadas", value: lateCount, color: lateCount > 0 ? "#DC2626" : "#192126", clickable: lateCount > 0, onClick: () => _ctSetScope("late") },
+              { label: "Esta semana", value: thisWeekCount, color: "#192126" },
+              { label: "Cliente", value: pendingClient, color: "#0D7C00", clickable: pendingClient > 0, onClick: () => { _ctSetScope("all"); /* could filter by stage */ } },
+            ].map((k, i) => (
+              <div key={i} onClick={k.clickable ? k.onClick : undefined} style={{
+                background: "rgba(255,255,255,0.85)",
+                backdropFilter: "blur(12px)",
+                border: "1px solid rgba(255,255,255,0.7)",
+                borderRadius: 14,
+                padding: "10px 12px",
+                cursor: k.clickable ? "pointer" : "default",
+                transition: "transform .15s",
+              }}
+                onMouseEnter={e => { if (k.clickable) e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
+              >
+                <div style={{ fontSize: 9, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>{k.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: k.color, letterSpacing: "-0.03em", marginTop: 1, lineHeight: 1 }}>{k.value}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* PIPELINE SPLIT */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, marginBottom: 24 }}>
-          <div style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 24, padding: "22px 26px", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 14 }}>Pipeline · {_ctFiltered.length} demanda{_ctFiltered.length === 1 ? "" : "s"}</div>
-            <div style={{ display: "flex", height: 14, borderRadius: 8, overflow: "hidden", background: "rgba(0,0,0,0.04)", marginBottom: 12 }}>
+        {/* ═══════ PIPELINE SPLIT ═══════ */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 12, marginBottom: 18 }}>
+          <div style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(14px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 20, padding: "16px 20px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.5px" }}>Pipeline · {_ctFiltered.length} demanda{_ctFiltered.length === 1 ? "" : "s"}</div>
+              <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.04)", borderRadius: 999, padding: 2 }}>
+                {[{ k: "kanban", l: "Kanban" }, { k: "pipeline", l: "Lista" }].map(o => (
+                  <button key={o.k} onClick={() => _ctSetView(o.k)} style={{ padding: "4px 11px", borderRadius: 999, fontSize: 10.5, fontWeight: 700, background: _ctView === o.k ? "#FFFFFF" : "transparent", color: _ctView === o.k ? "#192126" : "#8B8F92", boxShadow: _ctView === o.k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: "flex", height: 12, borderRadius: 7, overflow: "hidden", background: "rgba(0,0,0,0.04)", marginBottom: 10 }}>
               {_ctPipeline.map(s => {
                 const flex = _ctFiltered.length > 0 ? (s.count / _ctFiltered.length) * 100 : 0;
                 if (flex <= 0) return null;
                 return <div key={s.k} title={`${s.l}: ${s.count}`} style={{ flexGrow: flex, background: s.c, minWidth: 2, transition: "flex-grow .6s cubic-bezier(0.4,0,0.2,1)" }}></div>;
               })}
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 18px", fontSize: 11 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "5px 14px", fontSize: 10.5 }}>
               {_ctPipeline.map(s => (
                 <span key={s.k} style={{ display: "inline-flex", alignItems: "center", gap: 5, opacity: s.count > 0 ? 1 : 0.4 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></span>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.c }}></span>
                   <span style={{ fontWeight: 600, color: "#8B8F92" }}>{s.l}</span>
                   <b style={{ color: "#192126" }}>{s.count}</b>
                 </span>
@@ -13100,101 +13227,333 @@ function ContentPageV2(props) {
             </div>
           </div>
 
-          <div style={{ background: lateCount > 0 ? "linear-gradient(135deg, rgba(220,38,38,0.08), rgba(255,255,255,0.85))" : "rgba(240,250,213,0.6)", border: "1px solid " + (lateCount > 0 ? "rgba(220,38,38,0.2)" : "rgba(187,242,70,0.4)"), borderRadius: 24, padding: "22px 26px", display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 14, background: lateCount > 0 ? "#DC2626" : "#BBF246", color: lateCount > 0 ? "#FFFFFF" : "#0D0D0D", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <div onClick={lateCount > 0 ? () => _ctSetScope("late") : undefined} style={{ background: lateCount > 0 ? "linear-gradient(135deg, rgba(220,38,38,0.10), rgba(255,255,255,0.85))" : "rgba(240,250,213,0.65)", border: "1px solid " + (lateCount > 0 ? "rgba(220,38,38,0.25)" : "rgba(187,242,70,0.4)"), borderRadius: 20, padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, cursor: lateCount > 0 ? "pointer" : "default" }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: lateCount > 0 ? "#DC2626" : "#BBF246", color: lateCount > 0 ? "#FFFFFF" : "#0D0D0D", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               {lateCount > 0 ? (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               ) : (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               )}
             </div>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>{lateCount > 0 ? "Atenção" : "Tudo em dia"}</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em", marginTop: 2 }}>{lateCount > 0 ? `${lateCount} demanda${lateCount === 1 ? "" : "s"} atrasada${lateCount === 1 ? "" : "s"}` : "Nenhuma demanda atrasada"}</div>
-              {lateCount > 0 && <button onClick={() => _ctSetScope("late")} style={{ marginTop: 6, background: "transparent", border: "none", color: "#DC2626", fontWeight: 700, fontSize: 11, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Ver todas →</button>}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px" }}>{lateCount > 0 ? "Atenção" : "Tudo em dia"}</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em", marginTop: 1 }}>{lateCount > 0 ? `${lateCount} demanda${lateCount === 1 ? "" : "s"} atrasada${lateCount === 1 ? "" : "s"}` : "Nenhuma demanda atrasada"}</div>
+              {lateCount > 0 && <div style={{ fontSize: 10, color: "#DC2626", fontWeight: 700, marginTop: 2 }}>Ver todas →</div>}
             </div>
           </div>
         </div>
 
-        {/* TOOLBAR de filtros */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 18 }}>
-          <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.7)", borderRadius: 999, padding: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-            {[{ k: "all", l: "Todas" }, { k: "mine", l: "Minhas" }, { k: "late", l: "Atrasadas" }].map(o => (
-              <button key={o.k} onClick={() => _ctSetScope(o.k)} style={{ padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: _ctScope === o.k ? "#0D0D0D" : "transparent", color: _ctScope === o.k ? "#BBF246" : "#192126", border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>{o.l}</button>
-            ))}
+        {/* ═══════ TOOLBAR (2 linhas) ═══════ */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>
+          {/* Linha 1: segments (escopo + formato) + busca */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.75)", borderRadius: 999, padding: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              {[{ k: "all", l: "Todas" }, { k: "mine", l: "Minhas" }, { k: "late", l: "Atrasadas" }].map(o => (
+                <button key={o.k} onClick={() => _ctSetScope(o.k)} style={{ padding: "7px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, background: _ctScope === o.k ? "#0D0D0D" : "transparent", color: _ctScope === o.k ? "#BBF246" : "#192126", border: "none", cursor: "pointer", fontFamily: "inherit", transition: "all .15s" }}>{o.l}</button>
+              ))}
+            </div>
+            <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.75)", borderRadius: 999, padding: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+              {[{ k: null, l: "Tudo" }, { k: "Feed", l: "Feed" }, { k: "Reels", l: "Reels" }, { k: "Carrossel", l: "Carrossel" }, { k: "Stories", l: "Stories" }].map(o => (
+                <button key={o.l} onClick={() => _ctSetFmt(o.k)} style={{ padding: "7px 12px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: _ctFmt === o.k ? "#FFFFFF" : "transparent", color: _ctFmt === o.k ? "#192126" : "#8B8F92", boxShadow: _ctFmt === o.k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
+              ))}
+            </div>
+            <div style={{ flex: 1, position: "relative", minWidth: 200 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B8F92" strokeWidth="2.4" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input value={_ctSearch} onChange={(e) => _ctSetSearch(e.target.value)} placeholder="Buscar por título ou cliente…" style={{ width: "100%", padding: "9px 14px 9px 36px", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, background: "rgba(255,255,255,0.75)", fontSize: 12, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }} />
+            </div>
+            {(_ctScope !== "all" || _ctFmt || _ctClientF || _ctDateF || _ctSearch) && (
+              <button onClick={clearFilters} style={{ background: "rgba(220,38,38,0.08)", color: "#DC2626", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 999, padding: "7px 12px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Limpar
+              </button>
+            )}
           </div>
-          <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.7)", borderRadius: 999, padding: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-            {[{ k: null, l: "Tudo" }, { k: "Feed", l: "Feed" }, { k: "Reels", l: "Reels" }, { k: "Carrossel", l: "Carrossel" }, { k: "Stories", l: "Stories" }].map(o => (
-              <button key={o.l} onClick={() => _ctSetFmt(o.k)} style={{ padding: "7px 12px", borderRadius: 999, fontSize: 11.5, fontWeight: 700, background: _ctFmt === o.k ? "#FFFFFF" : "transparent", color: _ctFmt === o.k ? "#192126" : "#8B8F92", boxShadow: _ctFmt === o.k ? "0 1px 3px rgba(0,0,0,0.1)" : "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}>{o.l}</button>
-            ))}
+
+          {/* Linha 2: filtros pill + botões de ação */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            {/* Filtro Data */}
+            <div style={{ position: "relative" }}>
+              <button onClick={() => _ctSetDatePickerOpen(v => !v)} style={{ background: _ctDateF ? "#0D0D0D" : "rgba(255,255,255,0.75)", color: _ctDateF ? "#BBF246" : "#192126", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "8px 14px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                {_ctDateF ? fmtDate(_ctDateF) : "Data"}
+              </button>
+              {_ctDatePickerOpen && (
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: 12, boxShadow: "0 14px 36px rgba(0,0,0,0.14)", zIndex: 50, minWidth: 220 }}>
+                  <input type="date" value={_ctDateF || ""} onChange={(e) => { _ctSetDateF(e.target.value || null); _ctSetDatePickerOpen(false); }} style={{ width: "100%", padding: "7px 10px", border: "1px solid rgba(0,0,0,0.1)", borderRadius: 8, fontSize: 12, fontFamily: "inherit" }} />
+                  {_ctDateF && <button onClick={() => { _ctSetDateF(null); _ctSetDatePickerOpen(false); }} style={{ marginTop: 8, width: "100%", background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 8, padding: "6px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: "#8B8F92" }}>Limpar data</button>}
+                </div>
+              )}
+            </div>
+
+            {/* Filtro Clientes */}
+            <div style={{ position: "relative" }}>
+              <button onClick={() => _ctSetClientPickerOpen(v => !v)} style={{ background: _ctClientF ? "#0D0D0D" : "rgba(255,255,255,0.75)", color: _ctClientF ? "#BBF246" : "#192126", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, padding: "8px 14px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                {_ctClientF || "Clientes"}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              {_ctClientPickerOpen && (
+                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#FFFFFF", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 14, padding: 6, boxShadow: "0 14px 36px rgba(0,0,0,0.14)", zIndex: 50, minWidth: 220, maxHeight: 320, overflowY: "auto" }}>
+                  <button onClick={() => { _ctSetClientF(null); _ctSetClientPickerOpen(false); }} style={{ width: "100%", textAlign: "left", padding: "8px 10px", background: !_ctClientF ? "rgba(187,242,70,0.18)" : "transparent", border: "none", borderRadius: 8, fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: "#192126" }}>Todos os clientes</button>
+                  {_ctClientList.map(cn => (
+                    <button key={cn} onClick={() => { _ctSetClientF(cn); _ctSetClientPickerOpen(false); }} style={{ width: "100%", textAlign: "left", padding: "8px 10px", background: _ctClientF === cn ? "rgba(187,242,70,0.18)" : "transparent", border: "none", borderRadius: 8, fontSize: 11.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", color: "#192126" }}
+                      onMouseEnter={e => { if (_ctClientF !== cn) e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
+                      onMouseLeave={e => { if (_ctClientF !== cn) e.currentTarget.style.background = "transparent"; }}
+                    >{cn}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Botões ação (cores sutis tipo home v2 — não 4 cores berrantes) */}
+            <button onClick={() => _ctSetToast("Publicação Rápida em breve")} style={{ background: "linear-gradient(135deg, #3B82F6, #6366F1)", color: "#FFFFFF", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 4px 12px rgba(99,102,241,0.25)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              Publicação Rápida
+            </button>
+            <button onClick={() => _ctSetToast("Munique Importer em breve")} style={{ background: "linear-gradient(135deg, #BBF246, #88C200)", color: "#0D0D0D", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 4px 12px rgba(136,194,0,0.25)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Importe com Munique
+            </button>
+            <button onClick={() => _ctSetToast("Gerar Posts de Notícias em breve")} style={{ background: "linear-gradient(135deg, #06B6D4, #0EA5E9)", color: "#FFFFFF", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: "0 4px 12px rgba(14,165,233,0.25)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
+              Gerar de Notícias
+            </button>
+            <div style={{ flex: 1 }}></div>
+            <button onClick={() => _ctSetToast("Modal Nova demanda em breve")} style={{ background: "#0D0D0D", color: "#BBF246", border: "none", borderRadius: 999, padding: "9px 18px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova demanda
+            </button>
           </div>
-          <input value={_ctSearch} onChange={(e) => _ctSetSearch(e.target.value)} placeholder="Buscar por título ou cliente…" style={{ flex: 1, minWidth: 200, padding: "8px 14px", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 999, background: "rgba(255,255,255,0.7)", fontSize: 12, fontFamily: "inherit", outline: "none" }} />
-          <button style={{ background: "#BBF246", color: "#0D0D0D", border: "none", borderRadius: 999, padding: "9px 18px", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nova demanda
-          </button>
         </div>
 
-        {/* KANBAN — 8 colunas scroll horizontal */}
-        <div style={{ display: "flex", gap: 12, overflowX: "auto", overflowY: "hidden", padding: "4px 4px 14px", scrollSnapType: "x mandatory" }}>
-          {_ctStages.map(s => {
-            const items = _ctByStage[s.k] || [];
-            return (
-              <section key={s.k} style={{ flex: "0 0 280px", display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 22, padding: "14px 12px 12px", maxHeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.04)", scrollSnapAlign: "start" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px 12px", flexShrink: 0, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: s.c, boxShadow: `0 0 8px ${s.c}80`, flexShrink: 0 }}></div>
-                  <div style={{ fontSize: 12.5, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>{s.l}</div>
-                  <div style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "2px 9px", borderRadius: 999, fontVariantNumeric: "tabular-nums" }}>{items.length}</div>
-                  <button style={{ width: 22, height: 22, borderRadius: 7, background: "transparent", border: "none", color: "#8B8F92", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }} title="Adicionar">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  </button>
-                </div>
-                <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingTop: 10, paddingRight: 2 }}>
-                  {items.length === 0 ? (
-                    <div style={{ fontSize: 10.5, color: "#A0A4A7", fontStyle: "italic", textAlign: "center", padding: "20px 0" }}>nada por aqui</div>
-                  ) : items.slice(0, 30).map((d, i) => {
-                    const lc = (x) => (x || "").toString().toLowerCase();
-                    const isLatePost = d.stage !== "published" && d.scheduling?.date && d.scheduling.date < todayYmd;
-                    const date = d.scheduling?.date || d.schedule_date;
-                    const time = d.scheduling?.time || d.schedule_time;
-                    const dateLabel = date ? (() => {
-                      const dd = new Date(date + "T12:00:00");
-                      if (date === todayYmd) return "hoje";
-                      const ms = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-                      return `${dd.getDate()}/${ms[dd.getMonth()]}`;
-                    })() : null;
-                    const priority = lc(d.priority) === "alta" ? "alta" : lc(d.priority) === "baixa" ? "baixa" : null;
-                    return (
-                      <div key={d.id || d.supaId || i} style={{ background: "#FFFFFF", borderRadius: 14, padding: "11px 13px", boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 6px 16px rgba(0,0,0,0.05)", cursor: "pointer", animation: `_ctCardIn .25s ease-out ${i * 0.02}s both`, transition: "transform .15s, box-shadow .15s" }}
-                        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05), 0 12px 28px rgba(0,0,0,0.08)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.03), 0 6px 16px rgba(0,0,0,0.05)"; }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>
-                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{d.clientName || d.client || "—"}</span>
-                          {d.format && <span style={{ background: "rgba(0,0,0,0.06)", padding: "1px 6px", borderRadius: 5, fontSize: 8.5, color: "#192126", flexShrink: 0 }}>{d.format}</span>}
+        {/* ═══════ KANBAN ═══════ */}
+        {_ctView === "kanban" ? (
+          <div style={{ display: "flex", gap: 11, overflowX: "auto", overflowY: "hidden", padding: "4px 4px 16px", scrollSnapType: "x mandatory" }}>
+            {_ctStages.map(s => {
+              const items = _ctByStage[s.k] || [];
+              const isOver = _ctDragOverCol === s.k;
+              return (
+                <section
+                  key={s.k}
+                  className={"ct-col" + (isOver ? " dragover" : "")}
+                  onDragOver={(e) => onDragOver(e, s.k)}
+                  onDragLeave={(e) => onDragLeaveCol(e, s.k)}
+                  onDrop={(e) => onDrop(e, s.k)}
+                  style={{
+                    flex: "0 0 282px",
+                    display: "flex",
+                    flexDirection: "column",
+                    background: "rgba(255,255,255,0.7)",
+                    border: "1px solid rgba(255,255,255,0.7)",
+                    borderTop: `3px solid ${s.c}`,
+                    borderRadius: 18,
+                    padding: "12px 10px 10px",
+                    maxHeight: 720,
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.04)",
+                    scrollSnapAlign: "start",
+                    transition: "background .15s, outline .15s",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px 10px", flexShrink: 0, borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                    <div style={{ width: 9, height: 9, borderRadius: "50%", background: s.c, boxShadow: `0 0 8px ${s.c}80`, flexShrink: 0 }}></div>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>{s.l}</div>
+                    <div style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 800, color: "#8B8F92", background: "rgba(0,0,0,0.04)", padding: "2px 9px", borderRadius: 999, fontVariantNumeric: "tabular-nums" }}>{items.length}</div>
+                    <button onClick={() => _ctSetToast(`Adicionar em ${s.l} em breve`)} style={{ width: 22, height: 22, borderRadius: 7, background: "transparent", border: "none", color: "#8B8F92", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }} title="Adicionar">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+                  </div>
+                  <div style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, paddingTop: 10, paddingRight: 2 }}>
+                    {items.length === 0 ? (
+                      <div style={{ fontSize: 10.5, color: "#A0A4A7", fontStyle: "italic", textAlign: "center", padding: "22px 0" }}>nada por aqui</div>
+                    ) : items.slice(0, 50).map((d, i) => {
+                      const isLate = isLatePost(d);
+                      const date = d.scheduling?.date || d.schedule_date;
+                      const time = d.scheduling?.time || d.schedule_time;
+                      const dateLabel = relDate(date);
+                      const priority = lc(d.priority);
+                      const priCfg = priority === "alta" ? { bg: "#FEE2E2", c: "#B91C1C", l: "ALTA" } : priority === "baixa" ? { bg: "#F0F0F0", c: "#8B8F92", l: "BAIXA" } : { bg: "#FEF3C7", c: "#92400E", l: "MÉDIA" };
+                      const isAjuste = lc(d.stage) === "ajuste" || d.needs_adjustment === true;
+                      const isExpired = isLate && lc(d.stage) === "scheduled";
+                      const fmt = d.format || (d.type === "video" ? "Reels" : "Post");
+                      const fmtType = ["reels", "stories"].includes(lc(fmt)) ? "Video" : "Post";
+                      const aspectRatio = lc(fmt) === "reels" || lc(fmt) === "stories" ? "9:16" : lc(fmt) === "feed" || lc(fmt) === "carrossel" ? "3:4" : null;
+                      const assigneeName = d.assigneeName || d.assignee || d.assignees?.[0];
+                      const networks = d.networks || d.platforms || (lc(fmt) === "reels" ? ["ig", "fb"] : ["ig"]);
+                      const isDragging = _ctDragId === (d.supaId || d.id);
+
+                      return (
+                        <div
+                          key={d.id || d.supaId || i}
+                          className={"ct-card" + (isDragging ? " dragging" : "")}
+                          draggable
+                          onDragStart={(e) => onDragStart(e, d)}
+                          onDragEnd={() => { _ctSetDragId(null); _ctSetDragOverCol(null); }}
+                          onClick={() => _ctSetDrawerOpen(d)}
+                          style={{
+                            background: "#FFFFFF",
+                            borderRadius: 12,
+                            padding: "10px 12px",
+                            boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 4px 12px rgba(0,0,0,0.04)",
+                            cursor: "grab",
+                            animation: `_ctCardIn .25s ease-out ${i * 0.015}s both`,
+                            border: isAjuste ? "2px solid #F97316" : isExpired ? "2px solid #DC2626" : "none",
+                            position: "relative",
+                          }}
+                        >
+                          {/* Pills topo: priority + tipo + warning */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 6, flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: priCfg.bg, color: priCfg.c, letterSpacing: "0.3px" }}>{priCfg.l}</span>
+                            <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "rgba(0,0,0,0.05)", color: "#192126" }}>{fmtType}</span>
+                            {isAjuste && (
+                              <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(249,115,22,0.15)", color: "#C2410C", letterSpacing: "0.3px", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                                AJUSTE
+                              </span>
+                            )}
+                            {isExpired && (
+                              <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: "rgba(220,38,38,0.15)", color: "#991B1B", letterSpacing: "0.3px" }}>EXPIRADO</span>
+                            )}
+                          </div>
+                          {/* Título */}
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 5, letterSpacing: "-0.01em" }}>{d.task || d.title || "Sem título"}</div>
+                          {/* Cliente */}
+                          <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600, marginBottom: 8, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.clientName || d.client || "—"}</div>
+                          {/* Footer: data + avatar + redes + ratio */}
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10 }}>
+                            {dateLabel && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 700, color: isLate ? "#DC2626" : "#8B8F92", flexShrink: 0 }}>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                {dateLabel}{time ? ` · ${time.slice(0, 5)}` : ""}
+                              </span>
+                            )}
+                            <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                              {assigneeName && (
+                                <div title={assigneeName} style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg, #0D0D0D, #333)", color: "#BBF246", fontSize: 8.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{assigneeName[0].toUpperCase()}</div>
+                              )}
+                              {networks.includes("ig") && (
+                                <div title="Instagram" style={{ width: 16, height: 16, borderRadius: 4, background: "linear-gradient(135deg, #833AB4, #FD1D1D, #FCB045)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41-.56-.22-.96-.48-1.38-.9-.42-.42-.68-.82-.9-1.38-.16-.42-.36-1.06-.41-2.23-.06-1.27-.07-1.65-.07-4.85s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41 1.27-.06 1.65-.07 4.85-.07M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63c-.8.31-1.47.72-2.14 1.39A5.9 5.9 0 00.63 4.14c-.3.76-.5 1.64-.56 2.91C.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.31.8.72 1.47 1.39 2.14.67.67 1.34 1.08 2.14 1.39.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56.8-.31 1.47-.72 2.14-1.39.67-.67 1.08-1.34 1.39-2.14.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.9 5.9 0 00-1.39-2.14A5.9 5.9 0 0019.86.63c-.76-.3-1.64-.5-2.91-.56C15.67.01 15.26 0 12 0zm0 5.84A6.16 6.16 0 1018.16 12 6.16 6.16 0 0012 5.84zm0 10.16A4 4 0 1116 12a4 4 0 01-4 4zm6.41-11.85a1.44 1.44 0 10-.001 2.881A1.44 1.44 0 0018.41 4.15z"/></svg>
+                                </div>
+                              )}
+                              {networks.includes("fb") && (
+                                <div title="Facebook" style={{ width: 16, height: 16, borderRadius: 4, background: "#1877F2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M24 12a12 12 0 10-13.88 11.85v-8.38H7.08V12h3.04V9.36c0-3 1.79-4.66 4.52-4.66 1.31 0 2.68.23 2.68.23v2.95h-1.5c-1.49 0-1.96.93-1.96 1.88V12h3.32l-.53 3.47h-2.79v8.38A12 12 0 0024 12z"/></svg>
+                                </div>
+                              )}
+                              {aspectRatio && (
+                                <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 5px", borderRadius: 4, background: "rgba(0,0,0,0.05)", color: "#8B8F92", letterSpacing: "0.2px" }}>{aspectRatio}</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#192126", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 8 }}>{d.task || d.title || "Sem título"}</div>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                          {dateLabel && (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: isLatePost ? "#DC2626" : "#8B8F92" }}>
-                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                              {dateLabel}{time ? ` · ${time.slice(0, 5)}` : ""}
-                            </span>
-                          )}
-                          {priority && (
-                            <span style={{ fontSize: 8.5, fontWeight: 800, padding: "2px 7px", borderRadius: 999, background: priority === "alta" ? "#FEE2E2" : "#F0F0F0", color: priority === "alta" ? "#B91C1C" : "#8B8F92", textTransform: "uppercase", letterSpacing: "0.3px" }}>{priority}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {items.length > 30 && <div style={{ fontSize: 10, color: "#8B8F92", textAlign: "center", padding: "8px 0", fontWeight: 600 }}>+ {items.length - 30} no pipeline</div>}
+                      );
+                    })}
+                    {items.length > 50 && <div style={{ fontSize: 10, color: "#8B8F92", textAlign: "center", padding: "8px 0", fontWeight: 600 }}>+ {items.length - 50} no pipeline</div>}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        ) : (
+          /* PIPELINE LIST VIEW */
+          <div style={{ background: "rgba(255,255,255,0.85)", borderRadius: 18, padding: 4, maxHeight: 720, overflow: "auto" }}>
+            {_ctFiltered.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 40, color: "#8B8F92", fontSize: 13 }}>Nenhuma demanda</div>
+            ) : _ctFiltered.map((d, i) => {
+              const sCfg = _ctStages.find(s => s.k === lc(d.stage || d.status)) || _ctStages[0];
+              const date = d.scheduling?.date || d.schedule_date;
+              const time = d.scheduling?.time || d.schedule_time;
+              return (
+                <div key={d.id || d.supaId || i} onClick={() => _ctSetDrawerOpen(d)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", cursor: "pointer", borderBottom: i < _ctFiltered.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none", transition: "background .12s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(187,242,70,0.06)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: sCfg.c, flexShrink: 0 }}></span>
+                  <div style={{ width: 90, fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", flexShrink: 0 }}>{sCfg.l}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.task || d.title || "Sem título"}</div>
+                    <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600 }}>{d.clientName || d.client || "—"} · {d.format || "Post"}</div>
+                  </div>
+                  {date && <div style={{ fontSize: 10.5, color: isLatePost(d) ? "#DC2626" : "#8B8F92", fontWeight: 700, flexShrink: 0 }}>{fmtDate(date, time)}</div>}
                 </div>
-              </section>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* ═══════ DRAWER LATERAL ═══════ */}
+      {_ctDrawerOpen && (() => {
+        const d = _ctDrawerOpen;
+        const sCfg = _ctStages.find(s => s.k === lc(d.stage || d.status)) || _ctStages[0];
+        const stageIdx = _ctStages.findIndex(s => s.k === sCfg.k);
+        const date = d.scheduling?.date || d.schedule_date;
+        const time = d.scheduling?.time || d.schedule_time;
+        return (
+          <>
+            <div onClick={() => _ctSetDrawerOpen(null)} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(13,13,13,0.32)", backdropFilter: "blur(4px)" }}></div>
+            <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: 440, maxWidth: "94vw", background: "#FFFFFF", boxShadow: "-12px 0 40px rgba(0,0,0,0.2)", zIndex: 81, display: "flex", flexDirection: "column", animation: "_ctDrawerIn .35s cubic-bezier(0.25, 1, 0.5, 1)" }}>
+              <div style={{ padding: "18px 22px 0", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: "#8B8F92", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 3 }}>{d.clientName || d.client || "—"}{date ? ` · ${fmtDate(date)}` : ""}</div>
+                  <div style={{ fontSize: 19, fontWeight: 800, color: "#192126", letterSpacing: "-0.02em", lineHeight: 1.2 }}>{d.task || d.title || "Sem título"}</div>
+                </div>
+                <button onClick={() => _ctSetDrawerOpen(null)} style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(0,0,0,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#192126", flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              <div style={{ padding: "14px 22px 16px", display: "flex", flexWrap: "wrap", gap: 5, borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "rgba(0,0,0,0.05)", color: "#192126" }}>{d.format || "Post"}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: `${sCfg.c}22`, color: sCfg.c }}>{sCfg.l}</span>
+                {d.priority && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: lc(d.priority) === "alta" ? "#FEE2E2" : "#FEF3C7", color: lc(d.priority) === "alta" ? "#B91C1C" : "#92400E" }}>{(d.priority || "").toUpperCase()}</span>}
+                {date && time && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "rgba(0,0,0,0.05)", color: "#192126" }}>📅 {fmtDate(date, time)}</span>}
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 12 }}>Workflow da demanda</div>
+                {_ctStages.map((s, i) => {
+                  const done = i < stageIdx;
+                  const current = i === stageIdx;
+                  return (
+                    <div key={s.k} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderBottom: i < _ctStages.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none" }}>
+                      <div style={{ width: 24, height: 24, borderRadius: "50%", background: done ? s.c : current ? "transparent" : "rgba(0,0,0,0.06)", border: current ? `2px solid ${s.c}` : "none", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {done && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                        {current && <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></div>}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, color: current ? "#192126" : done ? "#192126" : "#8B8F92" }}>{s.l}</div>
+                        {current && <div style={{ fontSize: 10, fontWeight: 800, color: sCfg.c, marginTop: 2, textTransform: "uppercase", letterSpacing: "0.3px" }}>Etapa atual</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ padding: "12px 22px", borderTop: "1px solid rgba(0,0,0,0.05)", display: "flex", gap: 8 }}>
+                {stageIdx > 0 && <button onClick={async () => {
+                  const prev = _ctStages[stageIdx - 1].k;
+                  setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === (d.supaId || d.id) ? { ...x, stage: prev } : x)));
+                  if (d.supaId && typeof supaUpdateDemand === "function") await supaUpdateDemand(d.supaId, { stage: prev });
+                  _ctSetDrawerOpen({ ...d, stage: prev });
+                  _ctSetToast(`Voltou pra "${_ctStages[stageIdx - 1].l}"`);
+                  setTimeout(() => _ctSetToast(""), 2500);
+                }} style={{ flex: 1, background: "rgba(0,0,0,0.06)", border: "none", borderRadius: 999, padding: "9px 0", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: "#192126" }}>← {_ctStages[stageIdx - 1].l}</button>}
+                {stageIdx < _ctStages.length - 1 && <button onClick={async () => {
+                  const next = _ctStages[stageIdx + 1].k;
+                  setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === (d.supaId || d.id) ? { ...x, stage: next } : x)));
+                  if (d.supaId && typeof supaUpdateDemand === "function") await supaUpdateDemand(d.supaId, { stage: next });
+                  _ctSetDrawerOpen({ ...d, stage: next });
+                  _ctSetToast(`Avançou pra "${_ctStages[stageIdx + 1].l}"`);
+                  setTimeout(() => _ctSetToast(""), 2500);
+                }} style={{ flex: 1, background: "#BBF246", border: "none", borderRadius: 999, padding: "9px 0", fontSize: 11.5, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", color: "#0D0D0D" }}>{_ctStages[stageIdx + 1].l} →</button>}
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* ═══════ TOAST ═══════ */}
+      {_ctToast && (
+        <div style={{ position: "fixed", bottom: 120, left: "50%", transform: "translateX(-50%)", background: "#0D0D0D", color: "#BBF246", padding: "10px 18px", borderRadius: 999, fontSize: 12, fontWeight: 700, zIndex: 90, boxShadow: "0 8px 24px rgba(0,0,0,0.2)", animation: "_ctToastIn .25s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>{_ctToast}</div>
+      )}
     </div>
   );
 }
