@@ -13240,6 +13240,28 @@ function ContentPageV2(props) {
     }
   };
 
+  // ─── Update inline de step da demand atual (auto-save) ───
+  const updateStepField = async (d, stage, partial) => {
+    const newSteps = {
+      ...(d.steps || {}),
+      [stage]: { ...((d.steps || {})[stage] || {}), ...partial, by: partial.by || ((d.steps || {})[stage]?.by || _ctFirstName) },
+    };
+    setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === (d.supaId || d.id) ? { ...x, steps: newSteps } : x)));
+    _ctSetSheet(prev => prev && (prev.supaId || prev.id) === (d.supaId || d.id) ? { ...prev, steps: newSteps } : prev);
+    if (d.supaId && typeof supaUpdateDemand === "function") {
+      try { await supaUpdateDemand(d.supaId, { steps: newSteps }); } catch (e) { console.warn("[updateStepField] error:", e); }
+    }
+  };
+
+  // ─── Update direto de campo da demand (schedule_date, schedule_time, etc) ───
+  const updateDemandField = async (d, partial) => {
+    setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === (d.supaId || d.id) ? { ...x, ...partial } : x)));
+    _ctSetSheet(prev => prev && (prev.supaId || prev.id) === (d.supaId || d.id) ? { ...prev, ...partial } : prev);
+    if (d.supaId && typeof supaUpdateDemand === "function") {
+      try { await supaUpdateDemand(d.supaId, partial); } catch (e) { console.warn("[updateDemandField] error:", e); }
+    }
+  };
+
   const viewLabel = (() => {
     if (_ctView === "hoje") return { kicker: "Hoje", title: "Foco do dia", subtitle: counts.hoje === 0 ? "Nenhuma demanda agendada pra hoje. Aproveita pra adiantar." : `${counts.hoje} ${counts.hoje === 1 ? "demanda" : "demandas"} esperando você` };
     if (_ctView === "semana") return { kicker: "Próximos 7 dias", title: "Esta semana", subtitle: `${counts.semana} no horizonte` };
@@ -14389,15 +14411,15 @@ function ContentPageV2(props) {
         return (<>
           <div onClick={() => _ctSetSheet(null)} style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(13,13,13,0.32)", backdropFilter: "blur(6px)", animation: "_ctBackdrop .25s ease" }}></div>
           <aside style={{
-            position: "fixed", top: 14, right: 14, bottom: 14, width: 460, maxWidth: "94vw",
-            background: "rgba(255,255,255,0.96)", backdropFilter: "blur(22px)",
-            borderRadius: 20, border: "1px solid rgba(255,255,255,0.7)",
+            position: "fixed", top: 14, right: 14, bottom: 14, width: 720, maxWidth: "94vw",
+            background: "rgba(255,255,255,0.97)", backdropFilter: "blur(22px)",
+            borderRadius: 22, border: "1px solid rgba(255,255,255,0.7)",
             boxShadow: "0 24px 64px rgba(13,13,13,0.28)",
             zIndex: 151, display: "flex", flexDirection: "column",
             animation: "_ctSheetIn .4s cubic-bezier(0.32, 0.72, 0, 1)",
             overflow: "hidden",
           }}>
-            {coverUrl && <div style={{ height: 200, background: `url(${coverUrl}) center/cover no-repeat`, flexShrink: 0 }}></div>}
+            {coverUrl && <div style={{ height: 240, background: `url(${coverUrl}) center/cover no-repeat`, flexShrink: 0 }}></div>}
             <div style={{ padding: "22px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexShrink: 0 }}>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 999, background: `${sCfg.c}1A`, marginBottom: 12 }}>
@@ -14445,11 +14467,12 @@ function ContentPageV2(props) {
                           <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Ideia & Conceito</div>
                         </div>
                       </div>
-                      {step.text ? (
-                        <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 14, fontSize: 13.5, lineHeight: 1.55, color: "#192126", whiteSpace: "pre-wrap", letterSpacing: "-0.005em", border: "1px solid rgba(255,255,255,0.6)" }}>{step.text}</div>
-                      ) : (
-                        <div style={{ background: "rgba(255,255,255,0.5)", borderRadius: 12, padding: "18px 14px", fontSize: 12.5, color: "#8B8F92", fontStyle: "italic", border: "1px dashed rgba(167,139,250,0.4)", textAlign: "center" }}>📝 Nenhuma ideia anotada ainda<br/><span style={{ fontSize: 10.5, fontWeight: 600, color: "#A0A4A7", fontStyle: "normal" }}>Edite no V1 ou avance pra começar o briefing</span></div>
-                      )}
+                      <textarea
+                        defaultValue={step.text || ""}
+                        placeholder="Descreva a ideia central do post: angle, objetivo, gancho..."
+                        onBlur={(e) => { if (e.target.value !== (step.text || "")) updateStepField(d, "idea", { text: e.target.value, date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) }); }}
+                        style={{ width: "100%", minHeight: 110, background: "rgba(255,255,255,0.75)", borderRadius: 12, padding: 14, fontSize: 13.5, lineHeight: 1.55, color: "#192126", letterSpacing: "-0.005em", border: "1px solid rgba(167,139,250,0.3)", outline: "none", fontFamily: "inherit", resize: "vertical" }}
+                      />
                       {step.by && <div style={{ fontSize: 10.5, fontWeight: 700, color: "#8B8F92", marginTop: 10, display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 14, height: 14, borderRadius: "50%", background: "#7C6BFE", color: "#FFFFFF", fontSize: 7, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{step.by[0]?.toUpperCase()}</span>{step.by}{step.date ? ` · ${step.date}` : ""}</div>}
                     </div>
                   );
@@ -14467,20 +14490,12 @@ function ContentPageV2(props) {
                           <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Briefing detalhado</div>
                         </div>
                       </div>
-                      {step.text ? (
-                        <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 14, fontSize: 13.5, lineHeight: 1.55, color: "#192126", whiteSpace: "pre-wrap", letterSpacing: "-0.005em" }}>{step.text}</div>
-                      ) : (
-                        <div style={{ background: "rgba(255,255,255,0.5)", borderRadius: 12, padding: "18px 14px", fontSize: 12.5, color: "#8B8F92", border: "1px dashed rgba(59,130,246,0.4)" }}>
-                          <div style={{ fontWeight: 700, color: "#3B82F6", marginBottom: 8, textAlign: "center" }}>📐 O que precisa estar aqui:</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11.5 }}>
-                            {["🎯 Objetivo do post", "👥 Público-alvo", "✨ Tom de voz", "🔗 CTA / link", "🎨 Cores e estética", "📐 Aspect ratio"].map(t => (
-                              <div key={t} style={{ display: "flex", alignItems: "center", gap: 6, color: "#3C3F44" }}>
-                                <span style={{ width: 16, height: 16, borderRadius: "50%", border: "1.5px dashed rgba(59,130,246,0.5)", flexShrink: 0 }}></span>{t}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                      <textarea
+                        defaultValue={step.text || ""}
+                        placeholder="Briefing técnico: objetivo, público, tom, CTA, cores, aspect ratio, requisitos do designer..."
+                        onBlur={(e) => { if (e.target.value !== (step.text || "")) updateStepField(d, "briefing", { text: e.target.value, date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) }); }}
+                        style={{ width: "100%", minHeight: 160, background: "rgba(255,255,255,0.75)", borderRadius: 12, padding: 14, fontSize: 13.5, lineHeight: 1.55, color: "#192126", letterSpacing: "-0.005em", border: "1px solid rgba(59,130,246,0.3)", outline: "none", fontFamily: "inherit", resize: "vertical" }}
+                      />
                       {step.by && <div style={{ fontSize: 10.5, fontWeight: 700, color: "#8B8F92", marginTop: 10 }}>por {step.by}{step.date ? ` · ${step.date}` : ""}</div>}
                     </div>
                   );
@@ -14540,12 +14555,18 @@ function ContentPageV2(props) {
                           <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Legenda & Copy</div>
                         </div>
                       </div>
-                      {step.text ? (
-                        <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 12, padding: 14, fontSize: 13.5, lineHeight: 1.55, color: "#192126", whiteSpace: "pre-wrap", letterSpacing: "-0.005em", marginBottom: step.hashtags ? 8 : 0 }}>{step.text}</div>
-                      ) : (
-                        <div style={{ background: "rgba(255,255,255,0.55)", borderRadius: 12, padding: "20px 14px", fontSize: 12.5, color: "#A0A4A7", fontStyle: "italic", border: "1px dashed rgba(245,158,11,0.4)", textAlign: "center" }}>Aguardando legenda</div>
-                      )}
-                      {step.hashtags && <div style={{ background: "rgba(59,130,246,0.08)", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#3B82F6", fontWeight: 600, letterSpacing: "-0.005em" }}>{step.hashtags}</div>}
+                      <textarea
+                        defaultValue={step.text || ""}
+                        placeholder="Legenda do post: gancho na primeira linha, copy do meio, CTA no final..."
+                        onBlur={(e) => { if (e.target.value !== (step.text || "")) updateStepField(d, "caption", { text: e.target.value, date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) }); }}
+                        style={{ width: "100%", minHeight: 130, background: "rgba(255,255,255,0.75)", borderRadius: 12, padding: 14, fontSize: 13.5, lineHeight: 1.55, color: "#192126", letterSpacing: "-0.005em", border: "1px solid rgba(245,158,11,0.3)", outline: "none", fontFamily: "inherit", resize: "vertical", marginBottom: 8 }}
+                      />
+                      <input
+                        defaultValue={step.hashtags || ""}
+                        placeholder="#hashtag1 #hashtag2 #hashtag3..."
+                        onBlur={(e) => { if (e.target.value !== (step.hashtags || "")) updateStepField(d, "caption", { hashtags: e.target.value }); }}
+                        style={{ width: "100%", background: "rgba(59,130,246,0.08)", borderRadius: 10, padding: "10px 12px", fontSize: 12.5, color: "#3B82F6", fontWeight: 600, letterSpacing: "-0.005em", border: "1px solid rgba(59,130,246,0.2)", outline: "none", fontFamily: "inherit" }}
+                      />
                       {step.text && <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 10.5, fontWeight: 700, color: "#8B8F92" }}>
                         <span>{step.text.length} caracteres</span>
                         <span>{step.text.split(/\s+/).filter(Boolean).length} palavras</span>
@@ -14569,16 +14590,36 @@ function ContentPageV2(props) {
                         </div>
                       </div>
                       <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 14 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: step.note ? 12 : 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
                           <span style={{ width: 44, height: 44, borderRadius: "50%", background: isApproved ? "#10B981" : isRejected ? "#E1483F" : "#06B6D4", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: `0 6px 14px ${isApproved ? "rgba(16,185,129,0.32)" : isRejected ? "rgba(225,72,63,0.32)" : "rgba(6,182,212,0.32)"}` }}>
                             {isApproved ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : isRejected ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
                           </span>
-                          <div>
-                            <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.012em" }}>{isApproved ? "Aprovado internamente ✓" : isRejected ? "Pediram ajustes" : "Aguardando revisão"}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.012em" }}>{isApproved ? "Aprovado internamente ✓" : isRejected ? "Pediram ajustes" : "Aguardando sua revisão"}</div>
                             {step.by && <div style={{ fontSize: 11, fontWeight: 700, color: "#8B8F92", marginTop: 2 }}>{step.by}{step.date ? ` · ${step.date}` : ""}</div>}
                           </div>
                         </div>
-                        {step.note && <div style={{ fontSize: 12.5, color: "#3C3F44", paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)", letterSpacing: "-0.005em" }}><b style={{ color: "#06B6D4" }}>Comentário:</b> {step.note}</div>}
+                        {/* Botões de ação */}
+                        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                          <button onClick={() => updateStepField(d, "review", { status: "approved", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) })} className="ct-btn" style={{ flex: 1, padding: "10px 0", borderRadius: 11, background: isApproved ? "#10B981" : "rgba(16,185,129,0.12)", color: isApproved ? "#FFFFFF" : "#10B981", border: isApproved ? "none" : "1px solid rgba(16,185,129,0.3)", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, boxShadow: isApproved ? "0 4px 12px rgba(16,185,129,0.32)" : "none" }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                            Aprovar
+                          </button>
+                          <button onClick={() => updateStepField(d, "review", { status: "rejected", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) })} className="ct-btn" style={{ flex: 1, padding: "10px 0", borderRadius: 11, background: isRejected ? "#F97316" : "rgba(249,115,22,0.12)", color: isRejected ? "#FFFFFF" : "#F97316", border: isRejected ? "none" : "1px solid rgba(249,115,22,0.3)", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, boxShadow: isRejected ? "0 4px 12px rgba(249,115,22,0.32)" : "none" }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6"><path d="M3 12a9 9 0 1 0 9-9"/><polyline points="3 5 3 12 10 12"/></svg>
+                            Pedir ajustes
+                          </button>
+                        </div>
+                        {/* Nota editável */}
+                        <div style={{ paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: "#06B6D4", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>Comentário da revisão</div>
+                          <textarea
+                            defaultValue={step.note || ""}
+                            placeholder="Adicione observações ou pedidos de ajuste..."
+                            onBlur={(e) => { if (e.target.value !== (step.note || "")) updateStepField(d, "review", { note: e.target.value }); }}
+                            style={{ width: "100%", minHeight: 70, background: "rgba(255,255,255,0.6)", borderRadius: 10, padding: 10, fontSize: 12.5, color: "#192126", letterSpacing: "-0.005em", border: "1px solid rgba(6,182,212,0.25)", outline: "none", fontFamily: "inherit", resize: "vertical" }}
+                          />
+                        </div>
                       </div>
                     </div>
                   );
@@ -14630,10 +14671,21 @@ function ContentPageV2(props) {
                           <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Programado pra publicar</div>
                         </div>
                       </div>
-                      <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 12, padding: "16px 14px", textAlign: "center" }}>
-                        <div className="tabnum" style={{ fontSize: 28, fontWeight: 800, color: "#0EA5E9", letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 6 }}>{date ? fmtDate(date, time) : "—"}</div>
-                        {countdown && <div style={{ fontSize: 11.5, fontWeight: 700, color: "#8B8F92", letterSpacing: "-0.005em" }}>{countdown}</div>}
-                        <div style={{ fontSize: 10.5, fontWeight: 600, color: "#A0A4A7", marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(0,0,0,0.05)" }}>pg_cron processa em até 60s no horário</div>
+                      <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 12, padding: 14 }}>
+                        <div className="tabnum" style={{ fontSize: 28, fontWeight: 800, color: "#0EA5E9", letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 4, textAlign: "center" }}>{date ? fmtDate(date, time) : "Sem data"}</div>
+                        {countdown && <div style={{ fontSize: 11.5, fontWeight: 700, color: "#8B8F92", letterSpacing: "-0.005em", textAlign: "center", marginBottom: 14 }}>{countdown}</div>}
+                        {/* Inputs editáveis date + time */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 8, marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Data</div>
+                            <input type="date" defaultValue={date || ""} onBlur={(e) => { if (e.target.value !== (date || "")) updateDemandField(d, { schedule_date: e.target.value, scheduling: { ...(d.scheduling || {}), date: e.target.value } }); }} style={{ width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid rgba(14,165,233,0.25)", background: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 700, color: "#192126", fontFamily: "inherit", outline: "none" }} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Hora</div>
+                            <input type="time" defaultValue={time || ""} onBlur={(e) => { if (e.target.value !== (time || "")) updateDemandField(d, { schedule_time: e.target.value, scheduling: { ...(d.scheduling || {}), time: e.target.value } }); }} style={{ width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid rgba(14,165,233,0.25)", background: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: 700, color: "#192126", fontFamily: "inherit", outline: "none" }} />
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 10.5, fontWeight: 600, color: "#A0A4A7", marginTop: 10, textAlign: "center" }}>pg_cron processa em até 60s no horário</div>
                       </div>
                     </div>
                   );
