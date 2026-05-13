@@ -13010,6 +13010,8 @@ function ContentPageV2(props) {
   const [_ctCalMonth, _ctSetCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [_ctExp, _ctSetExp] = useState({ stages: true, clientes: false });
   const [_ctActionsOpen, _ctSetActionsOpen] = useState(false);
+  const [_ctNewForm, _ctSetNewForm] = useState({ title: "", clientName: "", clientId: null, type: "social", format: "Feed", networks: ["Instagram"], priority: "média", schedDate: "", schedTime: "", aspectRatio: "1:1" });
+  const [_ctNewSaving, _ctSetNewSaving] = useState(false);
 
   // ─── HELPERS ───
   const lc = (s) => (s || "").toString().toLowerCase();
@@ -13190,9 +13192,16 @@ function ContentPageV2(props) {
 
   const advanceDemand = async (d, dir = 1) => {
     const cur = lc(d.stage || d.status);
+    if (dir > 0 && (cur === "published" || cur === "done")) {
+      _ctSetToast("⚠ Já publicado"); setTimeout(() => _ctSetToast(""), 1800); return;
+    }
+    if (dir > 0 && cur === "scheduled") {
+      _ctSetToast("⚠ Agendado — gerencie via Publicação"); setTimeout(() => _ctSetToast(""), 2200); return;
+    }
     const idx = _ctStages.findIndex(s => s.k === cur);
     const tgt = _ctStages[idx + dir];
     if (!tgt) return;
+    /* Atualiza local STATE primeiro (UI instantânea) */
     setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === (d.supaId || d.id) ? { ...x, stage: tgt.k } : x)));
     _ctSetSheet(prev => prev && (prev.supaId || prev.id) === (d.supaId || d.id) ? { ...prev, stage: tgt.k } : prev);
     if (tgt.k === "published") {
@@ -13201,7 +13210,19 @@ function ContentPageV2(props) {
     }
     _ctSetToast(`${dir > 0 ? "→" : "←"} ${tgt.l}`);
     setTimeout(() => _ctSetToast(""), 1800);
-    if (d.supaId && typeof supaUpdateDemand === "function") await supaUpdateDemand(d.supaId, { stage: tgt.k });
+    /* Persiste no Supabase com error handling */
+    if (d.supaId && typeof supaUpdateDemand === "function") {
+      try {
+        const r = await supaUpdateDemand(d.supaId, { stage: tgt.k });
+        if (r?.error) {
+          console.warn("[advanceDemand] supabase error:", r.error);
+          _ctSetToast("⚠ Erro ao salvar — tente de novo");
+          setTimeout(() => _ctSetToast(""), 2400);
+        }
+      } catch (e) {
+        console.warn("[advanceDemand] exception:", e);
+      }
+    }
   };
 
   const viewLabel = (() => {
@@ -13857,11 +13878,25 @@ function ContentPageV2(props) {
                 <div onClick={() => _ctSetActionsOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 35 }}></div>
                 <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, background: "rgba(255,255,255,0.96)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 16, padding: 8, boxShadow: "0 16px 48px rgba(25,33,38,0.18)", zIndex: 36, minWidth: 280 }}>
                   {[
-                    { l: "Publicação Rápida", desc: "Agendar sem Kanban", icon: "🚀", grad: "linear-gradient(135deg, #00C6FF, #0072FF)", msg: "Publicação Rápida em breve" },
-                    { l: "Importar com Munique", desc: "IA cria em lote", icon: "✨", grad: "linear-gradient(135deg, #BBF246, #88C200)", msg: "Munique Importer em breve" },
-                    { l: "Gerar de Notícias", desc: "Posts a partir de trending", icon: "📰", grad: "linear-gradient(135deg, #FE52A0, #BC4ED6)", msg: "Gerar de Notícias em breve" },
+                    { l: "Publicação Rápida", desc: "Agendar sem passar pelo Kanban", icon: "🚀", grad: "linear-gradient(135deg, #00C6FF, #0072FF)", action: "quickpub" },
+                    { l: "Importar com Munique", desc: "IA cria várias demandas em lote", icon: "✨", grad: "linear-gradient(135deg, #BBF246, #88C200)", action: "munique" },
+                    { l: "Gerar de Notícias", desc: "Posts a partir de trending news", icon: "📰", grad: "linear-gradient(135deg, #FE52A0, #BC4ED6)", action: "news" },
                   ].map((a, i) => (
-                    <button key={i} onClick={() => { _ctSetActionsOpen(false); _ctSetToast(a.msg); setTimeout(() => _ctSetToast(""), 2200); }} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "11px 12px", background: "transparent", border: "none", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", textAlign: "left", transition: "background .15s" }}
+                    <button key={i} onClick={() => {
+                      _ctSetActionsOpen(false);
+                      if (a.action === "news") {
+                        goSub && goSub("news");
+                      } else {
+                        try { localStorage.setItem("uh_v1_open_modal", a.action); } catch {}
+                        _ctSetToast("Abrindo " + a.l + "…");
+                        setTimeout(() => {
+                          try { localStorage.setItem("uh_content", "v1"); } catch {}
+                          const url = new URL(window.location.href);
+                          url.searchParams.set("content", "v1");
+                          window.location.href = url.toString();
+                        }, 400);
+                      }
+                    }} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "11px 12px", background: "transparent", border: "none", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", textAlign: "left", transition: "background .15s" }}
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                     >
@@ -14209,21 +14244,115 @@ function ContentPageV2(props) {
         </div>
       </>)}
 
-      {/* ═══════ QUICK ADD ═══════ */}
+      {/* ═══════ QUICK ADD funcional ═══════ */}
       {_ctQuickAddOpen && (<>
-        <div onClick={() => _ctSetQuickAddOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(13,13,13,0.4)", backdropFilter: "blur(8px)", animation: "_ctBackdrop .25s ease" }}></div>
-        <div style={{ position: "fixed", top: "26%", left: "50%", transform: "translateX(-50%)", width: 500, maxWidth: "92vw", background: "rgba(255,255,255,0.96)", backdropFilter: "blur(20px)", borderRadius: 18, boxShadow: "0 24px 64px rgba(13,13,13,0.32)", zIndex: 201, padding: 0, animation: "_ctSpotlightIn .3s cubic-bezier(0.32, 0.72, 0, 1)", border: "1px solid rgba(255,255,255,0.7)" }}>
-          <div style={{ padding: "22px 24px 16px" }}>
-            <input autoFocus placeholder="Nova demanda..." style={{ width: "100%", border: "none", outline: "none", fontSize: 22, fontWeight: 700, color: "#192126", fontFamily: "inherit", letterSpacing: "-0.025em", background: "transparent" }} />
-            <input placeholder="Notas..." style={{ width: "100%", marginTop: 8, border: "none", outline: "none", fontSize: 14, color: "#8B8F92", fontFamily: "inherit", letterSpacing: "-0.005em", background: "transparent", fontWeight: 500 }} />
+        <div onClick={() => !_ctNewSaving && _ctSetQuickAddOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(13,13,13,0.4)", backdropFilter: "blur(8px)", animation: "_ctBackdrop .25s ease" }}></div>
+        <div style={{ position: "fixed", top: "8%", left: "50%", transform: "translateX(-50%)", width: 540, maxWidth: "94vw", maxHeight: "84vh", overflowY: "auto", background: "rgba(255,255,255,0.97)", backdropFilter: "blur(20px)", borderRadius: 20, boxShadow: "0 24px 64px rgba(13,13,13,0.32)", zIndex: 201, animation: "_ctSpotlightIn .3s cubic-bezier(0.32, 0.72, 0, 1)", border: "1px solid rgba(255,255,255,0.7)" }}>
+          {/* Header */}
+          <div style={{ padding: "20px 24px 14px", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Nova demanda</div>
+            <input autoFocus value={_ctNewForm.title} onChange={(e) => _ctSetNewForm(f => ({ ...f, title: e.target.value }))} placeholder="O que vamos criar?" style={{ width: "100%", border: "none", outline: "none", fontSize: 22, fontWeight: 700, color: "#192126", fontFamily: "inherit", letterSpacing: "-0.025em", background: "transparent" }} />
           </div>
-          <div style={{ padding: "12px 24px 16px", borderTop: "1px solid rgba(0,0,0,0.06)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <button style={{ padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 600, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>Quando</button>
-            <button style={{ padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 600, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>Cliente</button>
-            <button style={{ padding: "6px 12px", borderRadius: 999, background: "rgba(0,0,0,0.04)", border: "none", fontSize: 12, fontWeight: 600, color: "#192126", cursor: "pointer", fontFamily: "inherit" }}>Formato</button>
-            <div style={{ flex: 1 }}></div>
-            <button onClick={() => _ctSetQuickAddOpen(false)} style={{ padding: "8px 14px", borderRadius: 999, background: "transparent", border: "none", fontSize: 12, fontWeight: 700, color: "#8B8F92", cursor: "pointer", fontFamily: "inherit" }}>Cancelar</button>
-            <button onClick={() => { _ctSetQuickAddOpen(false); _ctSetToast("Salvar nova demanda em breve"); setTimeout(() => _ctSetToast(""), 2200); }} className="ct-btn" style={{ padding: "8px 18px", borderRadius: 999, background: "#0D0D0D", color: "#BBF246", border: "none", fontSize: 12, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Salvar</button>
+          {/* Body fields */}
+          <div style={{ padding: "16px 24px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+            {/* Cliente */}
+            <div>
+              <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Cliente</label>
+              <select value={_ctNewForm.clientName} onChange={(e) => { const cn = e.target.value; const cobj = (Array.isArray(clients) ? clients : []).find(c => c.name === cn); _ctSetNewForm(f => ({ ...f, clientName: cn, clientId: cobj?.supaId || cobj?.id || null })); }} style={{ width: "100%", padding: "10px 12px", borderRadius: 11, border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.7)", fontSize: 13, fontWeight: 600, color: "#192126", fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
+                <option value="">Selecionar cliente…</option>
+                {(Array.isArray(clients) ? clients : []).map(cl => <option key={cl.supaId || cl.id} value={cl.name}>{cl.name}</option>)}
+              </select>
+            </div>
+            {/* Formato */}
+            <div>
+              <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Formato</label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                {[
+                  { k: "Feed", icon: "🖼️", asp: "1:1" },
+                  { k: "Carrossel", icon: "🎴", asp: "1:1" },
+                  { k: "Reels", icon: "🎬", asp: "9:16" },
+                  { k: "Stories", icon: "✨", asp: "9:16" },
+                ].map(o => {
+                  const isOn = _ctNewForm.format === o.k;
+                  return (
+                    <button key={o.k} type="button" onClick={() => _ctSetNewForm(f => ({ ...f, format: o.k, aspectRatio: o.asp, type: o.k === "Reels" ? "video" : "social" }))} style={{ padding: "9px 6px", borderRadius: 10, border: isOn ? "1.5px solid #0D0D0D" : "1px solid rgba(0,0,0,0.08)", background: isOn ? "#0D0D0D" : "rgba(255,255,255,0.7)", color: isOn ? "#BBF246" : "#192126", fontSize: 11.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                      <span style={{ fontSize: 17 }}>{o.icon}</span>{o.k}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Networks */}
+            <div>
+              <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Redes</label>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {["Instagram", "Facebook"].map(nw => {
+                  const isOn = _ctNewForm.networks.includes(nw);
+                  return (
+                    <button key={nw} type="button" onClick={() => _ctSetNewForm(f => ({ ...f, networks: isOn ? f.networks.filter(x => x !== nw) : [...f.networks, nw] }))} style={{ padding: "7px 13px", borderRadius: 999, border: isOn ? "none" : "1px solid rgba(0,0,0,0.08)", background: isOn ? (nw === "Instagram" ? "linear-gradient(135deg, #E1306C, #BC4ED6)" : "#1877F2") : "rgba(255,255,255,0.7)", color: isOn ? "#FFFFFF" : "#192126", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      {isOn && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                      {nw}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Date + Time + Priority em 3 colunas */}
+            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1.2fr", gap: 10 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Data</label>
+                <input type="date" value={_ctNewForm.schedDate} onChange={(e) => _ctSetNewForm(f => ({ ...f, schedDate: e.target.value }))} style={{ width: "100%", padding: "9px 11px", borderRadius: 11, border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.7)", fontSize: 12.5, fontWeight: 600, color: "#192126", fontFamily: "inherit", outline: "none" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Hora</label>
+                <input type="time" value={_ctNewForm.schedTime} onChange={(e) => _ctSetNewForm(f => ({ ...f, schedTime: e.target.value }))} style={{ width: "100%", padding: "9px 11px", borderRadius: 11, border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.7)", fontSize: 12.5, fontWeight: 600, color: "#192126", fontFamily: "inherit", outline: "none" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Prioridade</label>
+                <select value={_ctNewForm.priority} onChange={(e) => _ctSetNewForm(f => ({ ...f, priority: e.target.value }))} style={{ width: "100%", padding: "9px 11px", borderRadius: 11, border: "1px solid rgba(0,0,0,0.08)", background: "rgba(255,255,255,0.7)", fontSize: 12.5, fontWeight: 600, color: "#192126", fontFamily: "inherit", outline: "none", cursor: "pointer" }}>
+                  <option value="alta">Alta</option>
+                  <option value="média">Média</option>
+                  <option value="baixa">Baixa</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          {/* Footer */}
+          <div style={{ padding: "14px 24px 18px", borderTop: "1px solid rgba(0,0,0,0.05)", display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+            <button onClick={() => _ctSetQuickAddOpen(false)} disabled={_ctNewSaving} style={{ padding: "10px 16px", borderRadius: 11, background: "transparent", border: "none", fontSize: 12.5, fontWeight: 700, color: "#8B8F92", cursor: _ctNewSaving ? "default" : "pointer", fontFamily: "inherit" }}>Cancelar</button>
+            <button onClick={async () => {
+              if (!_ctNewForm.title.trim()) { _ctSetToast("⚠ Digite um título"); setTimeout(() => _ctSetToast(""), 1800); return; }
+              _ctSetNewSaving(true);
+              const f = _ctNewForm;
+              const newD = {
+                id: Date.now(),
+                type: f.type, client: f.clientName || "Sem cliente", title: f.title.trim(),
+                clientName: f.clientName, stage: "idea", priority: f.priority,
+                network: f.networks.join(", "), networks: f.networks,
+                format: f.format, aspectRatio: f.aspectRatio, sponsored: false,
+                assignees: [user?.name || _ctFirstName], createdAt: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+                steps: { idea: { by: user?.name || _ctFirstName, text: "", date: new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) } },
+                scheduling: { date: f.schedDate, time: f.schedTime },
+                schedule_date: f.schedDate || null, schedule_time: f.schedTime || null,
+                traffic: {},
+              };
+              try {
+                if (typeof supaCreateDemand === "function") {
+                  const r = await supaCreateDemand(newD, f.clientId);
+                  if (r?.data) { newD.id = r.data.id; newD.supaId = r.data.id; }
+                }
+              } catch (e) { console.warn("[QuickAdd] save error:", e); }
+              setDemands && setDemands(prev => [newD, ...prev]);
+              _ctSetNewSaving(false);
+              _ctSetQuickAddOpen(false);
+              _ctSetNewForm({ title: "", clientName: "", clientId: null, type: "social", format: "Feed", networks: ["Instagram"], priority: "média", schedDate: "", schedTime: "", aspectRatio: "1:1" });
+              _ctSetToast("✓ Demanda criada");
+              setTimeout(() => _ctSetToast(""), 2200);
+            }} disabled={_ctNewSaving} className="ct-new-btn" style={{ padding: "10px 22px", borderRadius: 14, background: "linear-gradient(135deg, #BBF246 0%, #88C200 100%)", color: "#0D0D0D", border: "none", fontSize: 13, fontWeight: 900, cursor: _ctNewSaving ? "default" : "pointer", fontFamily: "inherit", boxShadow: "0 8px 24px rgba(187,242,70,0.55), inset 0 1px 0 rgba(255,255,255,0.45)", letterSpacing: "-0.012em", display: "inline-flex", alignItems: "center", gap: 7, opacity: _ctNewSaving ? 0.6 : 1, position: "relative", overflow: "hidden" }}>
+              <span style={{ position: "relative", zIndex: 1, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {_ctNewSaving ? "Salvando…" : "Criar demanda"}
+              </span>
+            </button>
           </div>
         </div>
       </>)}
@@ -14360,6 +14489,16 @@ function ContentPage({ user, clients: propClients, demands, setDemands, team: pr
   const [kanbanView, setKanbanView] = useState("classic"); /* "classic" | "pipeline" */
   /* ═══ IMPORT PLANNING (AI) ═══ */
   const [importPlan, setImportPlan] = useState(false);
+  /* ═══ Listener: V2 redirecionou pra cá pedindo pra abrir um modal específico ═══ */
+  useEffect(() => {
+    try {
+      const action = localStorage.getItem("uh_v1_open_modal");
+      if (!action) return;
+      localStorage.removeItem("uh_v1_open_modal");
+      if (action === "quickpub") setTimeout(() => setQuickPub(true), 150);
+      else if (action === "munique") setTimeout(() => setImportPlan(true), 150);
+    } catch {}
+  }, []);
   const [ipStep, setIpStep] = useState(1); /* 1=upload, 2=processing, 3=preview */
   const [ipClient, setIpClient] = useState(null);
   const [ipFile, setIpFile] = useState(null);
