@@ -13007,6 +13007,7 @@ function ContentPageV2(props) {
   const [_ctDragOver, _ctSetDragOver] = useState(null);
   const [_ctToast, _ctSetToast] = useState("");
   const [_ctConfetti, _ctSetConfetti] = useState(null);
+  const [_ctJustAdvanced, _ctSetJustAdvanced] = useState(null); // stage que acabou de virar atual (anima)
   const [_ctCalMonth, _ctSetCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [_ctExp, _ctSetExp] = useState({ stages: true, clientes: false });
   const [_ctActionsOpen, _ctSetActionsOpen] = useState(false);
@@ -13090,6 +13091,18 @@ function ContentPageV2(props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // ─── Sync _ctSheet ↔ demands: garante que o sheet sempre reflita o estado real ───
+  useEffect(() => {
+    if (!_ctSheet) return;
+    const fresh = (Array.isArray(demands) ? demands : []).find(d => (d.supaId || d.id) === (_ctSheet.supaId || _ctSheet.id));
+    if (fresh && fresh !== _ctSheet) {
+      // Re-set apenas se algum campo importante mudou (evita loop)
+      if (fresh.stage !== _ctSheet.stage || fresh.title !== _ctSheet.title || JSON.stringify(fresh.steps) !== JSON.stringify(_ctSheet.steps)) {
+        _ctSetSheet(fresh);
+      }
+    }
+  }, [demands]);
 
   // ─── DEMANDS BY VIEW ───
   const visibleDemands = useMemo(() => {
@@ -13208,8 +13221,10 @@ function ContentPageV2(props) {
       _ctSetConfetti(Date.now());
       setTimeout(() => _ctSetConfetti(null), 1800);
     }
-    _ctSetToast(`${dir > 0 ? "→" : "←"} ${tgt.l}`);
-    setTimeout(() => _ctSetToast(""), 1800);
+    _ctSetJustAdvanced(tgt.k);
+    setTimeout(() => _ctSetJustAdvanced(null), 1200);
+    _ctSetToast(`${dir > 0 ? "✓" : "←"} ${dir > 0 ? "Movido pra" : "Voltou pra"} ${tgt.l}`);
+    setTimeout(() => _ctSetToast(""), 2400);
     /* Persiste no Supabase com error handling */
     if (d.supaId && typeof supaUpdateDemand === "function") {
       try {
@@ -13615,6 +13630,9 @@ function ContentPageV2(props) {
     @keyframes _ctBackdrop { 0% { opacity: 0; } 100% { opacity: 1; } }
     @keyframes _ctToastIn { 0% { transform: translateX(-50%) translateY(10px); opacity: 0; } 100% { transform: translateX(-50%) translateY(0); opacity: 1; } }
     @keyframes _ctPulse { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
+    @keyframes _ctDotPop { 0% { transform: scale(0); } 60% { transform: scale(1.4); } 100% { transform: scale(1); } }
+    .ct-stage-pulse { animation: _ctStagePulseRow 1.2s ease-out; }
+    @keyframes _ctStagePulseRow { 0% { background: transparent; } 30% { background: rgba(187,242,70,0.12); } 100% { background: transparent; } }
     @keyframes _ctConfetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(180px) rotate(720deg); opacity: 0; } }
     @keyframes _ctShimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
 
@@ -14414,13 +14432,14 @@ function ContentPageV2(props) {
               {_ctStages.map((s, i) => {
                 const done = i < stageIdx;
                 const current = i === stageIdx;
+                const justAdvanced = _ctJustAdvanced === s.k;
                 return (
-                  <div key={s.k} style={{ display: "flex", alignItems: "center", gap: 13, padding: "9px 0" }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? s.c : "transparent", border: current ? `2px solid ${s.c}` : done ? "none" : "1.5px solid #D1D5DB", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div key={s.k} className={justAdvanced ? "ct-stage-pulse" : ""} style={{ display: "flex", alignItems: "center", gap: 13, padding: "9px 0", position: "relative" }}>
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? s.c : "transparent", border: current ? `2px solid ${s.c}` : done ? "none" : "1.5px solid #D1D5DB", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .35s cubic-bezier(0.32, 0.72, 0, 1)", boxShadow: justAdvanced ? `0 0 0 6px ${s.c}30` : "none" }}>
                       {done && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
-                      {current && <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.c }}></div>}
+                      {current && <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.c, animation: justAdvanced ? "_ctDotPop 0.5s cubic-bezier(0.32, 0.72, 0, 1.4)" : "none" }}></div>}
                     </div>
-                    <div style={{ flex: 1, fontSize: 13.5, fontWeight: current ? 800 : done ? 700 : 500, color: current || done ? "#192126" : "#A0A4A7", letterSpacing: "-0.008em" }}>{s.l}</div>
+                    <div style={{ flex: 1, fontSize: 13.5, fontWeight: current ? 800 : done ? 700 : 500, color: current || done ? "#192126" : "#A0A4A7", letterSpacing: "-0.008em", transition: "color .3s" }}>{s.l}</div>
                     {current && <span style={{ fontSize: 10, fontWeight: 800, color: sCfg.c, letterSpacing: "0.04em", textTransform: "uppercase", background: `${sCfg.c}1A`, padding: "2px 8px", borderRadius: 999 }}>atual</span>}
                   </div>
                 );
@@ -14447,9 +14466,12 @@ function ContentPageV2(props) {
         </div>
       )}
 
-      {/* ═══════ TOAST ═══════ */}
+      {/* ═══════ TOAST mais visível ═══════ */}
       {_ctToast && (
-        <div style={{ position: "fixed", bottom: 180, left: "50%", transform: "translateX(-50%)", background: "rgba(13,13,13,0.94)", color: "#BBF246", padding: "10px 18px", borderRadius: 999, fontSize: 12, fontWeight: 700, zIndex: 250, backdropFilter: "blur(12px)", boxShadow: "0 12px 32px rgba(13,13,13,0.32)", letterSpacing: "-0.005em", animation: "_ctToastIn .3s cubic-bezier(0.32, 0.72, 0, 1)" }}>{_ctToast}</div>
+        <div style={{ position: "fixed", bottom: 110, left: "50%", transform: "translateX(-50%)", background: "#0D0D0D", color: "#BBF246", padding: "14px 24px", borderRadius: 999, fontSize: 14, fontWeight: 800, zIndex: 250, boxShadow: "0 18px 48px rgba(13,13,13,0.45), 0 0 0 4px rgba(187,242,70,0.18)", letterSpacing: "-0.01em", animation: "_ctToastIn .35s cubic-bezier(0.32, 0.72, 0, 1)", border: "1px solid rgba(187,242,70,0.3)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#BBF246", animation: "_ctPulse 1.4s ease-in-out infinite" }}></span>
+          {_ctToast}
+        </div>
       )}
     </div>
   );
