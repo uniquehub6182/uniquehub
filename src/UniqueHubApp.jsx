@@ -13008,6 +13008,8 @@ function ContentPageV2(props) {
   const [_ctToast, _ctSetToast] = useState("");
   const [_ctConfetti, _ctSetConfetti] = useState(null);
   const [_ctJustAdvanced, _ctSetJustAdvanced] = useState(null); // stage que acabou de virar atual (anima)
+  const [_ctGenArtFor, _ctSetGenArtFor] = useState(null); // demand id em geração de arte
+  const [_ctGenArtProgress, _ctSetGenArtProgress] = useState({ done: 0, total: 0 }); // progresso da geração
   const [_ctCalMonth, _ctSetCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [_ctExp, _ctSetExp] = useState({ stages: true, clientes: false });
   const [_ctActionsOpen, _ctSetActionsOpen] = useState(false);
@@ -13260,6 +13262,127 @@ function ContentPageV2(props) {
     if (d.supaId && typeof supaUpdateDemand === "function") {
       try { await supaUpdateDemand(d.supaId, partial); } catch (e) { console.warn("[updateDemandField] error:", e); }
     }
+  };
+
+  // ─── Gerar arte com IA (Gemini 2.5 Flash Image / Nano Banana) ───
+  const _ctGenerateAIArt = async (d, count = 4) => {
+    const imagePrompt = d.steps?.design?.imagePrompt;
+    if (!imagePrompt) {
+      _ctSetToast("⚠ Sem prompt de imagem nesta demanda");
+      setTimeout(() => _ctSetToast(""), 2400);
+      return;
+    }
+    // Pega Gemini key
+    let geminiKey = "";
+    try {
+      const keys = typeof supaGetAIKeys === "function" ? await supaGetAIKeys() : {};
+      geminiKey = keys?.gemini_key || "";
+    } catch (e) { console.warn("[AI Art] key fetch err:", e); }
+    if (!geminiKey) {
+      _ctSetToast("⚠ Configure a chave do Gemini em Configurações");
+      setTimeout(() => _ctSetToast(""), 3200);
+      return;
+    }
+
+    const demandId = d.supaId || d.id;
+    _ctSetGenArtFor(demandId);
+    _ctSetGenArtProgress({ done: 0, total: count });
+
+    // ── 4 chamadas paralelas pro Gemini Image ──
+    const callGemini = async () => {
+      try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${geminiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: imagePrompt }] }],
+            generationConfig: { responseModalities: ["IMAGE"] }
+          })
+        });
+        const data = await resp.json();
+        const part = data?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        if (!part) { console.warn("[AI Art] no image in response:", JSON.stringify(data).slice(0, 200)); return null; }
+        _ctSetGenArtProgress(p => ({ ...p, done: p.done + 1 }));
+        return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || "image/png" };
+      } catch (e) {
+        console.warn("[AI Art] fetch err:", e);
+        return null;
+      }
+    };
+
+    const genResults = await Promise.all(Array(count).fill(0).map(() => callGemini()));
+    const successful = genResults.filter(Boolean);
+    if (successful.length === 0) {
+      _ctSetGenArtFor(null);
+      _ctSetToast("⚠ Nenhuma imagem gerada — verifique a chave do Gemini");
+      setTimeout(() => _ctSetToast(""), 3200);
+      return;
+    }
+
+    // ── Upload paralelo pra R2 ──
+    const uploads = await Promise.all(successful.map(async ({ base64, mimeType }, i) => {
+      try {
+        // base64 → Blob
+        const bin = atob(base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
+        const blob = new Blob([bytes], { type: mimeType });
+
+        const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
+        const fileName = `munique-ai-${Date.now()}-${i}.${ext}`;
+
+        // 1) Presign
+        const presignRes = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName, contentType: mimeType })
+        });
+        const presignData = await presignRes.json();
+        if (!presignData.signedUrl) throw new Error("R2 presign failed: " + (presignData.error || "unknown"));
+
+        // 2) PUT pra R2
+        const upResp = await fetch(presignData.signedUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: blob });
+        if (!upResp.ok) throw new Error("R2 PUT failed: " + upResp.status);
+
+        return { url: presignData.publicUrl, generatedAt: new Date().toISOString(), model: "gemini-2.5-flash-image" };
+      } catch (e) {
+        console.warn("[AI Art upload] err:", e.message || e);
+        return null;
+      }
+    }));
+
+    const uploaded = uploads.filter(Boolean);
+    _ctSetGenArtFor(null);
+    _ctSetGenArtProgress({ done: 0, total: 0 });
+
+    if (uploaded.length === 0) {
+      _ctSetToast("⚠ Falha ao subir imagens pro R2");
+      setTimeout(() => _ctSetToast(""), 2800);
+      return;
+    }
+
+    // Append ao aiArt existente
+    const existing = d.steps?.design?.aiArt || [];
+    const newAiArt = [...existing, ...uploaded];
+    await updateStepField(d, "design", { aiArt: newAiArt });
+    _ctSetToast(`✨ ${uploaded.length} ${uploaded.length === 1 ? "variação gerada" : "variações geradas"}`);
+    setTimeout(() => _ctSetToast(""), 2400);
+  };
+
+  // ─── Usar imagem AI como referência (move pra files[]) ───
+  const _ctUseAIArt = async (d, artItem) => {
+    const existingFiles = d.steps?.design?.files || [];
+    const newFile = { name: `munique-ai-${Date.now()}.png`, url: artItem.url, source: "ai-generated" };
+    await updateStepField(d, "design", { files: [...existingFiles, newFile] });
+    _ctSetToast("✓ Movido pra arquivos");
+    setTimeout(() => _ctSetToast(""), 1800);
+  };
+
+  // ─── Remover variação AI ───
+  const _ctRemoveAIArt = async (d, idx) => {
+    const existing = d.steps?.design?.aiArt || [];
+    const newAiArt = existing.filter((_, i) => i !== idx);
+    await updateStepField(d, "design", { aiArt: newAiArt });
   };
 
   const viewLabel = (() => {
@@ -13653,6 +13776,7 @@ function ContentPageV2(props) {
     @keyframes _ctToastIn { 0% { transform: translateX(-50%) translateY(10px); opacity: 0; } 100% { transform: translateX(-50%) translateY(0); opacity: 1; } }
     @keyframes _ctPulse { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.15); } }
     @keyframes _ctDotPop { 0% { transform: scale(0); } 60% { transform: scale(1.4); } 100% { transform: scale(1); } }
+    .ct-ai-art-card:hover .ct-ai-art-overlay { opacity: 1; }
     .ct-stage-pulse { animation: _ctStagePulseRow 1.2s ease-out; }
     @keyframes _ctStagePulseRow { 0% { background: transparent; } 30% { background: rgba(187,242,70,0.12); } 100% { background: transparent; } }
     @keyframes _ctConfetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(180px) rotate(720deg); opacity: 0; } }
@@ -14526,18 +14650,39 @@ function ContentPageV2(props) {
                               <div style={{ fontSize: 11, fontWeight: 800, color: "#BBF246", textTransform: "uppercase", letterSpacing: "0.06em" }}>Prompt de imagem (Munique)</div>
                             </div>
                             <button
-                              onClick={() => { _ctSetToast("⏳ Gerador de arte em construção (Deploy 2)"); setTimeout(() => _ctSetToast(""), 2400); }}
-                              style={{ padding: "7px 12px", borderRadius: 9, background: "linear-gradient(135deg, #BBF246, #88C200)", color: "#0D0D0D", border: "none", fontSize: 11, fontWeight: 900, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5, boxShadow: "0 4px 12px rgba(187,242,70,0.32)" }}
+                              onClick={() => _ctGenerateAIArt(d, 4)}
+                              disabled={_ctGenArtFor === (d.supaId || d.id)}
+                              style={{ padding: "7px 12px", borderRadius: 9, background: _ctGenArtFor === (d.supaId || d.id) ? "rgba(187,242,70,0.4)" : "linear-gradient(135deg, #BBF246, #88C200)", color: "#0D0D0D", border: "none", fontSize: 11, fontWeight: 900, cursor: _ctGenArtFor === (d.supaId || d.id) ? "default" : "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5, boxShadow: "0 4px 12px rgba(187,242,70,0.32)", opacity: _ctGenArtFor === (d.supaId || d.id) ? 0.85 : 1 }}
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                              Gerar 4 variações
+                              {_ctGenArtFor === (d.supaId || d.id) ? (
+                                <>
+                                  <span style={{ width: 11, height: 11, border: "2px solid #0D0D0D", borderTopColor: "transparent", borderRadius: "50%", animation: "spin .7s linear infinite", display: "inline-block" }}></span>
+                                  Gerando {_ctGenArtProgress.done}/{_ctGenArtProgress.total}
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                  {aiArt.length > 0 ? "Gerar mais 4" : "Gerar 4 variações"}
+                                </>
+                              )}
                             </button>
                           </div>
-                          <div style={{ background: "rgba(0,0,0,0.32)", borderRadius: 9, padding: 10, fontSize: 11.5, lineHeight: 1.55, color: "#E5E7EB", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "-0.005em", whiteSpace: "pre-wrap", maxHeight: 140, overflowY: "auto" }}>{imagePrompt}</div>
+                          <div style={{ background: "rgba(0,0,0,0.32)", borderRadius: 9, padding: 10, fontSize: 11.5, lineHeight: 1.55, color: "#E5E7EB", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "-0.005em", whiteSpace: "pre-wrap", maxHeight: 140, overflowY: "auto", marginBottom: aiArt.length > 0 ? 10 : 0 }}>{imagePrompt}</div>
                           {aiArt.length > 0 && (
-                            <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 5 }}>
-                              {aiArt.slice(0, 4).map((a, i) => (
-                                <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" style={{ aspectRatio: "1", borderRadius: 7, background: `url(${a.url}) center/cover no-repeat`, border: "1px solid rgba(187,242,70,0.3)" }}></a>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
+                              {aiArt.map((a, i) => (
+                                <div key={i} className="ct-ai-art-card" style={{ position: "relative", aspectRatio: "1", borderRadius: 10, overflow: "hidden", background: `url(${a.url}) center/cover no-repeat`, border: "1px solid rgba(187,242,70,0.35)", boxShadow: "0 4px 12px rgba(13,13,13,0.32)" }}>
+                                  <div className="ct-ai-art-overlay" style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.0) 50%)", opacity: 0, transition: "opacity .2s", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: 8, gap: 5 }}>
+                                    <button onClick={(e) => { e.stopPropagation(); _ctUseAIArt(d, a); }} style={{ width: "100%", padding: "6px 0", borderRadius: 7, background: "#BBF246", color: "#0D0D0D", border: "none", fontSize: 10.5, fontWeight: 900, cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                                      Usar essa
+                                    </button>
+                                    <div style={{ display: "flex", gap: 4 }}>
+                                      <a href={a.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ flex: 1, padding: "5px 0", borderRadius: 6, background: "rgba(255,255,255,0.15)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.2)", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", textAlign: "center", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>👁 Ver</a>
+                                      <button onClick={(e) => { e.stopPropagation(); _ctRemoveAIArt(d, i); }} style={{ flex: 1, padding: "5px 0", borderRadius: 6, background: "rgba(225,72,63,0.4)", color: "#FFFFFF", border: "1px solid rgba(225,72,63,0.5)", fontSize: 10, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>🗑</button>
+                                    </div>
+                                  </div>
+                                </div>
                               ))}
                             </div>
                           )}
