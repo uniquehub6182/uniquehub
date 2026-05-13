@@ -13010,6 +13010,7 @@ function ContentPageV2(props) {
   const [_ctJustAdvanced, _ctSetJustAdvanced] = useState(null); // stage que acabou de virar atual (anima)
   const [_ctGenArtFor, _ctSetGenArtFor] = useState(null); // demand id em geração de arte
   const [_ctGenArtProgress, _ctSetGenArtProgress] = useState({ done: 0, total: 0 }); // progresso da geração
+  const [_ctGenPromptFor, _ctSetGenPromptFor] = useState(null); // demand id em geração de prompt
   const [_ctCalMonth, _ctSetCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [_ctExp, _ctSetExp] = useState({ stages: true, clientes: false });
   const [_ctActionsOpen, _ctSetActionsOpen] = useState(false);
@@ -13383,6 +13384,72 @@ function ContentPageV2(props) {
     const existing = d.steps?.design?.aiArt || [];
     const newAiArt = existing.filter((_, i) => i !== idx);
     await updateStepField(d, "design", { aiArt: newAiArt });
+  };
+
+  // ─── Gerar imagePrompt via Claude a partir do briefing + título + caption (pra demands antigas sem imagePrompt) ───
+  const _ctGenerateImagePromptFromContext = async (d) => {
+    let claudeKey = "";
+    try {
+      const keys = typeof supaGetAIKeys === "function" ? await supaGetAIKeys() : {};
+      claudeKey = keys?.claude_key || "";
+    } catch (e) { console.warn("[GenPrompt] key err:", e); }
+    if (!claudeKey) {
+      _ctSetToast("⚠ Configure a chave do Claude em Configurações");
+      setTimeout(() => _ctSetToast(""), 3200);
+      return;
+    }
+
+    const demandId = d.supaId || d.id;
+    _ctSetGenPromptFor(demandId);
+
+    const briefing = d.steps?.briefing?.text || "";
+    const idea = d.steps?.idea?.text || "";
+    const caption = d.steps?.caption?.text || "";
+    const aspectRatio = d.aspectRatio || "1:1";
+    const format = d.format || "Feed";
+
+    const userPrompt = `Crie um IMAGE PROMPT EM INGLÊS estruturado pra Gemini Image/GPT-image/Flux a partir do contexto abaixo. O prompt deve ser direto, sem markdown, sem explicações — apenas o prompt em si pra ser copiado direto pra IA de imagem.
+
+TÍTULO: ${d.title || ""}
+FORMATO: ${format} (aspect ratio ${aspectRatio})
+IDEIA: ${idea || "(não informado)"}
+BRIEFING: ${briefing || "(não informado)"}
+LEGENDA: ${caption || "(não informado)"}
+
+REGRAS DO IMAGE PROMPT:
+- 100% em INGLÊS
+- Estruturado: subject específico → style → lighting → composition → mood → color palette → camera detail (se foto) → aspect ratio no fim
+- NÃO inclua texto/CTA dentro da imagem (designer vai adicionar depois)
+- Termine com qualidade: "professional editorial photography, high detail"
+- 3-6 linhas, ~80-120 palavras
+- Aspect ratio FINAL: ${aspectRatio === "9:16" ? "9:16 aspect ratio" : aspectRatio === "4:5" ? "4:5 aspect ratio" : "1:1 aspect ratio"}
+
+Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem prefixo "Prompt:" ou similar.`;
+
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": claudeKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 800,
+          messages: [{ role: "user", content: userPrompt }]
+        })
+      });
+      const data = await resp.json();
+      if (data?.error) throw new Error(data.error.message || data.error.type);
+      const promptText = (data.content || []).map(x => x.text || "").join("").trim();
+      if (!promptText) throw new Error("Resposta vazia");
+      await updateStepField(d, "design", { imagePrompt: promptText });
+      _ctSetToast("✓ Prompt gerado pela Munique");
+      setTimeout(() => _ctSetToast(""), 2200);
+    } catch (e) {
+      console.warn("[GenPrompt] err:", e);
+      _ctSetToast("⚠ Erro: " + (e.message || "tente novamente"));
+      setTimeout(() => _ctSetToast(""), 3000);
+    } finally {
+      _ctSetGenPromptFor(null);
+    }
   };
 
   const viewLabel = (() => {
@@ -14641,18 +14708,37 @@ function ContentPageV2(props) {
                         </div>
                       </div>
 
-                      {/* ✨ AI Image Prompt — gerar arte com Gemini Nano Banana */}
-                      {imagePrompt && (
-                        <div style={{ background: "linear-gradient(135deg, rgba(13,13,13,0.92) 0%, rgba(34,34,40,0.92) 100%)", borderRadius: 14, padding: 14, marginBottom: 14, position: "relative", overflow: "hidden", border: "1px solid rgba(187,242,70,0.25)" }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                            <div style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-                              <span style={{ width: 22, height: 22, borderRadius: 7, background: "linear-gradient(135deg, #BBF246, #88C200)", color: "#0D0D0D", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900 }}>✨</span>
-                              <div style={{ fontSize: 11, fontWeight: 800, color: "#BBF246", textTransform: "uppercase", letterSpacing: "0.06em" }}>Prompt de imagem (Munique)</div>
-                            </div>
+                      {/* ✨ AI Image Prompt — gerar arte com Gemini Nano Banana (SEMPRE visível, editável) */}
+                      <div style={{ background: "linear-gradient(135deg, rgba(13,13,13,0.92) 0%, rgba(34,34,40,0.92) 100%)", borderRadius: 14, padding: 14, marginBottom: 14, position: "relative", overflow: "hidden", border: "1px solid rgba(187,242,70,0.25)" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+                            <span style={{ width: 22, height: 22, borderRadius: 7, background: "linear-gradient(135deg, #BBF246, #88C200)", color: "#0D0D0D", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, flexShrink: 0 }}>✨</span>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: "#BBF246", textTransform: "uppercase", letterSpacing: "0.06em" }}>Prompt de imagem (Munique)</div>
+                          </div>
+                          <div style={{ display: "inline-flex", gap: 6, flexShrink: 0 }}>
+                            <button
+                              onClick={() => _ctGenerateImagePromptFromContext(d)}
+                              disabled={_ctGenPromptFor === (d.supaId || d.id)}
+                              title="Munique cria o prompt a partir do briefing + título"
+                              style={{ padding: "7px 11px", borderRadius: 9, background: _ctGenPromptFor === (d.supaId || d.id) ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.08)", color: "#E5E7EB", border: "1px solid rgba(187,242,70,0.3)", fontSize: 11, fontWeight: 800, cursor: _ctGenPromptFor === (d.supaId || d.id) ? "default" : "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5 }}
+                            >
+                              {_ctGenPromptFor === (d.supaId || d.id) ? (
+                                <>
+                                  <span style={{ width: 10, height: 10, border: "2px solid #BBF246", borderTopColor: "transparent", borderRadius: "50%", animation: "spin .7s linear infinite", display: "inline-block" }}></span>
+                                  Gerando…
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#BBF246" strokeWidth="2.5"><path d="M9.5 14.5L3 21l6.5-1.5L21.5 7.5a2.121 2.121 0 0 0-3-3L7 16M14 7l3 3"/></svg>
+                                  {imagePrompt?.trim() ? "Refazer prompt" : "Gerar prompt"}
+                                </>
+                              )}
+                            </button>
                             <button
                               onClick={() => _ctGenerateAIArt(d, 4)}
-                              disabled={_ctGenArtFor === (d.supaId || d.id)}
-                              style={{ padding: "7px 12px", borderRadius: 9, background: _ctGenArtFor === (d.supaId || d.id) ? "rgba(187,242,70,0.4)" : "linear-gradient(135deg, #BBF246, #88C200)", color: "#0D0D0D", border: "none", fontSize: 11, fontWeight: 900, cursor: _ctGenArtFor === (d.supaId || d.id) ? "default" : "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5, boxShadow: "0 4px 12px rgba(187,242,70,0.32)", opacity: _ctGenArtFor === (d.supaId || d.id) ? 0.85 : 1 }}
+                              disabled={_ctGenArtFor === (d.supaId || d.id) || !imagePrompt?.trim()}
+                              title={!imagePrompt?.trim() ? "Crie um prompt de imagem primeiro" : ""}
+                              style={{ padding: "7px 12px", borderRadius: 9, background: _ctGenArtFor === (d.supaId || d.id) ? "rgba(187,242,70,0.4)" : !imagePrompt?.trim() ? "rgba(187,242,70,0.25)" : "linear-gradient(135deg, #BBF246, #88C200)", color: !imagePrompt?.trim() ? "rgba(13,13,13,0.5)" : "#0D0D0D", border: "none", fontSize: 11, fontWeight: 900, cursor: _ctGenArtFor === (d.supaId || d.id) || !imagePrompt?.trim() ? "default" : "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5, boxShadow: !imagePrompt?.trim() ? "none" : "0 4px 12px rgba(187,242,70,0.32)", opacity: _ctGenArtFor === (d.supaId || d.id) ? 0.85 : 1 }}
                             >
                               {_ctGenArtFor === (d.supaId || d.id) ? (
                                 <>
@@ -14667,7 +14753,14 @@ function ContentPageV2(props) {
                               )}
                             </button>
                           </div>
-                          <div style={{ background: "rgba(0,0,0,0.32)", borderRadius: 9, padding: 10, fontSize: 11.5, lineHeight: 1.55, color: "#E5E7EB", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "-0.005em", whiteSpace: "pre-wrap", maxHeight: 140, overflowY: "auto", marginBottom: aiArt.length > 0 ? 10 : 0 }}>{imagePrompt}</div>
+                        </div>
+                        <textarea
+                          defaultValue={imagePrompt || ""}
+                          placeholder={"Prompt em inglês pra Gemini Image. Ex:\n\nMacro photography of artisanal chocolate cookie, soft natural lighting, shallow depth of field, warm color palette of browns and golds, rustic wooden background, professional editorial style, high detail, 1:1 aspect ratio"}
+                          onBlur={(e) => { if (e.target.value !== (imagePrompt || "")) updateStepField(d, "design", { imagePrompt: e.target.value }); }}
+                          style={{ width: "100%", minHeight: 110, background: "rgba(0,0,0,0.32)", borderRadius: 9, padding: 10, fontSize: 11.5, lineHeight: 1.55, color: "#E5E7EB", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", letterSpacing: "-0.005em", border: "1px solid rgba(187,242,70,0.15)", outline: "none", resize: "vertical", marginBottom: aiArt.length > 0 ? 10 : 0 }}
+                        />
+                        {!imagePrompt?.trim() && <div style={{ fontSize: 10.5, color: "rgba(229,231,235,0.55)", marginTop: 6, fontStyle: "italic" }}>💡 Prompts vêm do Munique Import. Demandas antigas começam vazias — escreva acima e clique fora pra salvar.</div>}
                           {aiArt.length > 0 && (
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
                               {aiArt.map((a, i) => (
