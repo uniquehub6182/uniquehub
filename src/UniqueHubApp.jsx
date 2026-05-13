@@ -36596,8 +36596,13 @@ function MainApp({ user, setUser, onLogout, dark, setDark, themeColor, setThemeC
   }, [clientsLoaded, demandsLoaded]);
 
   /* ── Auto-refetch demands when tab becomes visible (catches client responses) ── */
+  /* PULA em PREVIEW MODE pra não sobrescrever mudanças locais que o Supabase rejeitou */
   useEffect(() => {
     if (!supabase || !clientsLoaded) return;
+    if (PREVIEW_WRITE_LOCK) {
+      console.log("[preview] refetch automatico desabilitado — mudancas locais persistem");
+      return;
+    }
     const refetchDemands = () => {
       if (document.visibilityState !== "visible") return;
       supaLoadDemands().then(rows => {
