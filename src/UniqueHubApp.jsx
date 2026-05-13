@@ -14427,170 +14427,246 @@ function ContentPageV2(props) {
                 </div>
               ))}
             </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "18px 24px" }}>
-              {/* ── CONTEÚDO DINÂMICO POR STAGE ── */}
-              <div style={{ marginBottom: 22 }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: sCfg.c, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: sCfg.c }}></span>
-                  Trabalho · {sCfg.l}
-                </div>
-                {(() => {
-                  const step = d.steps?.[sCfg.k] || {};
-                  const stage = sCfg.k;
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+              {/* ═══ TRABALHO DESTE STAGE (dramatic, full-width, muda completamente por etapa) ═══ */}
+              {(() => {
+                const step = d.steps?.[sCfg.k] || {};
+                const stage = sCfg.k;
 
-                  if (stage === "idea") {
-                    return (
-                      <div style={{ background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 12, padding: 14 }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 800, color: "#7C6BFE", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>💡 Conceito</div>
-                        {step.text ? (
-                          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "#192126", letterSpacing: "-0.005em", whiteSpace: "pre-wrap" }}>{step.text}</div>
-                        ) : (
-                          <div style={{ fontSize: 12.5, fontStyle: "italic", color: "#A0A4A7" }}>Sem ideia anotada ainda. Avance pra começar o briefing.</div>
-                        )}
-                        {step.by && <div style={{ fontSize: 10.5, fontWeight: 700, color: "#8B8F92", marginTop: 10 }}>por {step.by}{step.date ? ` · ${step.date}` : ""}</div>}
+                /* IDEIA — concept board roxo */
+                if (stage === "idea") {
+                  return (
+                    <div style={{ background: "linear-gradient(135deg, rgba(167,139,250,0.18) 0%, rgba(124,107,254,0.08) 100%)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 18, padding: "20px 18px", marginBottom: 22, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: -30, right: -30, fontSize: 110, opacity: 0.06, lineHeight: 1 }}>💡</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
+                        <span style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg, #A78BFA, #7C6BFE)", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: "0 6px 14px rgba(124,107,254,0.32)" }}>💡</span>
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: "#7C6BFE", textTransform: "uppercase", letterSpacing: "0.06em" }}>Etapa 1 de 8</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Ideia & Conceito</div>
+                        </div>
                       </div>
-                    );
-                  }
+                      {step.text ? (
+                        <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 14, fontSize: 13.5, lineHeight: 1.55, color: "#192126", whiteSpace: "pre-wrap", letterSpacing: "-0.005em", border: "1px solid rgba(255,255,255,0.6)" }}>{step.text}</div>
+                      ) : (
+                        <div style={{ background: "rgba(255,255,255,0.5)", borderRadius: 12, padding: "18px 14px", fontSize: 12.5, color: "#8B8F92", fontStyle: "italic", border: "1px dashed rgba(167,139,250,0.4)", textAlign: "center" }}>📝 Nenhuma ideia anotada ainda<br/><span style={{ fontSize: 10.5, fontWeight: 600, color: "#A0A4A7", fontStyle: "normal" }}>Edite no V1 ou avance pra começar o briefing</span></div>
+                      )}
+                      {step.by && <div style={{ fontSize: 10.5, fontWeight: 700, color: "#8B8F92", marginTop: 10, display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 14, height: 14, borderRadius: "50%", background: "#7C6BFE", color: "#FFFFFF", fontSize: 7, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{step.by[0]?.toUpperCase()}</span>{step.by}{step.date ? ` · ${step.date}` : ""}</div>}
+                    </div>
+                  );
+                }
 
-                  if (stage === "briefing") {
-                    return (
-                      <div style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: 12, padding: 14 }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 800, color: "#3B82F6", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>📋 Briefing detalhado</div>
-                        {step.text ? (
-                          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "#192126", letterSpacing: "-0.005em", whiteSpace: "pre-wrap" }}>{step.text}</div>
-                        ) : (
-                          <div style={{ fontSize: 12.5, fontStyle: "italic", color: "#A0A4A7" }}>Aguardando briefing. Edite no V1 ou avance pra produção.</div>
-                        )}
-                        {step.by && <div style={{ fontSize: 10.5, fontWeight: 700, color: "#8B8F92", marginTop: 10 }}>por {step.by}{step.date ? ` · ${step.date}` : ""}</div>}
+                /* BRIEFING — checklist azul */
+                if (stage === "briefing") {
+                  return (
+                    <div style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.18) 0%, rgba(30,64,175,0.08) 100%)", border: "1px solid rgba(59,130,246,0.3)", borderRadius: 18, padding: "20px 18px", marginBottom: 22, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: -30, right: -30, fontSize: 110, opacity: 0.06 }}>📋</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
+                        <span style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg, #60A5FA, #3B82F6)", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: "0 6px 14px rgba(59,130,246,0.32)" }}>📋</span>
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: "#3B82F6", textTransform: "uppercase", letterSpacing: "0.06em" }}>Etapa 2 de 8</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Briefing detalhado</div>
+                        </div>
                       </div>
-                    );
-                  }
-
-                  if (stage === "design") {
-                    const files = step.files || [];
-                    return (
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "#EC4899", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                            🎨 {files.length} {files.length === 1 ? "arquivo" : "arquivos"}
+                      {step.text ? (
+                        <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 14, fontSize: 13.5, lineHeight: 1.55, color: "#192126", whiteSpace: "pre-wrap", letterSpacing: "-0.005em" }}>{step.text}</div>
+                      ) : (
+                        <div style={{ background: "rgba(255,255,255,0.5)", borderRadius: 12, padding: "18px 14px", fontSize: 12.5, color: "#8B8F92", border: "1px dashed rgba(59,130,246,0.4)" }}>
+                          <div style={{ fontWeight: 700, color: "#3B82F6", marginBottom: 8, textAlign: "center" }}>📐 O que precisa estar aqui:</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11.5 }}>
+                            {["🎯 Objetivo do post", "👥 Público-alvo", "✨ Tom de voz", "🔗 CTA / link", "🎨 Cores e estética", "📐 Aspect ratio"].map(t => (
+                              <div key={t} style={{ display: "flex", alignItems: "center", gap: 6, color: "#3C3F44" }}>
+                                <span style={{ width: 16, height: 16, borderRadius: "50%", border: "1.5px dashed rgba(59,130,246,0.5)", flexShrink: 0 }}></span>{t}
+                              </div>
+                            ))}
                           </div>
                         </div>
-                        {files.length === 0 ? (
-                          <div style={{ background: "rgba(236,72,153,0.06)", border: "1px dashed rgba(236,72,153,0.3)", borderRadius: 12, padding: "24px 14px", textAlign: "center", fontSize: 12.5, color: "#A0A4A7", fontStyle: "italic" }}>Nenhum arquivo enviado ainda</div>
-                        ) : (
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(82px, 1fr))", gap: 8 }}>
-                            {files.slice(0, 12).map((f, i) => {
-                              const isVid = /\.(mp4|mov|webm)$/i.test(f.name || "");
-                              const isImg = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name || "");
-                              return (
-                                <a key={i} href={f.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", aspectRatio: "1", borderRadius: 10, overflow: "hidden", background: f.url && isImg ? `url(${f.url}) center/cover no-repeat` : "linear-gradient(135deg, #FCE7F3, #F9A8D4)", textDecoration: "none", position: "relative", border: "1px solid rgba(255,255,255,0.6)" }} title={f.name}>
-                                  {!isImg && (
-                                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF" }}>
-                                      {isVid ? <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>}
-                                    </div>
-                                  )}
-                                  {isVid && isImg && <div style={{ position: "absolute", bottom: 4, right: 4, width: 18, height: 18, borderRadius: "50%", background: "rgba(13,13,13,0.7)", display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="#FFFFFF"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>}
-                                </a>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
+                      )}
+                      {step.by && <div style={{ fontSize: 10.5, fontWeight: 700, color: "#8B8F92", marginTop: 10 }}>por {step.by}{step.date ? ` · ${step.date}` : ""}</div>}
+                    </div>
+                  );
+                }
 
-                  if (stage === "caption") {
-                    return (
-                      <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: 14 }}>
-                        <div style={{ fontSize: 10.5, fontWeight: 800, color: "#D97706", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>✍️ Legenda</div>
-                        {step.text ? (
-                          <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "#192126", letterSpacing: "-0.005em", whiteSpace: "pre-wrap", marginBottom: step.hashtags ? 10 : 0 }}>{step.text}</div>
-                        ) : (
-                          <div style={{ fontSize: 12.5, fontStyle: "italic", color: "#A0A4A7" }}>Aguardando legenda.</div>
-                        )}
-                        {step.hashtags && <div style={{ fontSize: 12, color: "#3B82F6", fontWeight: 600, paddingTop: 8, borderTop: "1px solid rgba(0,0,0,0.05)", marginTop: 8 }}>{step.hashtags}</div>}
+                /* DESIGN — files grid rosa */
+                if (stage === "design") {
+                  const files = step.files || [];
+                  return (
+                    <div style={{ background: "linear-gradient(135deg, rgba(236,72,153,0.18) 0%, rgba(190,24,93,0.08) 100%)", border: "1px solid rgba(236,72,153,0.3)", borderRadius: 18, padding: "20px 18px", marginBottom: 22, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: -30, right: -30, fontSize: 110, opacity: 0.06 }}>🎨</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
+                        <span style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg, #F472B6, #EC4899)", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: "0 6px 14px rgba(236,72,153,0.32)" }}>🎨</span>
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: "#EC4899", textTransform: "uppercase", letterSpacing: "0.06em" }}>Etapa 3 de 8</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Criativo · {files.length} {files.length === 1 ? "arquivo" : "arquivos"}</div>
+                        </div>
                       </div>
-                    );
-                  }
+                      {files.length === 0 ? (
+                        <div style={{ background: "rgba(255,255,255,0.55)", borderRadius: 12, padding: "32px 14px", fontSize: 13, color: "#EC4899", border: "2px dashed rgba(236,72,153,0.4)", textAlign: "center", fontWeight: 700 }}>
+                          <div style={{ fontSize: 36, marginBottom: 8 }}>📁</div>
+                          Nenhuma arte enviada ainda<br/>
+                          <span style={{ fontSize: 11, fontWeight: 500, color: "#A0A4A7", display: "block", marginTop: 6 }}>Upload das peças criativas acontece no V1</span>
+                        </div>
+                      ) : (
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(94px, 1fr))", gap: 8 }}>
+                          {files.slice(0, 12).map((f, i) => {
+                            const isVid = /\.(mp4|mov|webm)$/i.test(f.name || "");
+                            const isImg = /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(f.name || "");
+                            return (
+                              <a key={i} href={f.url} target="_blank" rel="noopener noreferrer" style={{ display: "block", aspectRatio: "1", borderRadius: 12, overflow: "hidden", background: f.url && isImg ? `url(${f.url}) center/cover no-repeat` : "linear-gradient(135deg, #F9A8D4, #EC4899)", textDecoration: "none", position: "relative", border: "1px solid rgba(255,255,255,0.7)", boxShadow: "0 4px 12px rgba(236,72,153,0.18)" }} title={f.name}>
+                                {!isImg && (
+                                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#FFFFFF" }}>
+                                    {isVid ? <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>}
+                                  </div>
+                                )}
+                                {isVid && isImg && <div style={{ position: "absolute", bottom: 5, right: 5, width: 20, height: 20, borderRadius: "50%", background: "rgba(13,13,13,0.7)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}><svg width="10" height="10" viewBox="0 0 24 24" fill="#FFFFFF"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {step.by && <div style={{ fontSize: 10.5, fontWeight: 700, color: "#8B8F92", marginTop: 10 }}>por {step.by}{step.date ? ` · ${step.date}` : ""}</div>}
+                    </div>
+                  );
+                }
 
-                  if (stage === "review") {
-                    const isApproved = step.status === "approved";
-                    const isRejected = step.status === "rejected";
-                    return (
-                      <div style={{ background: isApproved ? "rgba(16,185,129,0.08)" : isRejected ? "rgba(225,72,63,0.08)" : "rgba(6,182,212,0.08)", border: `1px solid ${isApproved ? "rgba(16,185,129,0.25)" : isRejected ? "rgba(225,72,63,0.25)" : "rgba(6,182,212,0.25)"}`, borderRadius: 12, padding: 14 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: step.note ? 10 : 0 }}>
-                          <span style={{ width: 28, height: 28, borderRadius: "50%", background: isApproved ? "#10B981" : isRejected ? "#E1483F" : "#06B6D4", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                            {isApproved ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : isRejected ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+                /* CAPTION — copy âmbar */
+                if (stage === "caption") {
+                  return (
+                    <div style={{ background: "linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(180,83,9,0.08) 100%)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 18, padding: "20px 18px", marginBottom: 22, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: -30, right: -30, fontSize: 110, opacity: 0.06 }}>✍️</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
+                        <span style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg, #FBBF24, #F59E0B)", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: "0 6px 14px rgba(245,158,11,0.32)" }}>✍️</span>
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: "#D97706", textTransform: "uppercase", letterSpacing: "0.06em" }}>Etapa 4 de 8</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Legenda & Copy</div>
+                        </div>
+                      </div>
+                      {step.text ? (
+                        <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 12, padding: 14, fontSize: 13.5, lineHeight: 1.55, color: "#192126", whiteSpace: "pre-wrap", letterSpacing: "-0.005em", marginBottom: step.hashtags ? 8 : 0 }}>{step.text}</div>
+                      ) : (
+                        <div style={{ background: "rgba(255,255,255,0.55)", borderRadius: 12, padding: "20px 14px", fontSize: 12.5, color: "#A0A4A7", fontStyle: "italic", border: "1px dashed rgba(245,158,11,0.4)", textAlign: "center" }}>Aguardando legenda</div>
+                      )}
+                      {step.hashtags && <div style={{ background: "rgba(59,130,246,0.08)", borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "#3B82F6", fontWeight: 600, letterSpacing: "-0.005em" }}>{step.hashtags}</div>}
+                      {step.text && <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 10.5, fontWeight: 700, color: "#8B8F92" }}>
+                        <span>{step.text.length} caracteres</span>
+                        <span>{step.text.split(/\s+/).filter(Boolean).length} palavras</span>
+                      </div>}
+                    </div>
+                  );
+                }
+
+                /* REVIEW — aprovação ciano */
+                if (stage === "review") {
+                  const isApproved = step.status === "approved";
+                  const isRejected = step.status === "rejected";
+                  return (
+                    <div style={{ background: "linear-gradient(135deg, rgba(6,182,212,0.18) 0%, rgba(14,116,144,0.08) 100%)", border: "1px solid rgba(6,182,212,0.3)", borderRadius: 18, padding: "20px 18px", marginBottom: 22, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: -30, right: -30, fontSize: 110, opacity: 0.06 }}>✅</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
+                        <span style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg, #22D3EE, #06B6D4)", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: "0 6px 14px rgba(6,182,212,0.32)" }}>✅</span>
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: "#06B6D4", textTransform: "uppercase", letterSpacing: "0.06em" }}>Etapa 5 de 8</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Revisão Interna</div>
+                        </div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: 14 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: step.note ? 12 : 0 }}>
+                          <span style={{ width: 44, height: 44, borderRadius: "50%", background: isApproved ? "#10B981" : isRejected ? "#E1483F" : "#06B6D4", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center", boxShadow: `0 6px 14px ${isApproved ? "rgba(16,185,129,0.32)" : isRejected ? "rgba(225,72,63,0.32)" : "rgba(6,182,212,0.32)"}` }}>
+                            {isApproved ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : isRejected ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
                           </span>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.005em" }}>{isApproved ? "Aprovado internamente" : isRejected ? "Rejeitado" : "Aguardando revisão"}</div>
-                            {step.by && <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8B8F92" }}>{step.by}{step.date ? ` · ${step.date}` : ""}</div>}
+                            <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.012em" }}>{isApproved ? "Aprovado internamente ✓" : isRejected ? "Pediram ajustes" : "Aguardando revisão"}</div>
+                            {step.by && <div style={{ fontSize: 11, fontWeight: 700, color: "#8B8F92", marginTop: 2 }}>{step.by}{step.date ? ` · ${step.date}` : ""}</div>}
                           </div>
                         </div>
-                        {step.note && <div style={{ fontSize: 12.5, color: "#3C3F44", marginTop: 6, paddingTop: 8, borderTop: "1px solid rgba(0,0,0,0.05)", letterSpacing: "-0.005em" }}><b>Nota:</b> {step.note}</div>}
+                        {step.note && <div style={{ fontSize: 12.5, color: "#3C3F44", paddingTop: 10, borderTop: "1px solid rgba(0,0,0,0.06)", letterSpacing: "-0.005em" }}><b style={{ color: "#06B6D4" }}>Comentário:</b> {step.note}</div>}
                       </div>
-                    );
-                  }
+                    </div>
+                  );
+                }
 
-                  if (stage === "client") {
-                    return (
-                      <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 12, padding: 14 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ width: 28, height: 28, borderRadius: "50%", background: "#10B981", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                          </span>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.005em" }}>Aguardando aprovação do cliente</div>
-                            <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8B8F92" }}>Cliente recebe notificação pra aprovar no portal</div>
-                          </div>
+                /* CLIENT — cliente verde */
+                if (stage === "client") {
+                  return (
+                    <div style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(5,150,105,0.08) 100%)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 18, padding: "20px 18px", marginBottom: 22, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: -30, right: -30, fontSize: 110, opacity: 0.06 }}>👤</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
+                        <span style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg, #34D399, #10B981)", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: "0 6px 14px rgba(16,185,129,0.32)" }}>👤</span>
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: "#10B981", textTransform: "uppercase", letterSpacing: "0.06em" }}>Etapa 6 de 8</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Aprovação do Cliente</div>
                         </div>
                       </div>
-                    );
-                  }
+                      <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 12, padding: "16px 14px", textAlign: "center" }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: "#192126", letterSpacing: "-0.005em", marginBottom: 4 }}>Aguardando resposta do cliente</div>
+                        <div style={{ fontSize: 11.5, color: "#8B8F92", fontWeight: 600 }}>O cliente foi notificado e pode aprovar via portal</div>
+                      </div>
+                    </div>
+                  );
+                }
 
-                  if (stage === "scheduled") {
-                    return (
-                      <div style={{ background: "rgba(14,165,233,0.08)", border: "1px solid rgba(14,165,233,0.25)", borderRadius: 12, padding: 14 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                          <span style={{ width: 28, height: 28, borderRadius: "50%", background: "#0EA5E9", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                          </span>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.005em" }}>{date ? fmtDate(date, time) : "Sem data"}</div>
-                            <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8B8F92" }}>Publicação agendada · pg_cron processa em até 60s</div>
-                          </div>
+                /* SCHEDULED — agendado azul céu */
+                if (stage === "scheduled") {
+                  const dt = date ? new Date(date + "T" + (time || "12:00")) : null;
+                  let countdown = "";
+                  if (dt) {
+                    const now = new Date();
+                    const diff = dt - now;
+                    if (diff > 0) {
+                      const days = Math.floor(diff / 86400000);
+                      const hours = Math.floor((diff % 86400000) / 3600000);
+                      const mins = Math.floor((diff % 3600000) / 60000);
+                      if (days > 0) countdown = `em ${days}d ${hours}h`;
+                      else if (hours > 0) countdown = `em ${hours}h ${mins}min`;
+                      else countdown = `em ${mins}min`;
+                    } else countdown = "vencido";
+                  }
+                  return (
+                    <div style={{ background: "linear-gradient(135deg, rgba(14,165,233,0.18) 0%, rgba(7,89,133,0.08) 100%)", border: "1px solid rgba(14,165,233,0.3)", borderRadius: 18, padding: "20px 18px", marginBottom: 22, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: -30, right: -30, fontSize: 110, opacity: 0.06 }}>📅</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
+                        <span style={{ width: 36, height: 36, borderRadius: 12, background: "linear-gradient(135deg, #38BDF8, #0EA5E9)", color: "#FFFFFF", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: "0 6px 14px rgba(14,165,233,0.32)" }}>📅</span>
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: "#0EA5E9", textTransform: "uppercase", letterSpacing: "0.06em" }}>Etapa 7 de 8</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>Programado pra publicar</div>
                         </div>
                       </div>
-                    );
-                  }
-
-                  if (stage === "published") {
-                    const pub = d.steps?.published || {};
-                    return (
-                      <div style={{ background: "rgba(187,242,70,0.12)", border: "1px solid rgba(187,242,70,0.4)", borderRadius: 12, padding: 14 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: pub.metaPostId || pub.fbPostId ? 10 : 0 }}>
-                          <span style={{ width: 28, height: 28, borderRadius: "50%", background: "#0D0D0D", color: "#BBF246", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                          </span>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: "#192126", letterSpacing: "-0.005em" }}>Publicado nas redes</div>
-                            {pub.publishedAt && <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8B8F92" }}>{new Date(pub.publishedAt).toLocaleString("pt-BR")}</div>}
-                          </div>
-                        </div>
-                        {(pub.metaPostId || pub.fbPostId) && (
-                          <div style={{ display: "flex", gap: 6, paddingTop: 8, borderTop: "1px solid rgba(0,0,0,0.05)", flexWrap: "wrap" }}>
-                            {pub.metaPostId && <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "rgba(225,48,108,0.12)", color: "#E1306C" }}>IG · ID {String(pub.metaPostId).slice(0, 12)}…</span>}
-                            {pub.fbPostId && <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "rgba(24,119,242,0.12)", color: "#1877F2" }}>FB · ID {String(pub.fbPostId).slice(0, 12)}…</span>}
-                          </div>
-                        )}
+                      <div style={{ background: "rgba(255,255,255,0.75)", borderRadius: 12, padding: "16px 14px", textAlign: "center" }}>
+                        <div className="tabnum" style={{ fontSize: 28, fontWeight: 800, color: "#0EA5E9", letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 6 }}>{date ? fmtDate(date, time) : "—"}</div>
+                        {countdown && <div style={{ fontSize: 11.5, fontWeight: 700, color: "#8B8F92", letterSpacing: "-0.005em" }}>{countdown}</div>}
+                        <div style={{ fontSize: 10.5, fontWeight: 600, color: "#A0A4A7", marginTop: 8, paddingTop: 8, borderTop: "1px solid rgba(0,0,0,0.05)" }}>pg_cron processa em até 60s no horário</div>
                       </div>
-                    );
-                  }
+                    </div>
+                  );
+                }
 
-                  return null;
-                })()}
-              </div>
+                /* PUBLISHED — no ar lime */
+                if (stage === "published") {
+                  const pub = d.steps?.published || {};
+                  return (
+                    <div style={{ background: "linear-gradient(135deg, rgba(187,242,70,0.25) 0%, rgba(136,194,0,0.10) 100%)", border: "1px solid rgba(187,242,70,0.5)", borderRadius: 18, padding: "20px 18px", marginBottom: 22, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: -30, right: -30, fontSize: 110, opacity: 0.08 }}>🎉</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, position: "relative" }}>
+                        <span style={{ width: 36, height: 36, borderRadius: 12, background: "#0D0D0D", color: "#BBF246", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 18, boxShadow: "0 6px 14px rgba(13,13,13,0.32)" }}>✓</span>
+                        <div>
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.06em" }}>Etapa 8 de 8 · Concluída</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#192126", letterSpacing: "-0.015em" }}>No ar! 🎉</div>
+                        </div>
+                      </div>
+                      {pub.publishedAt && <div style={{ background: "rgba(255,255,255,0.7)", borderRadius: 10, padding: "8px 12px", fontSize: 11.5, fontWeight: 700, color: "#192126", marginBottom: 10 }}>Publicado em {new Date(pub.publishedAt).toLocaleString("pt-BR")}</div>}
+                      {(pub.metaPostId || pub.fbPostId) && (
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                          {pub.metaPostId && <div style={{ flex: 1, minWidth: 130, padding: "10px 12px", borderRadius: 10, background: "rgba(225,48,108,0.12)", border: "1px solid rgba(225,48,108,0.25)" }}><div style={{ fontSize: 9.5, fontWeight: 800, color: "#E1306C", letterSpacing: "0.04em" }}>INSTAGRAM</div><div style={{ fontSize: 11, fontWeight: 700, color: "#3C3F44", marginTop: 2 }}>ID {String(pub.metaPostId).slice(0, 16)}…</div></div>}
+                          {pub.fbPostId && <div style={{ flex: 1, minWidth: 130, padding: "10px 12px", borderRadius: 10, background: "rgba(24,119,242,0.12)", border: "1px solid rgba(24,119,242,0.25)" }}><div style={{ fontSize: 9.5, fontWeight: 800, color: "#1877F2", letterSpacing: "0.04em" }}>FACEBOOK</div><div style={{ fontSize: 11, fontWeight: 700, color: "#3C3F44", marginTop: 2 }}>ID {String(pub.fbPostId).slice(0, 16)}…</div></div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
 
+                return null;
+              })()}
+
+              {/* Workflow compacto no fim */}
               <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>Workflow</div>
               {_ctStages.map((s, i) => {
                 const done = i < stageIdx;
