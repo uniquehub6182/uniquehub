@@ -13289,34 +13289,62 @@ function ContentPageV2(props) {
     _ctSetGenArtFor(demandId);
     _ctSetGenArtProgress({ done: 0, total: count });
 
-    // ── 4 chamadas paralelas pro Gemini Image ──
-    const callGemini = async () => {
+    // ── 4 chamadas paralelas pro Gemini Image (Nano Banana) com fallback de modelo ──
+    // Modelos: tenta 2.5 primeiro (mais barato, estável); fallback pra 3.1 (Nano Banana 2) se falhar
+    const MODELS_TO_TRY = ["gemini-2.5-flash-image", "gemini-3.1-flash-image-preview"];
+    let lastError = "";
+
+    const callGemini = async (modelName) => {
       try {
-        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${geminiKey}`, {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiKey}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: imagePrompt }] }],
-            generationConfig: { responseModalities: ["IMAGE"] }
+            generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
           })
         });
         const data = await resp.json();
-        const part = data?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (!part) { console.warn("[AI Art] no image in response:", JSON.stringify(data).slice(0, 200)); return null; }
+        if (data?.error) {
+          lastError = data.error.message || data.error.status || JSON.stringify(data.error).slice(0, 200);
+          console.warn(`[AI Art ${modelName}] API error:`, lastError);
+          return null;
+        }
+        const part = data?.candidates?.[0]?.content?.parts?.find(p => p.inlineData || p.inline_data);
+        if (!part) {
+          const finishReason = data?.candidates?.[0]?.finishReason || "unknown";
+          const safety = data?.candidates?.[0]?.safetyRatings;
+          lastError = `Sem imagem na resposta (finishReason=${finishReason}${safety ? ", safety bloqueou" : ""})`;
+          console.warn(`[AI Art ${modelName}] no image. Full response:`, JSON.stringify(data).slice(0, 400));
+          return null;
+        }
+        const inlineData = part.inlineData || part.inline_data;
         _ctSetGenArtProgress(p => ({ ...p, done: p.done + 1 }));
-        return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType || "image/png" };
+        return { base64: inlineData.data, mimeType: inlineData.mimeType || inlineData.mime_type || "image/png" };
       } catch (e) {
-        console.warn("[AI Art] fetch err:", e);
+        lastError = e.message || String(e);
+        console.warn(`[AI Art ${modelName}] fetch err:`, e);
         return null;
       }
     };
 
-    const genResults = await Promise.all(Array(count).fill(0).map(() => callGemini()));
-    const successful = genResults.filter(Boolean);
+    // Tenta primeiro modelo, se TODAS falharem tenta o segundo
+    let successful = [];
+    for (const model of MODELS_TO_TRY) {
+      _ctSetGenArtProgress({ done: 0, total: count });
+      const genResults = await Promise.all(Array(count).fill(0).map(() => callGemini(model)));
+      successful = genResults.filter(Boolean);
+      if (successful.length > 0) {
+        console.log(`[AI Art] usando modelo ${model} com sucesso (${successful.length}/${count})`);
+        break;
+      }
+      console.warn(`[AI Art] modelo ${model} falhou em todas chamadas, tentando proximo...`);
+    }
+
     if (successful.length === 0) {
       _ctSetGenArtFor(null);
-      _ctSetToast("⚠ Nenhuma imagem gerada — verifique a chave do Gemini");
-      setTimeout(() => _ctSetToast(""), 3200);
+      _ctSetToast("⚠ Gemini falhou: " + (lastError.slice(0, 80) || "erro desconhecido"));
+      setTimeout(() => _ctSetToast(""), 5000);
       return;
     }
 
