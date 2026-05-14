@@ -14930,7 +14930,6 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
                             </div>
                           )}
                         </div>
-                      )}
                       {files.length === 0 ? (
                         <div style={{ background: "rgba(255,255,255,0.55)", borderRadius: 12, padding: "32px 14px", fontSize: 13, color: "#EC4899", border: "2px dashed rgba(236,72,153,0.4)", textAlign: "center", fontWeight: 700 }}>
                           <div style={{ fontSize: 36, marginBottom: 8 }}>📁</div>
