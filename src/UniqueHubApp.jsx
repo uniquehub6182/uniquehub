@@ -13383,11 +13383,11 @@ function ContentPageV2(props) {
               "Authorization": `Bearer ${openaiKey}`
             },
             body: JSON.stringify({
-              model: "gpt-image-1",
+              model: "gpt-image-2",
               prompt: imagePrompt,
               n: 1,
               size: oaSize,
-              quality: "medium"
+              quality: "high"
             })
           });
           const data = await resp.json();
