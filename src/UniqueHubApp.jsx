@@ -14740,7 +14740,7 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
         return (<>
           <div onClick={() => _ctSetSheet(null)} style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(13,13,13,0.32)", backdropFilter: "blur(6px)", animation: "_ctBackdrop .25s ease" }}></div>
           <aside style={{
-            position: "fixed", top: 14, right: 14, bottom: 14, width: 720, maxWidth: "94vw",
+            position: "fixed", top: 14, right: 14, bottom: 14, width: 900, maxWidth: "94vw",
             background: "rgba(255,255,255,0.97)", backdropFilter: "blur(22px)",
             borderRadius: 22, border: "1px solid rgba(255,255,255,0.7)",
             boxShadow: "0 24px 64px rgba(13,13,13,0.28)",
@@ -14748,7 +14748,7 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
             animation: "_ctSheetIn .4s cubic-bezier(0.32, 0.72, 0, 1)",
             overflow: "hidden",
           }}>
-            {coverUrl && <div style={{ height: 240, background: `url(${coverUrl}) center/cover no-repeat`, flexShrink: 0 }}></div>}
+            {coverUrl && <div style={{ height: 180, background: `url(${coverUrl}) center/cover no-repeat`, flexShrink: 0 }}></div>}
             <div style={{ padding: "22px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexShrink: 0 }}>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 999, background: `${sCfg.c}1A`, marginBottom: 12 }}>
@@ -14765,20 +14765,55 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div style={{ padding: "20px 24px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, borderBottom: "1px solid rgba(0,0,0,0.05)", flexShrink: 0 }}>
-              {[
-                { l: "Quando", v: date ? fmtDate(date, time) : "Sem data" },
-                { l: "Formato", v: fmt },
-                { l: "Prioridade", v: d.priority || "Média" },
-                { l: "Atribuído", v: d.assigneeName || d.assignee || d.assignees?.[0] || "Sem atribuição" },
-              ].map(p => (
-                <div key={p.l} style={{ background: "rgba(0,0,0,0.03)", borderRadius: 10, padding: "10px 12px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{p.l}</div>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", letterSpacing: "-0.005em", lineHeight: 1.3 }}>{p.v}</div>
-                </div>
-              ))}
+            <div style={{ padding: "14px 28px 16px", borderBottom: "1px solid rgba(0,0,0,0.05)", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "#5F5E5A", fontWeight: 600, flexWrap: "wrap" }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  {date ? fmtDate(date, time) : "Sem data"}
+                </span>
+                <span style={{ opacity: 0.35 }}>·</span>
+                <span>{fmt}</span>
+                <span style={{ opacity: 0.35 }}>·</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: (d.priority || "média").toLowerCase() === "alta" ? "#EC4899" : (d.priority || "média").toLowerCase() === "baixa" ? "#A0A4A7" : "#F59E0B" }}></span>
+                  {d.priority || "Média"}
+                </span>
+                <span style={{ opacity: 0.35 }}>·</span>
+                <span>{d.assigneeName || d.assignee || d.assignees?.[0] || "Sem atribuição"}</span>
+              </div>
             </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+            <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
+              {/* ═══ STEPPER VERTICAL — pipeline navegavel ═══ */}
+              <div style={{ width: 140, flexShrink: 0, padding: "18px 0", background: "rgba(0,0,0,0.025)", borderRight: "1px solid rgba(0,0,0,0.06)", overflowY: "auto" }}>
+                <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.07em", padding: "0 16px 10px" }}>Pipeline · {stageIdx + 1}/{_ctStages.length}</div>
+                {_ctStages.map((s, i) => {
+                  const done = i < stageIdx;
+                  const current = i === stageIdx;
+                  return (
+                    <div
+                      key={s.k}
+                      onClick={() => { if (i !== stageIdx) advanceDemand(d, i - stageIdx); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 9,
+                        padding: "7px 14px", cursor: i !== stageIdx ? "pointer" : "default",
+                        background: current ? "rgba(255,255,255,0.85)" : "transparent",
+                        borderLeft: current ? `3px solid ${s.c}` : "3px solid transparent",
+                        transition: "background .15s ease",
+                      }}
+                      onMouseEnter={(e) => { if (!current) e.currentTarget.style.background = "rgba(255,255,255,0.5)"; }}
+                      onMouseLeave={(e) => { if (!current) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <div style={{ width: 16, height: 16, borderRadius: "50%", background: done ? s.c : "transparent", border: current ? `2px solid ${s.c}` : done ? "none" : "1.5px solid #D1D5DB", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {done && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                        {current && <div style={{ width: 6, height: 6, borderRadius: "50%", background: s.c }}></div>}
+                      </div>
+                      <span style={{ fontSize: 11.5, fontWeight: current ? 800 : done ? 700 : 500, color: current ? "#192126" : done ? "#192126" : "#A0A4A7", letterSpacing: "-0.005em" }}>{s.l}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* ═══ CONTEÚDO PRINCIPAL — scroll natural ═══ */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", minWidth: 0 }}>
               {/* ═══ TRABALHO DESTE STAGE (dramatic, full-width, muda completamente por etapa) ═══ */}
               {(() => {
                 const step = d.steps?.[sCfg.k] || {};
@@ -15134,23 +15169,7 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
                 return null;
               })()}
 
-              {/* Workflow compacto no fim */}
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>Workflow</div>
-              {_ctStages.map((s, i) => {
-                const done = i < stageIdx;
-                const current = i === stageIdx;
-                const justAdvanced = _ctJustAdvanced === s.k;
-                return (
-                  <div key={s.k} className={justAdvanced ? "ct-stage-pulse" : ""} style={{ display: "flex", alignItems: "center", gap: 13, padding: "9px 0", position: "relative" }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? s.c : "transparent", border: current ? `2px solid ${s.c}` : done ? "none" : "1.5px solid #D1D5DB", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .35s cubic-bezier(0.32, 0.72, 0, 1)", boxShadow: justAdvanced ? `0 0 0 6px ${s.c}30` : "none" }}>
-                      {done && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
-                      {current && <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.c, animation: justAdvanced ? "_ctDotPop 0.5s cubic-bezier(0.32, 0.72, 0, 1.4)" : "none" }}></div>}
-                    </div>
-                    <div style={{ flex: 1, fontSize: 13.5, fontWeight: current ? 800 : done ? 700 : 500, color: current || done ? "#192126" : "#A0A4A7", letterSpacing: "-0.008em", transition: "color .3s" }}>{s.l}</div>
-                    {current && <span style={{ fontSize: 10, fontWeight: 800, color: sCfg.c, letterSpacing: "0.04em", textTransform: "uppercase", background: `${sCfg.c}1A`, padding: "2px 8px", borderRadius: 999 }}>atual</span>}
-                  </div>
-                );
-              })}
+              </div>
             </div>
             <div style={{ padding: "14px 24px 22px", borderTop: "1px solid rgba(0,0,0,0.05)", display: "flex", gap: 8, flexShrink: 0 }}>
               {stageIdx > 0 && (
