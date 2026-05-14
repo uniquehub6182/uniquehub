@@ -13417,7 +13417,8 @@ function ContentPageV2(props) {
       return;
     }
 
-    // ── Upload paralelo pra R2 ──
+    // ── Upload paralelo pra R2 (com retry + erro detalhado) ──
+    let firstUploadError = "";
     const uploads = await Promise.all(successful.map(async ({ base64, mimeType }, i) => {
       try {
         // base64 → Blob
@@ -13425,26 +13426,44 @@ function ContentPageV2(props) {
         const bytes = new Uint8Array(bin.length);
         for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
         const blob = new Blob([bytes], { type: mimeType });
+        console.log(`[AI Art upload ${i}] blob size: ${(blob.size / 1024).toFixed(1)} KB, type: ${mimeType}`);
 
         const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpg";
         const fileName = `munique-ai-${Date.now()}-${i}.${ext}`;
 
-        // 1) Presign
+        // 1) Presign — chama edge function r2-upload pra pegar URL assinada
         const presignRes = await fetch(`${SUPA_URL}/functions/v1/r2-upload`, {
           method: "POST",
           headers: { "Authorization": `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({ fileName, contentType: mimeType })
         });
+        if (!presignRes.ok) {
+          const txt = await presignRes.text().catch(() => "");
+          throw new Error(`Presign HTTP ${presignRes.status}: ${txt.slice(0, 200)}`);
+        }
         const presignData = await presignRes.json();
-        if (!presignData.signedUrl) throw new Error("R2 presign failed: " + (presignData.error || "unknown"));
+        if (!presignData.signedUrl) {
+          throw new Error("Presign sem signedUrl: " + JSON.stringify(presignData).slice(0, 200));
+        }
 
-        // 2) PUT pra R2
-        const upResp = await fetch(presignData.signedUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: blob });
-        if (!upResp.ok) throw new Error("R2 PUT failed: " + upResp.status);
+        // 2) PUT pra R2 (com 1 retry se primeira falhar)
+        let upResp = await fetch(presignData.signedUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: blob });
+        if (!upResp.ok) {
+          console.warn(`[AI Art upload ${i}] PUT failed status=${upResp.status}, retrying...`);
+          await new Promise(r => setTimeout(r, 800));
+          upResp = await fetch(presignData.signedUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: blob });
+          if (!upResp.ok) {
+            const txt = await upResp.text().catch(() => "");
+            throw new Error(`R2 PUT HTTP ${upResp.status}: ${txt.slice(0, 200)}`);
+          }
+        }
 
+        console.log(`[AI Art upload ${i}] OK → ${presignData.publicUrl}`);
         return { url: presignData.publicUrl, generatedAt: new Date().toISOString(), model: usedModel || "unknown" };
       } catch (e) {
-        console.warn("[AI Art upload] err:", e.message || e);
+        const msg = e.message || String(e);
+        console.error(`[AI Art upload ${i}] err:`, msg);
+        if (!firstUploadError) firstUploadError = msg;
         return null;
       }
     }));
@@ -13454,8 +13473,8 @@ function ContentPageV2(props) {
     _ctSetGenArtProgress({ done: 0, total: 0 });
 
     if (uploaded.length === 0) {
-      _ctSetToast("⚠ Falha ao subir imagens pro R2");
-      setTimeout(() => _ctSetToast(""), 2800);
+      _ctSetToast("⚠ Upload R2 falhou: " + (firstUploadError.slice(0, 100) || "verifique console F12"));
+      setTimeout(() => _ctSetToast(""), 6000);
       return;
     }
 
