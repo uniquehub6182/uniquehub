@@ -13249,8 +13249,20 @@ function ContentPageV2(props) {
       ...(d.steps || {}),
       [stage]: { ...((d.steps || {})[stage] || {}), ...partial, by: partial.by || ((d.steps || {})[stage]?.by || _ctFirstName) },
     };
-    setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === (d.supaId || d.id) ? { ...x, steps: newSteps } : x)));
-    _ctSetSheet(prev => prev && (prev.supaId || prev.id) === (d.supaId || d.id) ? { ...prev, steps: newSteps } : prev);
+    const demandId = d.supaId || d.id;
+    console.log("[updateStepField]", stage, "→", JSON.stringify(partial).slice(0, 150), "| demandId:", demandId);
+    setDemands && setDemands(p => p.map(x => ((x.supaId || x.id) === demandId ? { ...x, steps: newSteps } : x)));
+    _ctSetSheet(prev => prev && (prev.supaId || prev.id) === demandId ? { ...prev, steps: newSteps } : prev);
+
+    /* PREVIEW MODE: persiste aiArt no localStorage pra sobreviver re-renders/sync */
+    if (typeof PREVIEW_WRITE_LOCK !== "undefined" && PREVIEW_WRITE_LOCK && partial?.aiArt && Array.isArray(partial.aiArt)) {
+      try {
+        const key = `_ctPreviewAiArt_${demandId}`;
+        localStorage.setItem(key, JSON.stringify(partial.aiArt));
+        console.log("[updateStepField] persisted aiArt to localStorage:", key, "items:", partial.aiArt.length);
+      } catch (e) { console.warn("[updateStepField] localStorage err:", e); }
+    }
+
     if (d.supaId && typeof supaUpdateDemand === "function") {
       try { await supaUpdateDemand(d.supaId, { steps: newSteps }); } catch (e) { console.warn("[updateStepField] error:", e); }
     }
@@ -13478,9 +13490,19 @@ function ContentPageV2(props) {
       return;
     }
 
-    // Append ao aiArt existente
-    const existing = d.steps?.design?.aiArt || [];
+    // Append ao aiArt existente (mescla com localStorage preview se houver)
+    let existing = d.steps?.design?.aiArt || [];
+    if (typeof PREVIEW_WRITE_LOCK !== "undefined" && PREVIEW_WRITE_LOCK) {
+      try {
+        const stored = localStorage.getItem(`_ctPreviewAiArt_${d.supaId || d.id}`);
+        if (stored) {
+          const arr = JSON.parse(stored);
+          if (Array.isArray(arr) && arr.length > existing.length) existing = arr;
+        }
+      } catch (e) { /* ignore */ }
+    }
     const newAiArt = [...existing, ...uploaded];
+    console.log("[AI Art] save:", uploaded.length, "novas +", existing.length, "antigas =", newAiArt.length, "total. URLs:", uploaded.map(u => u.url));
     await updateStepField(d, "design", { aiArt: newAiArt });
     _ctSetToast(`✨ ${uploaded.length} ${uploaded.length === 1 ? "variação gerada" : "variações geradas"}`);
     setTimeout(() => _ctSetToast(""), 2400);
@@ -14812,7 +14834,19 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
                 if (stage === "design") {
                   const files = step.files || [];
                   const imagePrompt = step.imagePrompt || "";
-                  const aiArt = step.aiArt || [];
+                  let aiArt = step.aiArt || [];
+                  /* PREVIEW MODE: hidrata aiArt do localStorage se state estiver vazio ou desatualizado */
+                  if (typeof PREVIEW_WRITE_LOCK !== "undefined" && PREVIEW_WRITE_LOCK) {
+                    try {
+                      const stored = localStorage.getItem(`_ctPreviewAiArt_${d.supaId || d.id}`);
+                      if (stored) {
+                        const arr = JSON.parse(stored);
+                        if (Array.isArray(arr) && arr.length > aiArt.length) {
+                          aiArt = arr;
+                        }
+                      }
+                    } catch (e) { /* ignore */ }
+                  }
                   return (
                     <div style={{ background: "linear-gradient(135deg, rgba(236,72,153,0.18) 0%, rgba(190,24,93,0.08) 100%)", border: "1px solid rgba(236,72,153,0.3)", borderRadius: 18, padding: "20px 18px", marginBottom: 22, position: "relative", overflow: "hidden" }}>
                       <div style={{ position: "absolute", top: -30, right: -30, fontSize: 110, opacity: 0.06 }}>🎨</div>
