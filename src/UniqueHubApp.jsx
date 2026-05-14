@@ -13273,14 +13273,16 @@ function ContentPageV2(props) {
       setTimeout(() => _ctSetToast(""), 2400);
       return;
     }
-    // Pega Gemini key
+    // Pega keys de ambos providers (Gemini primario, OpenAI fallback)
     let geminiKey = "";
+    let openaiKey = "";
     try {
       const keys = typeof supaGetAIKeys === "function" ? await supaGetAIKeys() : {};
       geminiKey = keys?.gemini_key || "";
+      openaiKey = keys?.openai_key || "";
     } catch (e) { console.warn("[AI Art] key fetch err:", e); }
-    if (!geminiKey) {
-      _ctSetToast("⚠ Configure a chave do Gemini em Configurações");
+    if (!geminiKey && !openaiKey) {
+      _ctSetToast("⚠ Configure a chave Gemini ou OpenAI em Configurações");
       setTimeout(() => _ctSetToast(""), 3200);
       return;
     }
@@ -13328,22 +13330,89 @@ function ContentPageV2(props) {
       }
     };
 
-    // Tenta primeiro modelo, se TODAS falharem tenta o segundo
+    // Tenta primeiro modelo Gemini, se TODAS falharem tenta o segundo
     let successful = [];
-    for (const model of MODELS_TO_TRY) {
-      _ctSetGenArtProgress({ done: 0, total: count });
-      const genResults = await Promise.all(Array(count).fill(0).map(() => callGemini(model)));
-      successful = genResults.filter(Boolean);
-      if (successful.length > 0) {
-        console.log(`[AI Art] usando modelo ${model} com sucesso (${successful.length}/${count})`);
-        break;
+    let usedModel = "";
+    if (geminiKey) {
+      for (const model of MODELS_TO_TRY) {
+        _ctSetGenArtProgress({ done: 0, total: count });
+        const genResults = await Promise.all(Array(count).fill(0).map(() => callGemini(model)));
+        successful = genResults.filter(Boolean);
+        if (successful.length > 0) {
+          usedModel = model;
+          console.log(`[AI Art] usando modelo ${model} com sucesso (${successful.length}/${count})`);
+          break;
+        }
+        console.warn(`[AI Art] modelo ${model} falhou em todas chamadas, tentando proximo...`);
       }
-      console.warn(`[AI Art] modelo ${model} falhou em todas chamadas, tentando proximo...`);
+    }
+
+    // ── Fallback: OpenAI gpt-image-1 (se Gemini falhar OU sem geminiKey) ──
+    if (successful.length === 0 && openaiKey) {
+      console.log("[AI Art] tentando fallback OpenAI gpt-image-1...");
+      _ctSetGenArtProgress({ done: 0, total: count });
+
+      // Mapeamento de aspect ratio do demand pro size suportado pela OpenAI
+      const aspectRatio = d.aspectRatio || "1:1";
+      const sizeMap = {
+        "1:1": "1024x1024",
+        "4:5": "1024x1024",  // OpenAI nao suporta 4:5; usa quadrado
+        "9:16": "1024x1536",
+        "16:9": "1536x1024",
+      };
+      const oaSize = sizeMap[aspectRatio] || "1024x1024";
+
+      const callOpenAI = async () => {
+        try {
+          const resp = await fetch("https://api.openai.com/v1/images/generations", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${openaiKey}`
+            },
+            body: JSON.stringify({
+              model: "gpt-image-1",
+              prompt: imagePrompt,
+              n: 1,
+              size: oaSize,
+              quality: "medium"
+            })
+          });
+          const data = await resp.json();
+          if (data?.error) {
+            lastError = data.error.message || data.error.code || JSON.stringify(data.error).slice(0, 200);
+            console.warn("[AI Art gpt-image-1] API error:", lastError);
+            return null;
+          }
+          const item = data?.data?.[0];
+          if (!item?.b64_json) {
+            lastError = "Sem b64_json na resposta OpenAI";
+            console.warn("[AI Art gpt-image-1] no b64_json. Response:", JSON.stringify(data).slice(0, 400));
+            return null;
+          }
+          _ctSetGenArtProgress(p => ({ ...p, done: p.done + 1 }));
+          return { base64: item.b64_json, mimeType: "image/png" };
+        } catch (e) {
+          lastError = e.message || String(e);
+          console.warn("[AI Art gpt-image-1] fetch err:", e);
+          return null;
+        }
+      };
+
+      const oaResults = await Promise.all(Array(count).fill(0).map(() => callOpenAI()));
+      successful = oaResults.filter(Boolean);
+      if (successful.length > 0) {
+        usedModel = "gpt-image-1";
+        console.log(`[AI Art] OpenAI gpt-image-1 com sucesso (${successful.length}/${count})`);
+      }
     }
 
     if (successful.length === 0) {
       _ctSetGenArtFor(null);
-      _ctSetToast("⚠ Gemini falhou: " + (lastError.slice(0, 80) || "erro desconhecido"));
+      const errMsg = !geminiKey && !openaiKey
+        ? "⚠ Configure as chaves de IA"
+        : `⚠ Geração falhou: ${(lastError || "erro desconhecido").slice(0, 80)}`;
+      _ctSetToast(errMsg);
       setTimeout(() => _ctSetToast(""), 5000);
       return;
     }
@@ -13373,7 +13442,7 @@ function ContentPageV2(props) {
         const upResp = await fetch(presignData.signedUrl, { method: "PUT", headers: { "Content-Type": mimeType }, body: blob });
         if (!upResp.ok) throw new Error("R2 PUT failed: " + upResp.status);
 
-        return { url: presignData.publicUrl, generatedAt: new Date().toISOString(), model: "gemini-2.5-flash-image" };
+        return { url: presignData.publicUrl, generatedAt: new Date().toISOString(), model: usedModel || "unknown" };
       } catch (e) {
         console.warn("[AI Art upload] err:", e.message || e);
         return null;
