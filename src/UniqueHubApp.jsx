@@ -13946,7 +13946,7 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
 
   // ─── CSS ───
   const css = `
-    .ct { font-family: 'Inter','Poppins',-apple-system,BlinkMacSystemFont,sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #192126; letter-spacing: -0.01em; position: relative; }
+    .ct { font-family: 'Inter','Poppins',-apple-system,BlinkMacSystemFont,sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #0A0A0A; letter-spacing: -0.01em; position: relative; background: #FAF8F4; }
     .ct * { box-sizing: border-box; }
     .ct .tabnum { font-variant-numeric: tabular-nums; }
     .ct ::-webkit-scrollbar { width: 8px; height: 10px; }
@@ -13959,17 +13959,17 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
       position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
     }
     .ct-bg-mesh::before, .ct-bg-mesh::after {
-      content: ""; position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.5;
+      content: ""; position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.25;
     }
     .ct-bg-mesh::before {
-      width: 600px; height: 600px; top: -200px; left: -200px;
-      background: radial-gradient(circle, rgba(187,242,70,0.16), transparent 70%);
-      animation: _ctBgFloat1 24s ease-in-out infinite alternate;
+      width: 500px; height: 500px; top: -180px; left: -150px;
+      background: radial-gradient(circle, rgba(187,242,70,0.10), transparent 70%);
+      animation: _ctBgFloat1 32s ease-in-out infinite alternate;
     }
     .ct-bg-mesh::after {
-      width: 500px; height: 500px; bottom: -150px; right: -100px;
-      background: radial-gradient(circle, rgba(124,107,254,0.11), transparent 70%);
-      animation: _ctBgFloat2 28s ease-in-out infinite alternate;
+      width: 400px; height: 400px; bottom: -120px; right: -80px;
+      background: radial-gradient(circle, rgba(168,123,217,0.06), transparent 70%);
+      animation: _ctBgFloat2 36s ease-in-out infinite alternate;
     }
     @keyframes _ctBgFloat1 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(80px, 60px) scale(1.15); } }
     @keyframes _ctBgFloat2 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-60px, -40px) scale(1.1); } }
@@ -14071,12 +14071,12 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
 
       {/* ═══════ SIDEBAR ═══════ */}
       <aside style={{
-        width: 260, flexShrink: 0,
-        background: "rgba(255,255,255,0.5)",
-        backdropFilter: "saturate(180%) blur(20px)",
-        WebkitBackdropFilter: "saturate(180%) blur(20px)",
-        borderRight: "1px solid rgba(255,255,255,0.6)",
-        padding: "22px 12px",
+        width: 244, flexShrink: 0,
+        background: "rgba(250,248,244,0.6)",
+        backdropFilter: "saturate(140%) blur(16px)",
+        WebkitBackdropFilter: "saturate(140%) blur(16px)",
+        borderRight: "1px solid rgba(0,0,0,0.05)",
+        padding: "20px 12px",
         position: "sticky", top: 0,
         alignSelf: "flex-start",
         height: "calc(100vh - 26px)",
@@ -14234,12 +14234,12 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
             {/* ⋯ Ações — gradient Instagram */}
             <div style={{ position: "relative" }}>
               <button onClick={() => _ctSetActionsOpen(v => !v)} className="ct-social-btn" style={{
-                width: 44, height: 44, borderRadius: 14,
-                background: "linear-gradient(135deg, #F09433 0%, #E6683C 25%, #DC2743 50%, #CC2366 75%, #BC1888 100%)",
-                color: "#FFFFFF", border: "none",
+                width: 40, height: 40, borderRadius: 10,
+                background: "#FFFFFF",
+                color: "#3C3F44", border: "1px solid rgba(0,0,0,0.08)",
                 cursor: "pointer", fontFamily: "inherit",
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 8px 22px rgba(204,35,102,0.45), inset 0 1px 0 rgba(255,255,255,0.35)",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
               }}>
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="12" r="2"/></svg>
               </button>
@@ -14282,17 +14282,18 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
 
             {/* + Nova — pílula chamativa lime brilhante */}
             <button onClick={() => _ctSetQuickAddOpen(true)} className="ct-social-btn ct-new-btn" style={{
-              background: "linear-gradient(135deg, #BBF246 0%, #88C200 100%)",
-              color: "#0D0D0D",
+              background: "#0A0A0A",
+              color: "#BBF246",
               border: "none",
-              borderRadius: 14,
-              padding: "10px 18px",
-              fontSize: 13, fontWeight: 900,
+              borderRadius: 10,
+              padding: "9px 16px",
+              fontSize: 12.5, fontWeight: 700,
               cursor: "pointer", fontFamily: "inherit",
-              display: "inline-flex", alignItems: "center", gap: 7,
-              boxShadow: "0 10px 26px rgba(187,242,70,0.55), inset 0 1px 0 rgba(255,255,255,0.45)",
-              letterSpacing: "-0.012em",
+              display: "inline-flex", alignItems: "center", gap: 6,
+              boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
+              letterSpacing: "-0.005em",
               position: "relative", overflow: "hidden",
+              transition: "transform .15s ease, box-shadow .15s ease",
             }}>
               <span style={{ position: "relative", zIndex: 1, display: "inline-flex", alignItems: "center", gap: 7 }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l3.09 6.26L22 7.27l-5 4.87 1.18 6.88L12 15.77l-6.18 3.25L7 12.14 2 7.27l6.91-1.01z"/></svg>
@@ -14314,12 +14315,12 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
               </div>
             );
           })()}
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#0D7C00", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#BBF246", animation: "_ctPulse 1.6s ease-in-out infinite" }}></span>
+          <div style={{ fontSize: 10.5, fontWeight: 600, color: "#8A857E", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 7 }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#BBF246", animation: "_ctPulse 1.6s ease-in-out infinite", boxShadow: "0 0 0 3px rgba(187,242,70,0.15)" }}></span>
             {viewLabel.kicker}
           </div>
-          <h1 style={{ fontSize: 80, fontWeight: 800, lineHeight: 0.94, letterSpacing: "-0.048em", margin: 0, color: "#192126" }}>{viewLabel.title}</h1>
-          {viewLabel.subtitle && <div style={{ fontSize: 15, color: "#8B8F92", fontWeight: 500, marginTop: 16, letterSpacing: "-0.008em" }}>{viewLabel.subtitle}</div>}
+          <h1 style={{ fontSize: 64, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.04em", margin: 0, color: "#0A0A0A", fontFamily: "'Newsreader', 'Cormorant Garamond', Georgia, serif", fontStyle: "italic" }}>{viewLabel.title}</h1>
+          {viewLabel.subtitle && <div style={{ fontSize: 14.5, color: "#6E6B66", fontWeight: 500, marginTop: 18, letterSpacing: "-0.005em", maxWidth: 540 }}>{viewLabel.subtitle}</div>}
         </div>
 
         {/* Today's Focus carousel (apenas view "hoje") */}
