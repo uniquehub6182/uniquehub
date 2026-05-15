@@ -14748,69 +14748,78 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
             animation: "_ctSheetIn .4s cubic-bezier(0.32, 0.72, 0, 1)",
             overflow: "hidden",
           }}>
-            {coverUrl && <div style={{ height: 180, background: `url(${coverUrl}) center/cover no-repeat`, flexShrink: 0 }}></div>}
-            <div style={{ padding: "22px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexShrink: 0 }}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 999, background: `${sCfg.c}1A`, marginBottom: 12 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: sCfg.c }}></span>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: sCfg.c, letterSpacing: "0.02em" }}>{sCfg.l}</span>
-                </div>
-                <h2 style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.15, letterSpacing: "-0.028em", margin: 0, color: "#192126" }}>{d.task || d.title || "Sem título"}</h2>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{client[0].toUpperCase()}</div>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: "#192126", letterSpacing: "-0.005em" }}>{client}</span>
-                </div>
+            {/* ═══ TOP BAR: minimal (stage chip + etapa + close) ═══ */}
+            <div style={{ padding: "14px 22px 12px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: `${sCfg.c}14` }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: sCfg.c }}></span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: sCfg.c, letterSpacing: "0.015em" }}>{sCfg.l}</span>
               </div>
-              <button onClick={() => _ctSetSheet(null)} style={{ width: 30, height: 30, borderRadius: "50%", background: "rgba(0,0,0,0.06)", border: "none", cursor: "pointer", color: "#192126", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <span style={{ fontSize: 11, color: "#8B8F92", fontWeight: 600 }}>Etapa {stageIdx + 1} de {_ctStages.length}</span>
+              <div style={{ flex: 1 }}></div>
+              {coverUrl && <div title="Capa da demanda" style={{ width: 28, height: 28, borderRadius: 8, background: `url(${coverUrl}) center/cover no-repeat`, flexShrink: 0, border: "1px solid rgba(0,0,0,0.08)" }}></div>}
+              <button onClick={() => _ctSetSheet(null)} style={{ width: 28, height: 28, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", color: "#5F5E5A", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }} onMouseEnter={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.05)"} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div style={{ padding: "14px 28px 16px", borderBottom: "1px solid rgba(0,0,0,0.05)", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "#5F5E5A", fontWeight: 600, flexWrap: "wrap" }}>
+            {/* ═══ TITULO + CLIENTE ═══ */}
+            <div style={{ padding: "16px 24px 4px", flexShrink: 0 }}>
+              <h2 style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-0.025em", margin: 0, color: "#0D0D0D" }}>{d.task || d.title || "Sem título"}</h2>
+              <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 8 }}>
+                <div style={{ width: 18, height: 18, borderRadius: "50%", background: `linear-gradient(135deg, ${c1}, ${c2})`, color: "#FFFFFF", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{client[0].toUpperCase()}</div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#3C3F44" }}>{client}</span>
+              </div>
+            </div>
+            {/* ═══ META INLINE: data | formato | prioridade | atribuido ═══ */}
+            <div style={{ padding: "8px 24px 14px", borderBottom: "1px solid rgba(0,0,0,0.05)", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11.5, color: "#5F5E5A", fontWeight: 600, flexWrap: "wrap" }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
                   {date ? fmtDate(date, time) : "Sem data"}
                 </span>
-                <span style={{ opacity: 0.35 }}>·</span>
+                <span style={{ opacity: 0.3 }}>·</span>
                 <span>{fmt}</span>
-                <span style={{ opacity: 0.35 }}>·</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: (d.priority || "média").toLowerCase() === "alta" ? "#EC4899" : (d.priority || "média").toLowerCase() === "baixa" ? "#A0A4A7" : "#F59E0B" }}></span>
+                <span style={{ opacity: 0.3 }}>·</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: (d.priority || "média").toLowerCase() === "alta" ? "#EC4899" : (d.priority || "média").toLowerCase() === "baixa" ? "#A0A4A7" : "#F59E0B" }}></span>
                   {d.priority || "Média"}
                 </span>
-                <span style={{ opacity: 0.35 }}>·</span>
+                <span style={{ opacity: 0.3 }}>·</span>
                 <span>{d.assigneeName || d.assignee || d.assignees?.[0] || "Sem atribuição"}</span>
               </div>
             </div>
             <div style={{ flex: 1, display: "flex", minHeight: 0, overflow: "hidden" }}>
-              {/* ═══ STEPPER VERTICAL — pipeline navegavel ═══ */}
-              <div style={{ width: 140, flexShrink: 0, padding: "18px 0", background: "rgba(0,0,0,0.025)", borderRight: "1px solid rgba(0,0,0,0.06)", overflowY: "auto" }}>
-                <div style={{ fontSize: 9.5, fontWeight: 800, color: "#8B8F92", textTransform: "uppercase", letterSpacing: "0.07em", padding: "0 16px 10px" }}>Pipeline · {stageIdx + 1}/{_ctStages.length}</div>
-                {_ctStages.map((s, i) => {
-                  const done = i < stageIdx;
-                  const current = i === stageIdx;
-                  return (
-                    <div
-                      key={s.k}
-                      onClick={() => { if (i !== stageIdx) advanceDemand(d, i - stageIdx); }}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 9,
-                        padding: "7px 14px", cursor: i !== stageIdx ? "pointer" : "default",
-                        background: current ? "rgba(255,255,255,0.85)" : "transparent",
-                        borderLeft: current ? `3px solid ${s.c}` : "3px solid transparent",
-                        transition: "background .15s ease",
-                      }}
-                      onMouseEnter={(e) => { if (!current) e.currentTarget.style.background = "rgba(255,255,255,0.5)"; }}
-                      onMouseLeave={(e) => { if (!current) e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <div style={{ width: 16, height: 16, borderRadius: "50%", background: done ? s.c : "transparent", border: current ? `2px solid ${s.c}` : done ? "none" : "1.5px solid #D1D5DB", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        {done && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
-                        {current && <div style={{ width: 6, height: 6, borderRadius: "50%", background: s.c }}></div>}
+              {/* ═══ STEPPER VERTICAL: dots + linha conectora ═══ */}
+              <div style={{ width: 124, flexShrink: 0, padding: "20px 0 20px", background: "#FAFAF9", borderRight: "1px solid rgba(0,0,0,0.05)", overflowY: "auto" }}>
+                <div style={{ position: "relative" }}>
+                  {/* Linha conectora vertical de fundo */}
+                  <div style={{ position: "absolute", left: 21, top: 12, bottom: 12, width: 2, background: "rgba(0,0,0,0.06)", borderRadius: 1 }}></div>
+                  {/* Linha "preenchida" até stage atual */}
+                  <div style={{ position: "absolute", left: 21, top: 12, height: `calc(${(stageIdx / Math.max(1, _ctStages.length - 1)) * 100}% - 24px)`, width: 2, background: sCfg.c, borderRadius: 1, transition: "height .35s ease, background .25s ease" }}></div>
+                  {_ctStages.map((s, i) => {
+                    const done = i < stageIdx;
+                    const current = i === stageIdx;
+                    return (
+                      <div
+                        key={s.k}
+                        onClick={() => { if (i !== stageIdx) advanceDemand(d, i - stageIdx); }}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 10,
+                          padding: "6px 14px", cursor: i !== stageIdx ? "pointer" : "default",
+                          position: "relative",
+                          transition: "background .15s ease",
+                        }}
+                        onMouseEnter={(e) => { if (!current) e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        <div style={{ width: 16, height: 16, borderRadius: "50%", background: done ? s.c : current ? "#FFFFFF" : "#FAFAF9", border: current ? `2.5px solid ${s.c}` : done ? "none" : "2px solid rgba(0,0,0,0.12)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1, boxShadow: current ? `0 0 0 4px ${s.c}1F` : "none", transition: "all .25s ease" }}>
+                          {done && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5"><polyline points="20 6 9 17 4 12"/></svg>}
+                          {current && <div style={{ width: 5, height: 5, borderRadius: "50%", background: s.c }}></div>}
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: current ? 700 : done ? 600 : 500, color: current ? "#0D0D0D" : done ? "#3C3F44" : "#A0A4A7", letterSpacing: "-0.005em" }}>{s.l}</span>
                       </div>
-                      <span style={{ fontSize: 11.5, fontWeight: current ? 800 : done ? 700 : 500, color: current ? "#192126" : done ? "#192126" : "#A0A4A7", letterSpacing: "-0.005em" }}>{s.l}</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
               {/* ═══ CONTEÚDO PRINCIPAL — scroll natural ═══ */}
               <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", minWidth: 0 }}>
@@ -15171,7 +15180,7 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
 
               </div>
             </div>
-            <div style={{ padding: "14px 24px 22px", borderTop: "1px solid rgba(0,0,0,0.05)", display: "flex", gap: 8, flexShrink: 0 }}>
+            <div style={{ padding: "12px 22px 16px", borderTop: "1px solid rgba(0,0,0,0.05)", display: "flex", gap: 8, flexShrink: 0, background: "#FAFAF9" }}>
               {stageIdx > 0 && (
                 <button onClick={() => advanceDemand(d, -1)} className="ct-btn" style={{ flex: 1, background: "rgba(0,0,0,0.04)", border: "none", borderRadius: 12, padding: "11px 0", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", color: "#192126" }}>← {_ctStages[stageIdx - 1].l}</button>
               )}
