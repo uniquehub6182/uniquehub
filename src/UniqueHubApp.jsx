@@ -14029,6 +14029,38 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
     .ct-cal-chip:hover { transform: translateX(2px); background: linear-gradient(90deg, currentColor, transparent) !important; }
     .ct-cal-chip:hover { transform: translateY(-1px); }
 
+    /* Tooltip flutuante (data-tip) — premium, aparece no hover */
+    .ct-tip { position: relative; }
+    .ct-tip::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 9px); left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      background: #0F0E0B; color: #FAF8F4;
+      padding: 7px 11px; border-radius: 8px;
+      font-size: 11px; font-weight: 500;
+      line-height: 1.4; letter-spacing: -0.005em;
+      width: max-content; max-width: 220px;
+      opacity: 0; pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 100;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.14), 0 0 0 1px rgba(255,255,255,0.06);
+    }
+    .ct-tip::before {
+      content: "";
+      position: absolute;
+      bottom: calc(100% + 3px); left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #0F0E0B;
+      opacity: 0; pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 100;
+    }
+    .ct-tip:hover::after, .ct-tip:hover::before { opacity: 1; transform: translateX(-50%) translateY(0); }
+
     .ct-shimmer {
       background: linear-gradient(90deg, rgba(187,242,70,0.0) 0%, rgba(187,242,70,0.32) 50%, rgba(187,242,70,0.0) 100%);
       background-size: 300px 100%;
@@ -14231,57 +14263,45 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
               })}
             </div>
 
-            {/* ⋯ Ações — gradient Instagram */}
-            <div style={{ position: "relative" }}>
-              <button onClick={() => _ctSetActionsOpen(v => !v)} className="ct-social-btn" style={{
-                width: 40, height: 40, borderRadius: 10,
-                background: "#FFFFFF",
-                color: "#3C3F44", border: "1px solid rgba(0,0,0,0.08)",
+            {/* AÇÕES RÁPIDAS FIXAS — 3 pills com tooltip nativo no hover */}
+            {[
+              { l: "Pub. Rápida", icon: "🚀", grad: "linear-gradient(135deg, #00C6FF, #0072FF)", shadow: "rgba(0,114,255,0.30)", action: "quickpub", tip: "Publicação Rápida — agenda ou publica direto no Instagram/Facebook sem passar pelo Kanban. Ideal pra posts pontuais." },
+              { l: "Munique", icon: "✨", grad: "linear-gradient(135deg, #BBF246, #88C200)", shadow: "rgba(136,194,0,0.30)", action: "munique", tip: "Importar com Munique AI — faz upload de um doc (PDF, brief, lista) e a IA cria várias demandas em lote prontas pro Kanban." },
+              { l: "Notícias", icon: "📰", grad: "linear-gradient(135deg, #FE52A0, #BC4ED6)", shadow: "rgba(188,78,214,0.30)", action: "news", tip: "Gerar de Notícias — Munique varre notícias trending do nicho do cliente e propõe posts prontos com copy e referência visual." },
+            ].map((a, i) => (
+              <button key={i} className="ct-tip ct-social-btn" data-tip={a.tip} onClick={() => {
+                if (a.action === "news") {
+                  goSub && goSub("news");
+                } else {
+                  try { localStorage.setItem("uh_v1_open_modal", a.action); } catch {}
+                  _ctSetToast("Abrindo " + a.l + "…");
+                  setTimeout(() => {
+                    try { localStorage.setItem("uh_content", "v1"); } catch {}
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("content", "v1");
+                    window.location.href = url.toString();
+                  }, 400);
+                }
+              }} style={{
+                padding: "8px 12px 8px 8px", borderRadius: 10,
+                background: a.grad,
+                color: "#FFFFFF", border: "none",
                 cursor: "pointer", fontFamily: "inherit",
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
-              }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="12" r="2"/></svg>
+                fontSize: 11.5, fontWeight: 700, letterSpacing: "-0.005em",
+                display: "inline-flex", alignItems: "center", gap: 7,
+                boxShadow: `0 4px 14px ${a.shadow}, inset 0 1px 0 rgba(255,255,255,0.25)`,
+                transition: "transform .15s ease, box-shadow .15s ease",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 6px 18px ${a.shadow}, inset 0 1px 0 rgba(255,255,255,0.3)`; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 4px 14px ${a.shadow}, inset 0 1px 0 rgba(255,255,255,0.25)`; }}
+              >
+                <span style={{ fontSize: 14, width: 24, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.22)", borderRadius: 7, flexShrink: 0 }}>{a.icon}</span>
+                {a.l}
               </button>
-              {_ctActionsOpen && (<>
-                <div onClick={() => _ctSetActionsOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 35 }}></div>
-                <div style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, background: "rgba(255,255,255,0.96)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.7)", borderRadius: 16, padding: 8, boxShadow: "0 16px 48px rgba(25,33,38,0.18)", zIndex: 36, minWidth: 280 }}>
-                  {[
-                    { l: "Publicação Rápida", desc: "Agendar sem passar pelo Kanban", icon: "🚀", grad: "linear-gradient(135deg, #00C6FF, #0072FF)", action: "quickpub" },
-                    { l: "Importar com Munique", desc: "IA cria várias demandas em lote", icon: "✨", grad: "linear-gradient(135deg, #BBF246, #88C200)", action: "munique" },
-                    { l: "Gerar de Notícias", desc: "Posts a partir de trending news", icon: "📰", grad: "linear-gradient(135deg, #FE52A0, #BC4ED6)", action: "news" },
-                  ].map((a, i) => (
-                    <button key={i} onClick={() => {
-                      _ctSetActionsOpen(false);
-                      if (a.action === "news") {
-                        goSub && goSub("news");
-                      } else {
-                        try { localStorage.setItem("uh_v1_open_modal", a.action); } catch {}
-                        _ctSetToast("Abrindo " + a.l + "…");
-                        setTimeout(() => {
-                          try { localStorage.setItem("uh_content", "v1"); } catch {}
-                          const url = new URL(window.location.href);
-                          url.searchParams.set("content", "v1");
-                          window.location.href = url.toString();
-                        }, 400);
-                      }
-                    }} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "11px 12px", background: "transparent", border: "none", borderRadius: 11, cursor: "pointer", fontFamily: "inherit", textAlign: "left", transition: "background .15s" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(0,0,0,0.04)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-                    >
-                      <span style={{ fontSize: 18, width: 34, height: 34, display: "inline-flex", alignItems: "center", justifyContent: "center", background: a.grad, borderRadius: 10, color: "#FFFFFF", flexShrink: 0, boxShadow: "0 4px 12px rgba(0,0,0,0.14)" }}>{a.icon}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 800, color: "#192126", letterSpacing: "-0.008em" }}>{a.l}</div>
-                        <div style={{ fontSize: 10.5, color: "#8B8F92", fontWeight: 600, marginTop: 1 }}>{a.desc}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>)}
-            </div>
+            ))}
 
-            {/* + Nova — pílula chamativa lime brilhante */}
-            <button onClick={() => _ctSetQuickAddOpen(true)} className="ct-social-btn ct-new-btn" style={{
+            {/* + Nova — pílula CTA preto+lime (publicação manual) */}
+            <button onClick={() => _ctSetQuickAddOpen(true)} className="ct-tip ct-social-btn ct-new-btn" data-tip="Publicação Manual — cria uma nova demanda do zero e adiciona ao Kanban. Você controla cada etapa: ideia, briefing, criativo, legenda, revisão, agendamento." style={{
               background: "#0A0A0A",
               color: "#BBF246",
               border: "none",
@@ -14319,7 +14339,7 @@ Responda APENAS com o image prompt em texto puro, sem aspas, sem markdown, sem p
             <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#BBF246", animation: "_ctPulse 1.6s ease-in-out infinite", boxShadow: "0 0 0 3px rgba(187,242,70,0.15)" }}></span>
             {viewLabel.kicker}
           </div>
-          <h1 style={{ fontSize: 64, fontWeight: 700, lineHeight: 1, letterSpacing: "-0.04em", margin: 0, color: "#0A0A0A", fontFamily: "'Newsreader', 'Cormorant Garamond', Georgia, serif", fontStyle: "italic" }}>{viewLabel.title}</h1>
+          <h1 style={{ fontSize: 64, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.04em", margin: 0, color: "#0A0A0A" }}>{viewLabel.title}</h1>
           {viewLabel.subtitle && <div style={{ fontSize: 14.5, color: "#6E6B66", fontWeight: 500, marginTop: 18, letterSpacing: "-0.005em", maxWidth: 540 }}>{viewLabel.subtitle}</div>}
         </div>
 
