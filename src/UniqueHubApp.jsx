@@ -30571,7 +30571,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif!i
                 if (allSlides.length === 0) return null;
                 return <_ReelsCarousel allSlides={allSlides} coverCount={coverSlides.length || imgFiles.length} B={B} />;
               }
-              /* Non-Reels: original carousel for images only */
+              /* Non-Reels com video: usa ReelsCarousel pra renderizar video + imagens (fix: vídeo era descartado) */
+              if (vidFiles.length > 0) {
+                const allSlides = [...imgFiles, ...vidFiles];
+                return <_ReelsCarousel allSlides={allSlides} coverCount={imgFiles.length} B={B} />;
+              }
+              /* So imagens */
               if (imgFiles.length === 0) return null;
               return <_CarouselView imgFiles={imgFiles} B={B} />;
             })()}
